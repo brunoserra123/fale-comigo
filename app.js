@@ -1212,26 +1212,34 @@ function setupEventListeners() {
 
             const jsonStr = JSON.stringify(customCardsOnly, null, 2);
             
-            navigator.clipboard.writeText(jsonStr)
-                .then(() => {
-                    showCustomAlert('Lista de cartões personalizados copiada com sucesso!\n\nAgora você só precisa colar (Ctrl+V ou "Colar" no celular) na conversa do WhatsApp ou e-mail e enviar para o desenvolvedor.');
-                })
-                .catch(err => {
-                    console.error('Erro ao copiar para a área de transferência: ', err);
-                    // Fallback to prompting user to select and copy text
-                    const exportTextarea = document.createElement('textarea');
-                    exportTextarea.value = jsonStr;
-                    document.body.appendChild(exportTextarea);
-                    exportTextarea.select();
-                    try {
-                        document.execCommand('copy');
-                        showCustomAlert('Lista de cartões personalizados copiada com sucesso!\n\nAgora você só precisa colar na conversa do WhatsApp ou e-mail e enviar para o desenvolvedor.');
-                    } catch (e) {
-                        showCustomAlert('Não foi possível copiar automaticamente. Por favor, copie o texto abaixo:\n\n' + jsonStr);
-                    }
-                    document.body.removeChild(exportTextarea);
-                });
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(jsonStr)
+                    .then(() => {
+                        showCustomAlert('Lista de cartões personalizados copiada com sucesso!\n\nAgora você só precisa colar (Ctrl+V ou "Colar" no celular) na conversa do WhatsApp ou e-mail e enviar para o desenvolvedor.');
+                    })
+                    .catch(err => {
+                        console.error('Erro ao copiar para a área de transferência: ', err);
+                        fallbackCopy(jsonStr);
+                    });
+            } else {
+                fallbackCopy(jsonStr);
+            }
         });
+    }
+
+    function fallbackCopy(jsonStr) {
+        // Fallback to prompting user to select and copy text
+        const exportTextarea = document.createElement('textarea');
+        exportTextarea.value = jsonStr;
+        document.body.appendChild(exportTextarea);
+        exportTextarea.select();
+        try {
+            document.execCommand('copy');
+            showCustomAlert('Lista de cartões personalizados copiada com sucesso!\n\nAgora você só precisa colar na conversa do WhatsApp ou e-mail e enviar para o desenvolvedor.');
+        } catch (e) {
+            showCustomAlert('Não foi possível copiar automaticamente. Por favor, copie o texto abaixo:\n\n' + jsonStr);
+        }
+        document.body.removeChild(exportTextarea);
     }
 
     // Quick Add button inside subchoice modal
