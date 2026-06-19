@@ -502,7 +502,8 @@ function init() {
     }
 }
 
-function saveCardsToStorage(triggerCloudUpload = true) {
+function saveCardsToStorage(triggerCloudUpload) {
+    if (triggerCloudUpload === undefined) triggerCloudUpload = true;
     localStorage.setItem('caa_custom_cards', JSON.stringify(cards));
     if (triggerCloudUpload) {
         uploadBackupToCloud();
@@ -515,7 +516,7 @@ function renderCards() {
 
     // Filter cards based on search query
     var filtered = cards.filter(function(card) {
-        return card.text.toLowerCase().includes(searchQuery);
+        return card.text.toLowerCase().indexOf(searchQuery) !== -1;
     });
 
     if (filtered.length === 0) {
@@ -720,7 +721,10 @@ function fetchSyncData(url) {
 }
 
 // Helper function for JSONP fetch (to bypass CORS on file:// protocol)
-function fetchJSONP(url, callbackName = 'callback_' + Math.round(new Date().getTime() * Math.random())) {
+function fetchJSONP(url, callbackName) {
+    if (callbackName === undefined) {
+        callbackName = 'callback_' + Math.round(new Date().getTime() * Math.random());
+    }
     return new Promise(function(resolve, reject) {
         var script = document.createElement('script');
         
@@ -1418,7 +1422,7 @@ function setupEventListeners() {
         syncAppsScriptUrlInput.addEventListener('input', function() {
             var val = syncAppsScriptUrlInput.value.trim();
             // Evita que o link seja colado duplicado
-            if (val.includes('https://') && val.indexOf('https://') !== val.lastIndexOf('https://')) {
+            if (val.indexOf('https://') !== -1 && val.indexOf('https://') !== val.lastIndexOf('https://')) {
                 val = val.substring(0, val.lastIndexOf('https://')).trim();
                 syncAppsScriptUrlInput.value = val;
             }
