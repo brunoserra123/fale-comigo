@@ -21,10 +21,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./icon.png">
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
+            window.addEventListener('load', function() {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registrado com sucesso! Scope:', reg.scope))
-                    .catch(err => console.error('Falha ao registrar Service Worker:', err));
+                    .then(function(reg) { console.log('Service Worker registrado com sucesso! Scope:', reg.scope); })
+                    .catch(function(err) { console.error('Falha ao registrar Service Worker:', err); });
             });
         }
     </script>
@@ -87,7 +87,46 @@
                     <p class="brand-purpose">Criado com carinho para ajudar as pessoas a se comunicarem.</p>
                 </div>
             </div>
+            <button id="btn-support" class="btn btn-secondary btn-support" style="margin-left: auto; gap: 6px; font-weight: 700; font-size: 0.9rem; padding: 10px 18px; border-radius: var(--radius-sm);">
+                <span>Apoiar Projeto 💖</span>
+            </button>
         </footer>
+
+        <!-- MODAL: SUPPORT (APOIAR) -->
+        <div id="modal-support" class="modal-overlay">
+            <div class="modal-content" style="max-width: 450px;">
+                <div class="modal-header">
+                    <h2>Apoiar o Projeto 💖</h2>
+                    <button id="btn-close-support" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body" style="text-align: center; gap: 20px; padding: 20px;">
+                    <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                        Este é um projeto gratuito criado para ajudar na comunicação. Se você gosta do projeto e quer ajudar a mantê-lo ativo, você pode contribuir de duas formas:
+                    </p>
+                    
+                    <!-- Apoia.se Option -->
+                    <div style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                        <span style="font-size: 1.5rem;">🔗</span>
+                        <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Apoio Mensal (Apoia.se)</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Ajude a manter o projeto com uma assinatura mensal</p>
+                        <a href="https://apoia.se/falecomigocaa" target="_blank" class="btn btn-primary" style="text-decoration: none; width: 100%; justify-content: center; background-color: #ff5a5f; border: none; font-size: 0.95rem; padding: 12px;">
+                            Acessar Apoia.se 🚀
+                        </a>
+                    </div>
+                    
+                    <!-- Pix Option -->
+                    <div style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                        <span style="font-size: 1.5rem;">💸</span>
+                        <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Contribuição Única (Pix)</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Qualquer valor de contribuição nos ajuda muito</p>
+                        <div style="display: flex; width: 100%; gap: 8px;">
+                            <input type="text" id="pix-key-input" value="seu-email-pix@gmail.com" readonly style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center; font-weight: 700; font-size: 0.85rem; background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                            <button id="btn-copy-pix" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85rem; font-weight: 700;">Copiar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- MODAL: SETTINGS (TUTOR MODE) -->
         <div id="modal-settings" class="modal-overlay">

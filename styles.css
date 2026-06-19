@@ -793,15 +793,16 @@ body {
 /* Footer / Brand Signature */
 .app-footer {
     margin-top: 32px;
-    padding: 20px;
+    padding: 16px 20px;
     border-radius: var(--radius-md);
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    text-align: center;
+    gap: 16px;
+    flex-wrap: wrap;
     transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
@@ -839,6 +840,15 @@ body {
     font-weight: 500;
 }
 
+.btn-support {
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-support:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
 @keyframes pulse-brand {
     0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.4)); }
     50% { transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.8)); }
@@ -846,8 +856,12 @@ body {
 
 @media (max-width: 768px) {
     .app-footer {
-        padding: 16px;
+        padding: 20px 16px;
         margin-top: 20px;
+        flex-direction: column;
+        text-align: center;
+        justify-content: center;
+        gap: 16px;
     }
     .brand-badge {
         flex-direction: column;
@@ -862,5 +876,9 @@ body {
     }
     .brand-purpose {
         font-size: 0.75rem;
+    }
+    .btn-support {
+        width: 100%;
+        justify-content: center;
     }
 }

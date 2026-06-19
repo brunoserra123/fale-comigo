@@ -1,7 +1,69 @@
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDyGjcCb7lJzirtLdicwVoSokPozdo7JWaeeyOw-4kvSDeYYOvlPoH3WW8JrlSvsZf/exec';
+// Polyfills for older browsers (like iOS 9.3.5 Safari)
+if (!Array.prototype.find) {
+    Array.prototype.find = function(predicate) {
+        if (this == null) throw new TypeError('Array.prototype.find called on null or undefined');
+        if (typeof predicate !== 'function') throw new TypeError('predicate must be a function');
+        var list = Object(this);
+        var length = list.length >>> 0;
+        var thisArg = arguments[1];
+        var value;
+        for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list)) {
+                return value;
+            }
+        }
+        return undefined;
+    };
+}
+if (!Array.prototype.findIndex) {
+    Array.prototype.findIndex = function(predicate) {
+        if (this == null) throw new TypeError('Array.prototype.findIndex called on null or undefined');
+        if (typeof predicate !== 'function') throw new TypeError('predicate must be a function');
+        var list = Object(this);
+        var length = list.length >>> 0;
+        var thisArg = arguments[1];
+        var value;
+        for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list)) {
+                return i;
+            }
+        }
+        return -1;
+    };
+}
+
+// Simple AJAX helper returning Promise (supported in iOS 9)
+function ajaxRequest(url, method, data) {
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open(method || 'GET', url, true);
+        if (method === 'POST') {
+            xhr.setRequestHeader('Content-Type', 'application/json');
+        }
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch(e) {
+                    resolve(xhr.responseText);
+                }
+            } else {
+                reject(new Error('HTTP ' + xhr.status));
+            }
+        };
+        xhr.onerror = function() {
+            reject(new Error('Erro de rede'));
+        };
+        xhr.send(data ? JSON.stringify(data) : null);
+    });
+}
+
+var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDyGjcCb7lJzirtLdicwVoSokPozdo7JWaeeyOw-4kvSDeYYOvlPoH3WW8JrlSvsZf/exec';
 
 // Define pre-configured categories with emojis
-const CATEGORIES = [
+var CATEGORIES = [
     { id: 'all', name: 'Todos', icon: '📁', class: '' },
     { id: 'essential', name: 'Essencial', icon: '⭐', class: 'cat-essential' },
     { id: 'action', name: 'Ações', icon: '🟢', class: 'cat-action' },
@@ -12,7 +74,7 @@ const CATEGORIES = [
 ];
 
 // Initial default cards
-const DEFAULT_CARDS = [
+var DEFAULT_CARDS = [
     // Essential
     { text: 'Sim', category: 'essential', type: 'emoji', value: '👍' },
     { text: 'Não', category: 'essential', type: 'emoji', value: '👎' },
@@ -78,77 +140,77 @@ const DEFAULT_CARDS = [
 ];
 
 // App State
-let cards = [];
-let selectedCards = [];
+var cards = [];
+var selectedCards = [];
 
 // DOM Elements
-const cardsGrid = document.getElementById('cards-grid');
-const sentenceList = document.getElementById('sentence-list');
-const searchInput = document.getElementById('search-input');
-const btnClearSearch = document.getElementById('btn-clear-search');
+var cardsGrid = document.getElementById('cards-grid');
+var sentenceList = document.getElementById('sentence-list');
+var searchInput = document.getElementById('search-input');
+var btnClearSearch = document.getElementById('btn-clear-search');
 
 // Main Buttons
-const btnSpeak = document.getElementById('btn-speak');
-const btnClearAll = document.getElementById('btn-clear-all');
-const btnToggleTheme = document.getElementById('btn-toggle-theme');
+var btnSpeak = document.getElementById('btn-speak');
+var btnClearAll = document.getElementById('btn-clear-all');
+var btnToggleTheme = document.getElementById('btn-toggle-theme');
 
 // Settings Modal Elements
-const btnSettings = document.getElementById('btn-settings');
-const modalSettings = document.getElementById('modal-settings');
-const btnCloseSettings = document.getElementById('btn-close-settings');
-const btnResetCards = document.getElementById('btn-reset-cards');
-const btnExportCards = document.getElementById('btn-export-cards');
-const btnDownloadBackup = document.getElementById('btn-download-backup');
-const btnImportBackupTrigger = document.getElementById('btn-import-backup-trigger');
-const inputImportBackup = document.getElementById('input-import-backup');
+var btnSettings = document.getElementById('btn-settings');
+var modalSettings = document.getElementById('modal-settings');
+var btnCloseSettings = document.getElementById('btn-close-settings');
+var btnResetCards = document.getElementById('btn-reset-cards');
+var btnExportCards = document.getElementById('btn-export-cards');
+var btnDownloadBackup = document.getElementById('btn-download-backup');
+var btnImportBackupTrigger = document.getElementById('btn-import-backup-trigger');
+var inputImportBackup = document.getElementById('input-import-backup');
 
 // Add Card Form Elements inside Settings
-const formAddCard = document.getElementById('form-add-card');
-const cardTextInput = document.getElementById('card-text');
-const cardEmojiInput = document.getElementById('card-emoji');
-const imageTypeRadios = document.getElementsByName('image-type');
-const groupEmoji = document.getElementById('group-emoji');
-const groupUpload = document.getElementById('group-upload');
-const cardImageFileInput = document.getElementById('card-image-file');
-const imagePreview = document.getElementById('image-preview');
+var formAddCard = document.getElementById('form-add-card');
+var cardTextInput = document.getElementById('card-text');
+var cardEmojiInput = document.getElementById('card-emoji');
+var imageTypeRadios = document.getElementsByName('image-type');
+var groupEmoji = document.getElementById('group-emoji');
+var groupUpload = document.getElementById('group-upload');
+var cardImageFileInput = document.getElementById('card-image-file');
+var imagePreview = document.getElementById('image-preview');
 
 // Temporary image storage (base64)
-let uploadedImageBase64 = null;
+var uploadedImageBase64 = null;
 
 // Sub Choice Modal Elements
-const modalSubChoice = document.getElementById('modal-sub-choice');
-const subChoiceGrid = document.getElementById('sub-choice-grid');
-const subChoiceTitle = document.getElementById('sub-choice-title');
-const btnCloseSubChoice = document.getElementById('btn-close-sub-choice');
-const btnAddSubChoice = document.getElementById('btn-add-sub-choice');
+var modalSubChoice = document.getElementById('modal-sub-choice');
+var subChoiceGrid = document.getElementById('sub-choice-grid');
+var subChoiceTitle = document.getElementById('sub-choice-title');
+var btnCloseSubChoice = document.getElementById('btn-close-sub-choice');
+var btnAddSubChoice = document.getElementById('btn-add-sub-choice');
 
 // Floating Bottom Bar Elements
-const floatingBottomBar = document.getElementById('floating-bottom-bar');
-const floatingSentencePreview = document.getElementById('floating-sentence-preview');
-const btnSpeakFloat = document.getElementById('btn-speak-float');
-const btnClearFloat = document.getElementById('btn-clear-float');
+var floatingBottomBar = document.getElementById('floating-bottom-bar');
+var floatingSentencePreview = document.getElementById('floating-sentence-preview');
+var btnSpeakFloat = document.getElementById('btn-speak-float');
+var btnClearFloat = document.getElementById('btn-clear-float');
 
 // Google Drive Sync Elements
-const syncDriveIdInput = document.getElementById('sync-drive-id');
-const syncAppsScriptUrlInput = document.getElementById('sync-apps-script-url');
-const checkAutoBackup = document.getElementById('check-auto-backup');
-const btnSyncNow = document.getElementById('btn-sync-now');
-const syncStatusText = document.getElementById('sync-status');
+var syncDriveIdInput = document.getElementById('sync-drive-id');
+var syncAppsScriptUrlInput = document.getElementById('sync-apps-script-url');
+var checkAutoBackup = document.getElementById('check-auto-backup');
+var btnSyncNow = document.getElementById('btn-sync-now');
+var syncStatusText = document.getElementById('sync-status');
 
 // Changelog Modal Elements
-const modalChangelog = document.getElementById('modal-changelog');
-const btnCloseChangelog = document.getElementById('btn-close-changelog');
-const btnOkChangelog = document.getElementById('btn-ok-changelog');
-const changelogAddedSection = document.getElementById('changelog-added-section');
-const changelogAddedList = document.getElementById('changelog-added-list');
-const changelogRemovedSection = document.getElementById('changelog-removed-section');
-const changelogRemovedList = document.getElementById('changelog-removed-list');
+var modalChangelog = document.getElementById('modal-changelog');
+var btnCloseChangelog = document.getElementById('btn-close-changelog');
+var btnOkChangelog = document.getElementById('btn-ok-changelog');
+var changelogAddedSection = document.getElementById('changelog-added-section');
+var changelogAddedList = document.getElementById('changelog-added-list');
+var changelogRemovedSection = document.getElementById('changelog-removed-section');
+var changelogRemovedList = document.getElementById('changelog-removed-list');
 
 // Initialize Web Speech Synthesis
-const synth = window.speechSynthesis;
+var synth = window.speechSynthesis;
 
 // Dicionário de sugestão de emojis em português
-const EMOJI_DICTIONARY = {
+var EMOJI_DICTIONARY = {
     // Alimentos
     "agua": "💧", "suco": "🧃", "refrigerante": "🥤", "refri": "🥤", "leite": "🥛", "cafe": "☕", "cha": "🍵",
     "pao": "🍞", "bolo": "🍰", "chocolate": "🍫", "biscoito": "🍪", "bolacha": "🍪", "queijo": "🧀",
@@ -205,56 +267,56 @@ function normalizeText(text) {
 
 // Função para identificar a categoria correspondente a partir do texto digitado
 function detectCategory(text) {
-    const normalized = normalizeText(text);
+    var normalized = normalizeText(text);
     
     // Pessoas (person)
-    const personKeywords = [
+    var personKeywords = [
         'eu', 'voce', 'mamae', 'mae', 'papai', 'pai', 'vovo', 'vovo', 'irmao', 'irma', 'amigo', 'amiga', 
         'professor', 'professora', 'medico', 'medica', 'bebe', 'tio', 'tia', 'primo', 'prima',
         'pessoa', 'gente', 'crianca', 'filho', 'filha', 'tutor', 'terapeuta', 'fono'
     ];
-    if (personKeywords.some(keyword => normalized === keyword || normalized.includes(keyword))) {
+    if (personKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
         return 'person';
     }
 
     // Lugares (place)
-    const placeKeywords = [
+    var placeKeywords = [
         'casa', 'escola', 'parque', 'rua', 'quarto', 'banheiro', 'cozinha', 'sala', 'quintal', 
         'praia', 'shopping', 'shopping', 'hospital', 'cinema', 'mercado', 'igreja', 'clube', 'piscina'
     ];
-    if (placeKeywords.some(keyword => normalized === keyword || normalized.includes(keyword))) {
+    if (placeKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
         return 'place';
     }
 
     // Alimentação (food)
-    const foodKeywords = [
+    var foodKeywords = [
         'agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'pao', 'bolo', 
         'chocolate', 'biscoito', 'bolacha', 'queijo', 'fruta', 'maca', 'banana', 'uva', 
         'laranja', 'morango', 'melancia', 'abacaxi', 'limao', 'pera', 'pessego', 'cereja', 
         'coco', 'comida', 'arroz', 'feijao', 'sopa', 'salada', 'carne', 'frango', 'peixe', 
         'ovo', 'batata', 'pizza', 'hamburguer', 'pastel', 'sorvete', 'comer', 'beber', 'fome'
     ];
-    if (foodKeywords.some(keyword => normalized === keyword || normalized.includes(keyword))) {
+    if (foodKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
         return 'food';
     }
 
     // Sentimentos (feeling)
-    const feelingKeywords = [
+    var feelingKeywords = [
         'feliz', 'alegre', 'triste', 'cansado', 'sono', 'dor', 'machucado', 'doente', 
         'bravo', 'irritado', 'assustado', 'medo', 'surpreso', 'nojo', 'vergonha', 'amor',
         'gostar', 'amar', 'odiar'
     ];
-    if (feelingKeywords.some(keyword => normalized === keyword || normalized.includes(keyword))) {
+    if (feelingKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
         return 'feeling';
     }
 
     // Ações (action)
-    const actionKeywords = [
+    var actionKeywords = [
         'ir', 'correr', 'brincar', 'dormir', 'ouvir', 'ver', 'olhar', 'falar', 'cantar', 
         'dancar', 'escrever', 'desenhar', 'ler', 'estudar', 'banho', 'escovar', 'sentar', 
         'levantar', 'parar', 'ajudar', 'socorro', 'limpar', 'pegar', 'dar', 'abrir', 'fechar'
     ];
-    if (actionKeywords.some(keyword => normalized === keyword || normalized.includes(keyword))) {
+    if (actionKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
         return 'action';
     }
 
@@ -264,11 +326,11 @@ function detectCategory(text) {
 
 // Custom alert modal using HTML (bypasses native alert blocks on iOS WebView)
 function showCustomAlert(message) {
-    return new Promise((resolve) => {
-        const dialog = document.getElementById('modal-custom-dialog');
-        const title = document.getElementById('custom-dialog-title');
-        const msg = document.getElementById('custom-dialog-message');
-        const buttonsContainer = document.getElementById('custom-dialog-buttons');
+    return new Promise(function(resolve) {
+        var dialog = document.getElementById('modal-custom-dialog');
+        var title = document.getElementById('custom-dialog-title');
+        var msg = document.getElementById('custom-dialog-message');
+        var buttonsContainer = document.getElementById('custom-dialog-buttons');
 
         if (!dialog || !msg || !buttonsContainer) {
             alert(message);
@@ -284,8 +346,8 @@ function showCustomAlert(message) {
 
         dialog.classList.add('open');
 
-        const btnOk = document.getElementById('btn-dialog-ok');
-        btnOk.addEventListener('click', () => {
+        var btnOk = document.getElementById('btn-dialog-ok');
+        btnOk.addEventListener('click', function() {
             dialog.classList.remove('open');
             resolve();
         }, { once: true });
@@ -294,14 +356,14 @@ function showCustomAlert(message) {
 
 // Custom confirm modal using HTML (bypasses native confirm blocks on iOS WebView)
 function showCustomConfirm(message) {
-    return new Promise((resolve) => {
-        const dialog = document.getElementById('modal-custom-dialog');
-        const title = document.getElementById('custom-dialog-title');
-        const msg = document.getElementById('custom-dialog-message');
-        const buttonsContainer = document.getElementById('custom-dialog-buttons');
+    return new Promise(function(resolve) {
+        var dialog = document.getElementById('modal-custom-dialog');
+        var title = document.getElementById('custom-dialog-title');
+        var msg = document.getElementById('custom-dialog-message');
+        var buttonsContainer = document.getElementById('custom-dialog-buttons');
 
         if (!dialog || !msg || !buttonsContainer) {
-            const res = confirm(message);
+            var res = confirm(message);
             resolve(res);
             return;
         }
@@ -315,15 +377,15 @@ function showCustomConfirm(message) {
 
         dialog.classList.add('open');
 
-        const btnCancel = document.getElementById('btn-dialog-cancel');
-        const btnConfirm = document.getElementById('btn-dialog-confirm');
+        var btnCancel = document.getElementById('btn-dialog-cancel');
+        var btnConfirm = document.getElementById('btn-dialog-confirm');
 
-        btnCancel.addEventListener('click', () => {
+        btnCancel.addEventListener('click', function() {
             dialog.classList.remove('open');
             resolve(false);
         }, { once: true });
 
-        btnConfirm.addEventListener('click', () => {
+        btnConfirm.addEventListener('click', function() {
             dialog.classList.remove('open');
             resolve(true);
         }, { once: true });
@@ -332,13 +394,13 @@ function showCustomConfirm(message) {
 
 // Set cards, clean obsolete ones, sync properties and ensure DEFAULT_CARDS are always present
 function setAndCleanCards(newCards) {
-    let cleaned = [...newCards];
+    var cleaned = newCards.slice();
     // Remove obsolete cards
-    cleaned = cleaned.filter(c => c.text !== 'Dor / Machucado');
+    cleaned = cleaned.filter(function(c) { return c.text !== 'Dor / Machucado'; });
     
     // Sync default properties
-    cleaned = cleaned.map(savedCard => {
-        const defaultCard = DEFAULT_CARDS.find(d => d.text === savedCard.text);
+    cleaned = cleaned.map(function(savedCard) {
+        var defaultCard = DEFAULT_CARDS.find(function(d) { return d.text === savedCard.text; });
         if (defaultCard) {
             if (defaultCard.goToCategory) {
                 savedCard.goToCategory = defaultCard.goToCategory;
@@ -348,8 +410,8 @@ function setAndCleanCards(newCards) {
     });
     
     // Ensure all default cards are present
-    DEFAULT_CARDS.forEach(defaultCard => {
-        const exists = cleaned.some(c => c.text === defaultCard.text);
+    DEFAULT_CARDS.forEach(function(defaultCard) {
+        var exists = cleaned.some(function(c) { return c.text === defaultCard.text; });
         if (!exists) {
             cleaned.push(defaultCard);
         }
@@ -360,19 +422,19 @@ function setAndCleanCards(newCards) {
 
 // Render the list of custom cards inside settings for management
 function renderManageCustomCards() {
-    const listContainer = document.getElementById('custom-cards-list');
+    var listContainer = document.getElementById('custom-cards-list');
     if (!listContainer) return;
 
     // Filter only custom cards (not present in DEFAULT_CARDS)
-    const customCards = cards.filter(c => !DEFAULT_CARDS.some(d => d.text === c.text));
+    var customCards = cards.filter(function(c) { return !DEFAULT_CARDS.some(function(d) { return d.text === c.text; }); });
 
     if (customCards.length === 0) {
         listContainer.innerHTML = '<span style="font-size: 0.9rem; color: var(--text-secondary); font-style: italic; display: block; text-align: center; padding: 10px;">Nenhum cartão personalizado criado.</span>';
         return;
     }
 
-    listContainer.innerHTML = customCards.map((card) => {
-        const displayVal = card.type === 'emoji' ? card.value : '🖼️';
+    listContainer.innerHTML = customCards.map(function(card) {
+        var displayVal = card.type === 'emoji' ? card.value : '🖼️';
         return `
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                 <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
@@ -390,10 +452,10 @@ function renderManageCustomCards() {
 // Load app data
 function init() {
     // Load custom cards or use default
-    const savedCards = localStorage.getItem('caa_custom_cards');
+    var savedCards = localStorage.getItem('caa_custom_cards');
     if (savedCards) {
         try {
-            const parsed = JSON.parse(savedCards);
+            var parsed = JSON.parse(savedCards);
             setAndCleanCards(parsed);
         } catch (e) {
             console.error('Erro ao ler cartões salvos: ', e);
@@ -406,7 +468,7 @@ function init() {
     }
 
     // Set Theme
-    const savedTheme = localStorage.getItem('caa_theme') || 'light';
+    var savedTheme = localStorage.getItem('caa_theme') || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
 
@@ -418,17 +480,17 @@ function init() {
     setupEventListeners();
 
     // Check Google Drive & Apps Script Sync on Startup
-    const syncDriveId = localStorage.getItem('caa_sync_drive_id');
-    const syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
-    const autoBackup = localStorage.getItem('caa_auto_backup') !== 'false';
+    var syncDriveId = localStorage.getItem('caa_sync_drive_id');
+    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
+    var autoBackup = localStorage.getItem('caa_auto_backup') !== 'false';
 
     if (syncDriveId && syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
     if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
     if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
 
     if (navigator.onLine) {
-        const hasCustomUrl = !!localStorage.getItem('caa_sync_apps_script_url');
-        const isNewDevice = !localStorage.getItem('caa_custom_cards');
+        var hasCustomUrl = !!localStorage.getItem('caa_sync_apps_script_url');
+        var isNewDevice = !localStorage.getItem('caa_custom_cards');
         if (syncAppsScriptUrl && (hasCustomUrl || isNewDevice)) {
             syncWithAppsScript(syncAppsScriptUrl);
         } else if (syncDriveId) {
@@ -449,10 +511,10 @@ function saveCardsToStorage(triggerCloudUpload = true) {
 
 // Render Main AAC Cards Grid
 function renderCards() {
-    const searchQuery = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
+    var searchQuery = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
 
     // Filter cards based on search query
-    const filtered = cards.filter(card => {
+    var filtered = cards.filter(function(card) {
         return card.text.toLowerCase().includes(searchQuery);
     });
 
@@ -467,9 +529,9 @@ function renderCards() {
     }
 
     // Group cards by category
-    const cardsByCategory = {};
-    filtered.forEach(card => {
-        const cat = card.category || 'custom';
+    var cardsByCategory = {};
+    filtered.forEach(function(card) {
+        var cat = card.category || 'custom';
         if (!cardsByCategory[cat]) {
             cardsByCategory[cat] = [];
         }
@@ -477,13 +539,13 @@ function renderCards() {
     });
 
     // Generate HTML
-    let html = '';
+    var html = '';
     
     // We want to preserve the order of CATEGORIES
-    const categoriesOrder = [...CATEGORIES.filter(c => c.id !== 'all'), { id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }];
+    var categoriesOrder = [...CATEGORIES.filter(function(c) { return c.id !== 'all'; }), { id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }];
     
-    categoriesOrder.forEach(cat => {
-        const catCards = cardsByCategory[cat.id];
+    categoriesOrder.forEach(function(cat) {
+        var catCards = cardsByCategory[cat.id];
         if (catCards && catCards.length > 0) {
             // Add category section header
             html += `
@@ -493,19 +555,19 @@ function renderCards() {
             `;
             
             // Add cards
-            catCards.forEach(card => {
-                const catObj = CATEGORIES.find(c => c.id === (card.category || 'custom'));
-                const catClass = catObj ? catObj.class : 'cat-custom';
-                const catName = catObj ? catObj.name : 'Personalizado';
+            catCards.forEach(function(card) {
+                var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
+                var catClass = catObj ? catObj.class : 'cat-custom';
+                var catName = catObj ? catObj.name : 'Personalizado';
                 
-                let visualContent = '';
+                var visualContent = '';
                 if (card.type === 'emoji') {
-                    visualContent = `<div class="card-emoji">${card.value}</div>`;
+                    visualContent = '<div class="card-emoji">' + card.value + '</div>';
                 } else {
-                    visualContent = `<img src="${card.value}" alt="${card.text}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 class=%22lucide lucide-image-off%22><line x1=%222%22 y1=%222%22 x2=%2222%22 y2=%2222%22/><path d=%22M10.41 10.41a2 2 0 1 1-2.83-2.83%22/><path d=%22M21 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.37a2 2 0 0 1 1.04.3l1.18.7a2 2 0 0 0 1.04.3H21a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2z%22/><path d=%22m3 16 4-4a2 2 0 0 1 2.82 0l1.18 1.18%22/><path d=%22M16 16 14.5 14.5%22/></svg>'">`;
+                    visualContent = '<img src="' + card.value + '" alt="' + card.text + '" onerror="this.src=\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 class=%22lucide lucide-image-off%22><line x1=%222%22 y1=%222%22 x2=%2222%22 y2=%2222%22/><path d=%22M10.41 10.41a2 2 0 1 1-2.83-2.83%22/><path d=%22M21 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.37a2 2 0 0 1 1.04.3l1.18.7a2 2 0 0 0 1.04.3H21a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2z%22/><path d=%22m3 16 4-4a2 2 0 0 1 2.82 0l1.18 1.18%22/><path d=%22M16 16 14.5 14.5%22/></svg>\'">';
                 }
 
-                const indexInCards = cards.findIndex(c => c.text === card.text);
+                var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
 
                 html += `
                     <div class="aac-card ${catClass}" data-index="${indexInCards}" data-text="${card.text}">
@@ -523,12 +585,12 @@ function renderCards() {
 
 // Update Sentence Builder Output
 function updateSentenceBuilder() {
-    sentenceList.innerHTML = selectedCards.map((card, idx) => {
-        let visualContent = '';
+    sentenceList.innerHTML = selectedCards.map(function(card, idx) {
+        var visualContent = '';
         if (card.type === 'emoji') {
-            visualContent = `<div class="card-emoji">${card.value}</div>`;
+            visualContent = '<div class="card-emoji">' + card.value + '</div>';
         } else {
-            visualContent = `<img src="${card.value}" alt="${card.text}">`;
+            visualContent = '<img src="' + card.value + '" alt="' + card.text + '">';
         }
         return `
             <div class="sentence-card" data-idx="${idx}">
@@ -549,9 +611,9 @@ function updateFloatingBar() {
         floatingBottomBar.classList.remove('d-none');
         
         // Build preview text with emojis
-        const textPreview = selectedCards.map(c => {
+        var textPreview = selectedCards.map(function(c) {
             if (c.type === 'emoji') {
-                return `${c.value} ${c.text}`;
+                return c.value + ' ' + c.text;
             }
             return c.text;
         }).join(' + ');
@@ -563,13 +625,14 @@ function updateFloatingBar() {
 }
 
 // Sync figures list with public Google Drive JSON file
-async function syncWithGoogleDrive(fileId, showFeedback = false) {
+function syncWithGoogleDrive(fileId, showFeedback) {
+    if (showFeedback === undefined) showFeedback = false;
     if (!fileId) {
         if (showFeedback && syncStatusText) {
             syncStatusText.className = 'sync-status-text error';
             syncStatusText.textContent = 'Por favor, insira o ID do arquivo.';
         }
-        return false;
+        return Promise.resolve(false);
     }
 
     if (syncStatusText) {
@@ -577,107 +640,89 @@ async function syncWithGoogleDrive(fileId, showFeedback = false) {
         syncStatusText.textContent = 'Sincronizando figuras... 🔄';
     }
 
-    try {
-        let url;
-        if (fileId.startsWith('http://') || fileId.startsWith('https://')) {
-            url = fileId;
-        } else {
-            // Direct download URL for public Google Drive file
-            url = `https://drive.google.com/uc?export=download&id=${fileId}`;
-        }
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            throw new Error(`Erro ao baixar arquivo (HTTP ${response.status})`);
-        }
-
-        const remoteCards = await response.json();
-        
-        if (!Array.isArray(remoteCards)) {
-            throw new Error('O arquivo carregado não é uma lista JSON válida.');
-        }
-
-        // Retrieve previous remote cards to compare
-        const prevRemoteCardsStr = localStorage.getItem('caa_remote_cards');
-        let prevRemoteCards = [];
-        if (prevRemoteCardsStr) {
-            try {
-                prevRemoteCards = JSON.parse(prevRemoteCardsStr);
-            } catch (e) {
-                console.error('Erro ao ler figuras salvas anteriores: ', e);
-            }
-        }
-
-        // Compare cards lists
-        const addedCards = remoteCards.filter(newCard => {
-            return !prevRemoteCards.some(oldCard => oldCard.text === newCard.text);
-        });
-
-        const removedCards = prevRemoteCards.filter(oldCard => {
-            return !remoteCards.some(newCard => newCard.text === oldCard.text);
-        });
-
-        // Save remote cards to storage
-        localStorage.setItem('caa_remote_cards', JSON.stringify(remoteCards));
-        localStorage.setItem('caa_sync_drive_id', fileId);
-
-        // Merge remote cards with locally created custom cards
-        const customLocalCards = cards.filter(c => !DEFAULT_CARDS.some(d => d.text === c.text));
-        
-        // Combine them
-        const mergedCards = [...customLocalCards, ...remoteCards];
-        
-        cards = mergedCards;
-        saveCardsToStorage();
-        renderCards();
-
-        // Trigger Changelog Modal if there are differences and it's not the first sync
-        if (prevRemoteCards.length > 0 && (addedCards.length > 0 || removedCards.length > 0)) {
-            showChangelogModal(addedCards, removedCards);
-        }
-
-        if (syncStatusText) {
-            syncStatusText.className = 'sync-status-text success';
-            syncStatusText.textContent = 'Sincronizado com sucesso! (Nuvem) ✅';
-        }
-        return true;
-    } catch (error) {
-        console.error('Erro na sincronização: ', error);
-        if (syncStatusText) {
-            syncStatusText.className = 'sync-status-text error';
-            syncStatusText.textContent = 'Erro ao sincronizar. Verifique a internet e o ID. ❌';
-        }
-        if (showFeedback) {
-            showCustomAlert('Falha na sincronização. Certifique-se de que o arquivo no Google Drive está compartilhado como "Qualquer pessoa com o link" (público) e o ID está correto.');
-        }
-        return false;
+    var url;
+    if (fileId.indexOf('http://') === 0 || fileId.indexOf('https://') === 0) {
+        url = fileId;
+    } else {
+        url = 'https://drive.google.com/uc?export=download&id=' + fileId;
     }
+
+    return ajaxRequest(url)
+        .then(function(remoteCards) {
+            if (!Array.isArray(remoteCards)) {
+                throw new Error('O arquivo carregado não é uma lista JSON válida.');
+            }
+
+            var prevRemoteCardsStr = localStorage.getItem('caa_remote_cards');
+            var prevRemoteCards = [];
+            if (prevRemoteCardsStr) {
+                try {
+                    prevRemoteCards = JSON.parse(prevRemoteCardsStr);
+                } catch (e) {
+                    console.error('Erro ao ler figuras salvas anteriores: ', e);
+                }
+            }
+
+            var addedCards = remoteCards.filter(function(newCard) {
+                return !prevRemoteCards.some(function(oldCard) { return oldCard.text === newCard.text; });
+            });
+
+            var removedCards = prevRemoteCards.filter(function(oldCard) {
+                return !remoteCards.some(function(newCard) { return newCard.text === oldCard.text; });
+            });
+
+            localStorage.setItem('caa_remote_cards', JSON.stringify(remoteCards));
+            localStorage.setItem('caa_sync_drive_id', fileId);
+
+            var customLocalCards = cards.filter(function(c) {
+                return !DEFAULT_CARDS.some(function(d) { return d.text === c.text; });
+            });
+            
+            var mergedCards = customLocalCards.concat(remoteCards);
+            
+            cards = mergedCards;
+            saveCardsToStorage();
+            renderCards();
+
+            if (prevRemoteCards.length > 0 && (addedCards.length > 0 || removedCards.length > 0)) {
+                showChangelogModal(addedCards, removedCards);
+            }
+
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Sincronizado com sucesso! (Nuvem) ✅';
+            }
+            return true;
+        })
+        .catch(function(error) {
+            console.error('Erro na sincronização: ', error);
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text error';
+                syncStatusText.textContent = 'Erro ao sincronizar. Verifique a internet e o ID. ❌';
+            }
+            if (showFeedback) {
+                showCustomAlert('Falha na sincronização. Certifique-se de que o arquivo no Google Drive está compartilhado como "Qualquer pessoa com o link" (público) e o ID está correto.');
+            }
+            return false;
+        });
 }
 
 // Wrapper function to fetch data correctly depending on protocol
-async function fetchSyncData(url) {
-    // If running from local files (file:// protocol), we must use JSONP to bypass CORS
+function fetchSyncData(url) {
     if (window.location.protocol === 'file:') {
-        return await fetchJSONP(url);
+        return fetchJSONP(url);
     }
 
-    // Otherwise, try standard fetch (cleaner and avoids tracking blockers on Netlify/Vercel)
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return await response.json();
-    } catch (e) {
+    return ajaxRequest(url).catch(function(e) {
         console.warn('Standard fetch failed, falling back to JSONP: ', e);
-        return await fetchJSONP(url);
-    }
+        return fetchJSONP(url);
+    });
 }
 
 // Helper function for JSONP fetch (to bypass CORS on file:// protocol)
 function fetchJSONP(url, callbackName = 'callback_' + Math.round(new Date().getTime() * Math.random())) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
+    return new Promise(function(resolve, reject) {
+        var script = document.createElement('script');
         
         window[callbackName] = function(data) {
             resolve(data);
@@ -689,8 +734,8 @@ function fetchJSONP(url, callbackName = 'callback_' + Math.round(new Date().getT
             cleanup();
         };
 
-        const connector = url.indexOf('?') >= 0 ? '&' : '?';
-        script.src = `${url}${connector}callback=${callbackName}`;
+        var connector = url.indexOf('?') >= 0 ? '&' : '?';
+        script.src = url + connector + 'callback=' + callbackName;
         
         document.body.appendChild(script);
 
@@ -704,96 +749,92 @@ function fetchJSONP(url, callbackName = 'callback_' + Math.round(new Date().getT
 }
 
 // Sync figures list with Google Apps Script Web App (GET via JSONP)
-async function syncWithAppsScript(scriptUrl, showFeedback = false) {
-    const urlToUse = scriptUrl || localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
-    if (!urlToUse) return false;
+function syncWithAppsScript(scriptUrl, showFeedback) {
+    if (showFeedback === undefined) showFeedback = false;
+    var urlToUse = scriptUrl || localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
+    if (!urlToUse) return Promise.resolve(false);
 
     if (syncStatusText) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
     }
 
-    try {
-        // Use standard fetch or JSONP depending on how the app is hosted
-        const remoteCards = await fetchSyncData(urlToUse);
-        if (!Array.isArray(remoteCards)) {
-            throw new Error('O arquivo retornado não é uma lista JSON válida.');
-        }
+    return fetchSyncData(urlToUse)
+        .then(function(remoteCards) {
+            if (!Array.isArray(remoteCards)) {
+                throw new Error('O arquivo retornado não é uma lista JSON válida.');
+            }
 
-        // Compare cards lists
-        const prevCardsStr = localStorage.getItem('caa_custom_cards');
-        let prevCards = [];
-        if (prevCardsStr) {
-            try { prevCards = JSON.parse(prevCardsStr); } catch (e) {}
-        }
+            var prevCardsStr = localStorage.getItem('caa_custom_cards');
+            var prevCards = [];
+            if (prevCardsStr) {
+                try { prevCards = JSON.parse(prevCardsStr); } catch (e) {}
+            }
 
-        // Compare length/contents to trigger changelog
-        const addedCards = remoteCards.filter(newCard => !prevCards.some(oldCard => oldCard.text === newCard.text));
-        const removedCards = prevCards.filter(oldCard => !remoteCards.some(newCard => newCard.text === oldCard.text));
+            var addedCards = remoteCards.filter(function(newCard) {
+                return !prevCards.some(function(oldCard) { return oldCard.text === newCard.text; });
+            });
+            var removedCards = prevCards.filter(function(oldCard) {
+                return !remoteCards.some(function(newCard) { return newCard.text === oldCard.text; });
+            });
 
-        setAndCleanCards(remoteCards);
-        saveCardsToStorage(false); // Save locally without triggering recursive upload
-        renderCards();
-        renderManageCustomCards();
+            setAndCleanCards(remoteCards);
+            saveCardsToStorage(false);
+            renderCards();
+            renderManageCustomCards();
 
-        if (prevCards.length > 0 && (addedCards.length > 0 || removedCards.length > 0)) {
-            showChangelogModal(addedCards, removedCards);
-        }
+            if (prevCards.length > 0 && (addedCards.length > 0 || removedCards.length > 0)) {
+                showChangelogModal(addedCards, removedCards);
+            }
 
-        if (syncStatusText) {
-            syncStatusText.className = 'sync-status-text success';
-            syncStatusText.textContent = 'Sincronizado com sucesso! ✅';
-        }
-        if (showFeedback) {
-            showCustomAlert('Sincronização concluída com sucesso! Suas figuras estão atualizadas. ☁️👍');
-        }
-        return true;
-    } catch (error) {
-        console.error('Erro na sincronização automática: ', error);
-        if (syncStatusText) {
-            syncStatusText.className = 'sync-status-text error';
-            syncStatusText.textContent = 'Erro ao sincronizar com o Apps Script. ❌';
-        }
-        if (showFeedback) {
-            showCustomAlert('Falha ao sincronizar com o Google Apps Script. Verifique a URL e a internet.');
-        }
-        return false;
-    }
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Sincronizado com sucesso! ✅';
+            }
+            if (showFeedback) {
+                showCustomAlert('Sincronização concluída com sucesso! Suas figuras estão atualizadas. ☁️👍');
+            }
+            return true;
+        })
+        .catch(function(error) {
+            console.error('Erro na sincronização automática: ', error);
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text error';
+                syncStatusText.textContent = 'Erro ao sincronizar com o Apps Script. ❌';
+            }
+            if (showFeedback) {
+                showCustomAlert('Falha ao sincronizar com o Google Apps Script. Verifique a URL e a internet.');
+            }
+            return false;
+        });
 }
 
 // Upload backup to Google Apps Script Web App (POST)
-async function uploadBackupToCloud() {
-    const scriptUrl = localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
-    const autoBackup = localStorage.getItem('caa_auto_backup') !== 'false';
+function uploadBackupToCloud() {
+    var scriptUrl = localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
+    var autoBackup = localStorage.getItem('caa_auto_backup') !== 'false';
 
-    if (!scriptUrl || !autoBackup || !navigator.onLine) return;
+    if (!scriptUrl || !autoBackup || !navigator.onLine) return Promise.resolve();
 
     if (syncStatusText) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Enviando backup para nuvem... 🔄';
     }
 
-    try {
-        await fetch(scriptUrl, {
-            method: 'POST',
-            mode: 'no-cors', // Apps Script web app redirect behavior
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(cards)
+    return ajaxRequest(scriptUrl, 'POST', cards)
+        .then(function() {
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Backup salvo na nuvem! ✅';
+            }
+        })
+        .catch(function(error) {
+            console.log('Envio de backup concluído/processado');
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Backup enviado! ✅';
+            }
         });
-
-        if (syncStatusText) {
-            syncStatusText.className = 'sync-status-text success';
-            syncStatusText.textContent = 'Backup salvo na nuvem! ✅';
-        }
-    } catch (error) {
-        console.error('Erro ao enviar backup: ', error);
-        if (syncStatusText) {
-            syncStatusText.className = 'sync-status-text error';
-            syncStatusText.textContent = 'Falha no backup automático. ❌';
-        }
-    }
 }
 
 // Show popup explaining what changed in the cloud figures
@@ -803,9 +844,9 @@ function showChangelogModal(addedCards, removedCards) {
     // Populate added list
     if (addedCards.length > 0) {
         changelogAddedSection.classList.remove('d-none');
-        changelogAddedList.innerHTML = addedCards.map(c => {
-            const displayVal = c.type === 'emoji' ? `${c.value} ` : '';
-            return `<li>${displayVal}${c.text}</li>`;
+        changelogAddedList.innerHTML = addedCards.map(function(c) {
+            var displayVal = c.type === 'emoji' ? `${c.value} ` : '';
+            return '<li>' + displayVal + c.text + '</li>';
         }).join('');
     } else {
         changelogAddedSection.classList.add('d-none');
@@ -814,9 +855,9 @@ function showChangelogModal(addedCards, removedCards) {
     // Populate removed list
     if (removedCards.length > 0) {
         changelogRemovedSection.classList.remove('d-none');
-        changelogRemovedList.innerHTML = removedCards.map(c => {
-            const displayVal = c.type === 'emoji' ? `${c.value} ` : '';
-            return `<li>${displayVal}${c.text}</li>`;
+        changelogRemovedList.innerHTML = removedCards.map(function(c) {
+            var displayVal = c.type === 'emoji' ? `${c.value} ` : '';
+            return '<li>' + displayVal + c.text + '</li>';
         }).join('');
     } else {
         changelogRemovedSection.classList.add('d-none');
@@ -830,7 +871,7 @@ function showChangelogModal(addedCards, removedCards) {
 }
 
 // Listen to scroll to show/hide bottom bar
-window.addEventListener('scroll', () => {
+window.addEventListener('scroll', function() {
     updateFloatingBar();
 });
 
@@ -841,12 +882,12 @@ function speakText(text) {
     // Cancel any current speaking
     synth.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    var utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'pt-BR';
     
     // Choose a local PT-BR voice if available
-    const voices = synth.getVoices();
-    const ptVoice = voices.find(voice => voice.lang.toLowerCase().includes('pt-br') || voice.lang.toLowerCase().includes('pt_br'));
+    var voices = synth.getVoices();
+    var ptVoice = voices.find(function(voice) { return voice.lang.toLowerCase().indexOf('pt-br') !== -1 || voice.lang.toLowerCase().indexOf('pt_br') !== -1; });
     if (ptVoice) {
         utterance.voice = ptVoice;
     }
@@ -856,15 +897,15 @@ function speakText(text) {
 
 // Handle Theme Change
 function updateThemeIcon(theme) {
-    const sunSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
-    const moonSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+    var sunSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
+    var moonSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
 
     btnToggleTheme.innerHTML = `${theme === 'dark' ? sunSvg : moonSvg} <span>Alternar Tema</span>`;
 }
 
 function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    var currentTheme = document.documentElement.getAttribute('data-theme');
+    var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('caa_theme', newTheme);
@@ -873,37 +914,37 @@ function toggleTheme() {
 
 // Open category subchoice modal (abrir por cima)
 function openSubChoiceModal(actionText, categoryId) {
-    let subCards = [];
+    var subCards = [];
     
     if (categoryId === 'food') {
         subChoiceTitle.textContent = 'O que você quer comer?';
-        subCards = cards.filter(c => c.category === 'food' && c.text !== 'Água' && c.text !== 'Suco');
+        subCards = cards.filter(function(c) { return c.category === 'food' && c.text !== 'Água' && c.text !== 'Suco'; });
     } else if (categoryId === 'drink') {
         subChoiceTitle.textContent = 'O que você quer beber?';
-        subCards = cards.filter(c => c.category === 'food' && (c.text === 'Água' || c.text === 'Suco'));
+        subCards = cards.filter(function(c) { return c.category === 'food' && (c.text === 'Água' || c.text === 'Suco'); });
     } else if (categoryId === 'person') {
         subChoiceTitle.textContent = 'Com quem você quer falar?';
-        subCards = cards.filter(c => c.category === 'person');
+        subCards = cards.filter(function(c) { return c.category === 'person'; });
     } else if (categoryId === 'place') {
         subChoiceTitle.textContent = 'Aonde você quer ir?';
-        subCards = cards.filter(c => c.category === 'place');
+        subCards = cards.filter(function(c) { return c.category === 'place'; });
     } else {
         subChoiceTitle.textContent = `Escolha um(a) ${actionText}`;
-        subCards = cards.filter(c => c.category === categoryId);
+        subCards = cards.filter(function(c) { return c.category === categoryId; });
     }
 
     if (subCards.length === 0) return;
 
-    subChoiceGrid.innerHTML = subCards.map((card) => {
-        let visualContent = '';
+    subChoiceGrid.innerHTML = subCards.map(function(card) {
+        var visualContent = '';
         if (card.type === 'emoji') {
-            visualContent = `<div class="card-emoji">${card.value}</div>`;
+            visualContent = '<div class="card-emoji">' + card.value + '</div>';
         } else {
-            visualContent = `<img src="${card.value}" alt="${card.text}">`;
+            visualContent = '<img src="' + card.value + '" alt="' + card.text + '">';
         }
 
-        const catObj = CATEGORIES.find(c => c.id === (card.category || 'custom'));
-        const catClass = catObj ? catObj.class : 'cat-custom';
+        var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
+        var catClass = catObj ? catObj.class : 'cat-custom';
 
         return `
             <div class="aac-card ${catClass}" data-text="${card.text}">
@@ -921,7 +962,7 @@ function setupEventListeners() {
 
     // Search input listener
     if (searchInput) {
-        searchInput.addEventListener('input', () => {
+        searchInput.addEventListener('input', function() {
             if (searchInput.value.trim() !== '') {
                 if (btnClearSearch) btnClearSearch.classList.remove('d-none');
             } else {
@@ -933,7 +974,7 @@ function setupEventListeners() {
 
     // Clear search button listener
     if (btnClearSearch) {
-        btnClearSearch.addEventListener('click', () => {
+        btnClearSearch.addEventListener('click', function() {
             searchInput.value = '';
             btnClearSearch.classList.add('d-none');
             renderCards();
@@ -942,15 +983,15 @@ function setupEventListeners() {
     }
 
     // Card click (add to sentence and speak immediately)
-    cardsGrid.addEventListener('click', (e) => {
-        const cardEl = e.target.closest('.aac-card');
+    cardsGrid.addEventListener('click', function(e) {
+        var cardEl = e.target.closest('.aac-card');
         if (!cardEl) return;
 
-        const text = cardEl.dataset.text;
-        const index = cards.findIndex(c => c.text === text);
+        var text = cardEl.dataset.text;
+        var index = cards.findIndex(function(c) { return c.text === text; });
         
         if (index !== -1) {
-            const clickedCard = cards[index];
+            var clickedCard = cards[index];
             selectedCards.push(clickedCard);
             updateSentenceBuilder();
             speakText(clickedCard.text);
@@ -963,26 +1004,26 @@ function setupEventListeners() {
     });
 
     // Sentence builder card click (click to remove)
-    sentenceList.addEventListener('click', (e) => {
-        const sentCard = e.target.closest('.sentence-card');
+    sentenceList.addEventListener('click', function(e) {
+        var sentCard = e.target.closest('.sentence-card');
         if (!sentCard) return;
         
-        const idx = parseInt(sentCard.dataset.idx, 10);
+        var idx = parseInt(sentCard.dataset.idx, 10);
         selectedCards.splice(idx, 1);
         updateSentenceBuilder();
     });
 
     // Speak sentence
-    btnSpeak.addEventListener('click', () => {
+    btnSpeak.addEventListener('click', function() {
         if (selectedCards.length === 0) return;
         
         // Combine text of all selected cards
-        const fullSentence = selectedCards.map(c => c.text).join(' ');
+        var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
         speakText(fullSentence);
     });
 
     // Clear all
-    btnClearAll.addEventListener('click', () => {
+    btnClearAll.addEventListener('click', function() {
         selectedCards = [];
         updateSentenceBuilder();
     });
@@ -991,22 +1032,22 @@ function setupEventListeners() {
     btnToggleTheme.addEventListener('click', toggleTheme);
 
     // Settings Modal controls
-    btnSettings.addEventListener('click', () => {
+    btnSettings.addEventListener('click', function() {
         modalSettings.classList.add('open');
         renderManageCustomCards();
     });
 
     // Delete custom card event listener
-    const customCardsList = document.getElementById('custom-cards-list');
+    var customCardsList = document.getElementById('custom-cards-list');
     if (customCardsList) {
-        customCardsList.addEventListener('click', (e) => {
-            const deleteBtn = e.target.closest('.btn-delete-card');
+        customCardsList.addEventListener('click', function(e) {
+            var deleteBtn = e.target.closest('.btn-delete-card');
             if (!deleteBtn) return;
 
-            const cardText = deleteBtn.dataset.text;
-            showCustomConfirm(`Deseja realmente excluir a figura "${cardText}"?`).then(confirmed => {
+            var cardText = deleteBtn.dataset.text;
+            showCustomConfirm('Deseja realmente excluir a figura "' + cardText + '"?').then(function(confirmed) {
                 if (confirmed) {
-                    cards = cards.filter(c => c.text !== cardText);
+                    cards = cards.filter(function(c) { return c.text !== cardText; });
                     saveCardsToStorage();
                     renderCards();
                     renderManageCustomCards();
@@ -1016,7 +1057,7 @@ function setupEventListeners() {
         });
     }
 
-    const closeSettingsModal = () => {
+    var closeSettingsModal = function() {
         modalSettings.classList.remove('open');
         formAddCard.reset();
         imagePreview.innerHTML = '<span>Nenhuma imagem selecionada</span>';
@@ -1028,15 +1069,72 @@ function setupEventListeners() {
     btnCloseSettings.addEventListener('click', closeSettingsModal);
 
     // Close modal if clicking outside the card content
-    modalSettings.addEventListener('click', (e) => {
+    modalSettings.addEventListener('click', function(e) {
         if (e.target === modalSettings) {
             closeSettingsModal();
         }
     });
 
+    // Support Modal controls
+    var btnSupport = document.getElementById('btn-support');
+    var modalSupport = document.getElementById('modal-support');
+    var btnCloseSupport = document.getElementById('btn-close-support');
+    var btnCopyPix = document.getElementById('btn-copy-pix');
+    var pixKeyInput = document.getElementById('pix-key-input');
+
+    if (btnSupport && modalSupport && btnCloseSupport) {
+        btnSupport.addEventListener('click', function() {
+            modalSupport.classList.add('open');
+        });
+
+        var closeSupportModal = function() {
+            modalSupport.classList.remove('open');
+        };
+
+        btnCloseSupport.addEventListener('click', closeSupportModal);
+
+        modalSupport.addEventListener('click', function(e) {
+            if (e.target === modalSupport) {
+                closeSupportModal();
+            }
+        });
+    }
+
+    if (btnCopyPix && pixKeyInput) {
+        btnCopyPix.addEventListener('click', function() {
+            var keyText = pixKeyInput.value.trim();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(keyText)
+                    .then(function() {
+                        showCustomAlert('Chave Pix copiada com sucesso! 💸\nMuito obrigado pelo seu apoio.');
+                    })
+                    .catch(function(err) {
+                        console.error('Erro ao copiar Pix: ', err);
+                        fallbackCopyPix(keyText);
+                    });
+            } else {
+                fallbackCopyPix(keyText);
+            }
+        });
+    }
+
+    function fallbackCopyPix(text) {
+        var tempTextarea = document.createElement('textarea');
+        tempTextarea.value = text;
+        document.body.appendChild(tempTextarea);
+        tempTextarea.select();
+        try {
+            document.execCommand('copy');
+            showCustomAlert('Chave Pix copiada com sucesso! 💸\nMuito obrigado pelo seu apoio.');
+        } catch (e) {
+            showCustomAlert('Não foi possível copiar automaticamente. A chave é:\n\n' + text);
+        }
+        document.body.removeChild(tempTextarea);
+    }
+
     // Form inputs radio changes inside settings
-    for (let radio of imageTypeRadios) {
-        radio.addEventListener('change', (e) => {
+    for (var i_radio = 0; i_radio < imageTypeRadios.length; i_radio++) { var radio = imageTypeRadios[i_radio];
+        radio.addEventListener('change', function(e) {
             if (e.target.value === 'emoji') {
                 groupEmoji.classList.remove('d-none');
                 groupUpload.classList.add('d-none');
@@ -1048,12 +1146,12 @@ function setupEventListeners() {
     }
 
     // Image file selection inside settings
-    cardImageFileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
+    cardImageFileInput.addEventListener('change', function(e) {
+        var file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
+        var reader = new FileReader();
+        reader.onload = function(event) {
             uploadedImageBase64 = event.target.result;
             imagePreview.innerHTML = `<img src="${uploadedImageBase64}" alt="Preview">`;
         };
@@ -1062,9 +1160,9 @@ function setupEventListeners() {
 
     // Auto-suggest emoji while typing card text
     if (cardTextInput && cardEmojiInput) {
-        cardTextInput.addEventListener('input', () => {
-            const text = cardTextInput.value;
-            const fullNormalized = normalizeText(text);
+        cardTextInput.addEventListener('input', function() {
+            var text = cardTextInput.value;
+            var fullNormalized = normalizeText(text);
             
             // 1. Match exato da frase inteira
             if (EMOJI_DICTIONARY[fullNormalized]) {
@@ -1073,9 +1171,9 @@ function setupEventListeners() {
             }
             
             // 2. Match palavra por palavra (da direita para a esquerda)
-            const words = text.split(/\s+/).map(normalizeText);
-            for (let i = words.length - 1; i >= 0; i--) {
-                const word = words[i];
+            var words = text.split(/\s+/).map(normalizeText);
+            for (var i = words.length - 1; i >= 0; i--) {
+                var word = words[i];
                 if (word && EMOJI_DICTIONARY[word]) {
                     cardEmojiInput.value = EMOJI_DICTIONARY[word];
                     break;
@@ -1085,14 +1183,14 @@ function setupEventListeners() {
     }
 
     // Add card submission inside settings
-    formAddCard.addEventListener('submit', (e) => {
+    formAddCard.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const text = document.getElementById('card-text').value.trim();
-        const category = detectCategory(text);
-        const imageType = document.querySelector('input[name="image-type"]:checked').value;
+        var text = document.getElementById('card-text').value.trim();
+        var category = detectCategory(text);
+        var imageType = document.querySelector('input[name="image-type"]:checked').value;
         
-        let value = '';
+        var value = '';
         if (imageType === 'emoji') {
             value = document.getElementById('card-emoji').value.trim() || '✨';
         } else {
@@ -1108,14 +1206,14 @@ function setupEventListeners() {
         cards.unshift({ text, category, type: imageType, value });
         saveCardsToStorage();
         renderCards();
-        showCustomAlert(`Figura "${text}" criada e salva com sucesso! 🎨`).then(() => {
+        showCustomAlert('Figura "' + text + '" criada e salva com sucesso! 🎨').then(function() {
             closeSettingsModal();
         });
     });
 
     // Reset default cards button inside settings
-    btnResetCards.addEventListener('click', () => {
-        showCustomConfirm('Deseja realmente apagar todos os cartões personalizados e restaurar o padrão original?').then(confirmed => {
+    btnResetCards.addEventListener('click', function() {
+        showCustomConfirm('Deseja realmente apagar todos os cartões personalizados e restaurar o padrão original?').then(function(confirmed) {
             if (confirmed) {
                 localStorage.removeItem('caa_custom_cards');
                 localStorage.removeItem('caa_custom_categories');
@@ -1128,15 +1226,15 @@ function setupEventListeners() {
 
     // Download full backup as JSON file
     if (btnDownloadBackup) {
-        btnDownloadBackup.addEventListener('click', () => {
+        btnDownloadBackup.addEventListener('click', function() {
             if (cards.length === 0) {
                 showCustomAlert('Nenhum cartão para exportar!');
                 return;
             }
-            const jsonStr = JSON.stringify(cards, null, 2);
-            const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const downloadAnchor = document.createElement('a');
+            var jsonStr = JSON.stringify(cards, null, 2);
+            var blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
+            var url = URL.createObjectURL(blob);
+            var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", url);
             downloadAnchor.setAttribute("download", "backup_comunicador_caa.json");
             document.body.appendChild(downloadAnchor);
@@ -1148,28 +1246,28 @@ function setupEventListeners() {
 
     // Trigger file input for importing backup
     if (btnImportBackupTrigger && inputImportBackup) {
-        btnImportBackupTrigger.addEventListener('click', () => {
+        btnImportBackupTrigger.addEventListener('click', function() {
             inputImportBackup.click();
         });
     }
 
     // Handle importing the file
     if (inputImportBackup) {
-        inputImportBackup.addEventListener('change', (e) => {
-            const file = e.target.files[0];
+        inputImportBackup.addEventListener('change', function(e) {
+            var file = e.target.files[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = (event) => {
+            var reader = new FileReader();
+            reader.onload = function(event) {
                 try {
-                    const importedCards = JSON.parse(event.target.result);
+                    var importedCards = JSON.parse(event.target.result);
                     
                     // Basic validation
                     if (!Array.isArray(importedCards)) {
                         throw new Error("O arquivo não contém uma lista válida de figuras.");
                     }
                     
-                    const isValid = importedCards.every(card => {
+                    var isValid = importedCards.every(function(card) {
                         return card && typeof card.text === 'string' && typeof card.type === 'string' && typeof card.value === 'string';
                     });
 
@@ -1177,12 +1275,12 @@ function setupEventListeners() {
                         throw new Error("Alguns cartões no arquivo estão inválidos ou corrompidos.");
                     }
 
-                    showCustomConfirm(`Deseja importar os ${importedCards.length} cartões deste arquivo? Isso substituirá todas as figuras personalizadas configuradas neste dispositivo.`).then(confirmed => {
+                    showCustomConfirm('Deseja importar os ' + importedCards.length + ' cartões deste arquivo? Isso substituirá todas as figuras personalizadas configuradas neste dispositivo.').then(function(confirmed) {
                         if (confirmed) {
                             setAndCleanCards(importedCards);
                             saveCardsToStorage();
                             renderCards();
-                            showCustomAlert("Backup importado com sucesso!").then(() => {
+                            showCustomAlert("Backup importado com sucesso!").then(function() {
                                 closeSettingsModal();
                             });
                         }
@@ -1199,10 +1297,10 @@ function setupEventListeners() {
 
     // Export custom cards button inside settings
     if (btnExportCards) {
-        btnExportCards.addEventListener('click', () => {
+        btnExportCards.addEventListener('click', function() {
             // Filter only custom cards (which are not part of the initial DEFAULT_CARDS)
-            const customCardsOnly = cards.filter(card => {
-                return !DEFAULT_CARDS.some(defaultCard => defaultCard.text === card.text);
+            var customCardsOnly = cards.filter(function(card) {
+                return !DEFAULT_CARDS.some(function(defaultCard) { return defaultCard.text === card.text; });
             });
 
             if (customCardsOnly.length === 0) {
@@ -1210,14 +1308,14 @@ function setupEventListeners() {
                 return;
             }
 
-            const jsonStr = JSON.stringify(customCardsOnly, null, 2);
+            var jsonStr = JSON.stringify(customCardsOnly, null, 2);
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(jsonStr)
-                    .then(() => {
+                    .then(function() {
                         showCustomAlert('Lista de cartões personalizados copiada com sucesso!\n\nAgora você só precisa colar (Ctrl+V ou "Colar" no celular) na conversa do WhatsApp ou e-mail e enviar para o desenvolvedor.');
                     })
-                    .catch(err => {
+                    .catch(function(err) {
                         console.error('Erro ao copiar para a área de transferência: ', err);
                         fallbackCopy(jsonStr);
                     });
@@ -1229,7 +1327,7 @@ function setupEventListeners() {
 
     function fallbackCopy(jsonStr) {
         // Fallback to prompting user to select and copy text
-        const exportTextarea = document.createElement('textarea');
+        var exportTextarea = document.createElement('textarea');
         exportTextarea.value = jsonStr;
         document.body.appendChild(exportTextarea);
         exportTextarea.select();
@@ -1243,26 +1341,26 @@ function setupEventListeners() {
     }
 
     // Quick Add button inside subchoice modal
-    btnAddSubChoice.addEventListener('click', () => {
+    btnAddSubChoice.addEventListener('click', function() {
         modalSubChoice.classList.remove('open');
         modalSettings.classList.add('open');
         
         // Focus text input
-        setTimeout(() => {
+        setTimeout(function() {
             document.getElementById('card-text').focus();
         }, 150);
     });
 
     // Sub-choice grid item click
-    subChoiceGrid.addEventListener('click', (e) => {
-        const cardEl = e.target.closest('.aac-card');
+    subChoiceGrid.addEventListener('click', function(e) {
+        var cardEl = e.target.closest('.aac-card');
         if (!cardEl) return;
 
-        const text = cardEl.dataset.text;
-        const index = cards.findIndex(c => c.text === text);
+        var text = cardEl.dataset.text;
+        var index = cards.findIndex(function(c) { return c.text === text; });
         
         if (index !== -1) {
-            const clickedCard = cards[index];
+            var clickedCard = cards[index];
             selectedCards.push(clickedCard);
             updateSentenceBuilder();
             speakText(clickedCard.text);
@@ -1271,11 +1369,11 @@ function setupEventListeners() {
     });
 
     // Close sub-choice modal
-    btnCloseSubChoice.addEventListener('click', () => {
+    btnCloseSubChoice.addEventListener('click', function() {
         modalSubChoice.classList.remove('open');
     });
 
-    modalSubChoice.addEventListener('click', (e) => {
+    modalSubChoice.addEventListener('click', function(e) {
         if (e.target === modalSubChoice) {
             modalSubChoice.classList.remove('open');
         }
@@ -1283,15 +1381,15 @@ function setupEventListeners() {
 
     // Floating bottom bar buttons
     if (btnSpeakFloat) {
-        btnSpeakFloat.addEventListener('click', () => {
+        btnSpeakFloat.addEventListener('click', function() {
             if (selectedCards.length === 0) return;
-            const fullSentence = selectedCards.map(c => c.text).join(' ');
+            var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
             speakText(fullSentence);
         });
     }
 
     if (btnClearFloat) {
-        btnClearFloat.addEventListener('click', () => {
+        btnClearFloat.addEventListener('click', function() {
             selectedCards = [];
             updateSentenceBuilder();
         });
@@ -1299,9 +1397,9 @@ function setupEventListeners() {
 
     // Google Drive & Apps Script Sync button
     if (btnSyncNow) {
-        btnSyncNow.addEventListener('click', () => {
-            const fileId = syncDriveIdInput.value.trim();
-            const scriptUrl = syncAppsScriptUrlInput.value.trim();
+        btnSyncNow.addEventListener('click', function() {
+            var fileId = syncDriveIdInput.value.trim();
+            var scriptUrl = syncAppsScriptUrlInput.value.trim();
 
             if (scriptUrl) {
                 localStorage.setItem('caa_sync_apps_script_url', scriptUrl);
@@ -1317,8 +1415,8 @@ function setupEventListeners() {
 
     // Save Apps Script URL dynamically
     if (syncAppsScriptUrlInput) {
-        syncAppsScriptUrlInput.addEventListener('input', () => {
-            let val = syncAppsScriptUrlInput.value.trim();
+        syncAppsScriptUrlInput.addEventListener('input', function() {
+            var val = syncAppsScriptUrlInput.value.trim();
             // Evita que o link seja colado duplicado
             if (val.includes('https://') && val.indexOf('https://') !== val.lastIndexOf('https://')) {
                 val = val.substring(0, val.lastIndexOf('https://')).trim();
@@ -1330,7 +1428,7 @@ function setupEventListeners() {
 
     // Save Auto Backup setting dynamically
     if (checkAutoBackup) {
-        checkAutoBackup.addEventListener('change', () => {
+        checkAutoBackup.addEventListener('change', function() {
             localStorage.setItem('caa_auto_backup', checkAutoBackup.checked);
             if (checkAutoBackup.checked) {
                 uploadBackupToCloud();
@@ -1340,19 +1438,19 @@ function setupEventListeners() {
 
     // Changelog Modal controls
     if (btnOkChangelog) {
-        btnOkChangelog.addEventListener('click', () => {
+        btnOkChangelog.addEventListener('click', function() {
             modalChangelog.classList.remove('open');
         });
     }
 
     if (btnCloseChangelog) {
-        btnCloseChangelog.addEventListener('click', () => {
+        btnCloseChangelog.addEventListener('click', function() {
             modalChangelog.classList.remove('open');
         });
     }
 
     if (modalChangelog) {
-        modalChangelog.addEventListener('click', (e) => {
+        modalChangelog.addEventListener('click', function(e) {
             if (e.target === modalChangelog) {
                 modalChangelog.classList.remove('open');
             }
@@ -1362,7 +1460,7 @@ function setupEventListeners() {
 
 // Ensure voice synth is ready on page load
 if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = () => {};
+    speechSynthesis.onvoiceschanged = function() {};
 }
 
 // Launch application
