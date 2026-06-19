@@ -209,6 +209,20 @@ var changelogRemovedList = document.getElementById('changelog-removed-list');
 // Initialize Web Speech Synthesis
 var synth = window.speechSynthesis;
 
+// Profile State Variables
+var currentProfileId = 'default';
+var profiles = [{ id: 'default', name: 'Padrão' }];
+
+// Profile DOM Elements
+var selectProfile = document.getElementById('select-profile');
+var btnManageProfiles = document.getElementById('btn-manage-profiles');
+var modalProfiles = document.getElementById('modal-profiles');
+var btnCloseProfiles = document.getElementById('btn-close-profiles');
+var inputNewProfileName = document.getElementById('input-new-profile-name');
+var btnCreateProfile = document.getElementById('btn-create-profile');
+var profilesList = document.getElementById('profiles-list');
+var accessCounterVal = document.getElementById('access-counter-val');
+
 // Dicionário de sugestão de emojis em português
 var EMOJI_DICTIONARY = {
     // Alimentos
@@ -449,10 +463,141 @@ function renderManageCustomCards() {
     }).join('');
 }
 
+// Helper functions to manage profiles
+function loadProfiles() {
+    var stored = localStorage.getItem('caa_profiles');
+    if (stored) {
+        try {
+            profiles = JSON.parse(stored);
+        } catch (e) {
+            profiles = [{ id: 'default', name: 'Padrão' }];
+        }
+    } else {
+        profiles = [{ id: 'default', name: 'Padrão' }];
+    }
+    
+    currentProfileId = localStorage.getItem('caa_current_profile') || 'default';
+    if (!profiles.some(function(p) { return p.id === currentProfileId; })) {
+        currentProfileId = profiles[0].id;
+    }
+}
+
+function saveProfiles() {
+    localStorage.setItem('caa_profiles', JSON.stringify(profiles));
+    localStorage.setItem('caa_current_profile', currentProfileId);
+}
+
+function renderProfileSelector() {
+    if (!selectProfile) return;
+    selectProfile.innerHTML = profiles.map(function(p) {
+        var selected = p.id === currentProfileId ? 'selected' : '';
+        return '<option value="' + p.id + '" ' + selected + '>' + p.name + '</option>';
+    }).join('');
+}
+
+function renderProfilesList() {
+    if (!profilesList) return;
+    profilesList.innerHTML = profiles.map(function(p) {
+        var isCurrent = p.id === currentProfileId;
+        var deleteBtn = '';
+        if (p.id !== 'default') {
+            deleteBtn = `
+                <button type="button" class="btn-delete-profile" data-id="${p.id}" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Perfil">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                </button>
+            `;
+        }
+        var activeBadge = isCurrent ? '<span style="font-size: 0.8rem; background-color: var(--color-primary); color: white; padding: 2px 6px; border-radius: 10px; font-weight: bold;">Ativo</span>' : '';
+        
+        return `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                    <span style="font-weight: 600; font-size: 0.95rem; cursor: pointer;" onclick="switchProfile('${p.id}')">${p.name}</span>
+                    ${activeBadge}
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button type="button" class="btn-rename-profile" data-id="${p.id}" data-name="${p.name}" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Renomear Perfil">✏️</button>
+                    ${deleteBtn}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function switchProfile(profileId) {
+    if (profileId === currentProfileId) return;
+    currentProfileId = profileId;
+    saveProfiles();
+    
+    // Clear selection
+    selectedCards = [];
+    
+    // Load and clean cards for this profile
+    var savedCards = localStorage.getItem('caa_custom_cards_' + currentProfileId);
+    if (savedCards) {
+        try {
+            setAndCleanCards(JSON.parse(savedCards));
+        } catch (e) {
+            setAndCleanCards([]);
+        }
+    } else {
+        setAndCleanCards([]);
+    }
+    
+    // Set theme for this profile
+    var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+    
+    // Setup inputs
+    var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId) || '';
+    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+    var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
+    
+    if (syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
+    if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
+    if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
+    
+    // Render
+    renderCards();
+    updateSentenceBuilder();
+    renderProfileSelector();
+    renderProfilesList();
+    
+    if (modalProfiles) modalProfiles.classList.remove('open');
+}
+window.switchProfile = switchProfile;
+
 // Load app data
 function init() {
-    // Load custom cards or use default
-    var savedCards = localStorage.getItem('caa_custom_cards');
+    loadProfiles();
+    renderProfileSelector();
+    renderProfilesList();
+
+    // Migrate old settings if existing
+    var oldCards = localStorage.getItem('caa_custom_cards');
+    if (oldCards && !localStorage.getItem('caa_custom_cards_default')) {
+        localStorage.setItem('caa_custom_cards_default', oldCards);
+    }
+    var oldTheme = localStorage.getItem('caa_theme');
+    if (oldTheme && !localStorage.getItem('caa_theme_default')) {
+        localStorage.setItem('caa_theme_default', oldTheme);
+    }
+    var oldDriveId = localStorage.getItem('caa_sync_drive_id');
+    if (oldDriveId && !localStorage.getItem('caa_sync_drive_id_default')) {
+        localStorage.setItem('caa_sync_drive_id_default', oldDriveId);
+    }
+    var oldScriptUrl = localStorage.getItem('caa_sync_apps_script_url');
+    if (oldScriptUrl && !localStorage.getItem('caa_sync_apps_script_url_default')) {
+        localStorage.setItem('caa_sync_apps_script_url_default', oldScriptUrl);
+    }
+    var oldAutoBackup = localStorage.getItem('caa_auto_backup');
+    if (oldAutoBackup && !localStorage.getItem('caa_auto_backup_default')) {
+        localStorage.setItem('caa_auto_backup_default', oldAutoBackup);
+    }
+
+    // Load custom cards for current profile
+    var savedCards = localStorage.getItem('caa_custom_cards_' + currentProfileId);
     if (savedCards) {
         try {
             var parsed = JSON.parse(savedCards);
@@ -468,9 +613,17 @@ function init() {
     }
 
     // Set Theme
-    var savedTheme = localStorage.getItem('caa_theme') || 'light';
+    var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
+
+    // Increment Access Counter
+    var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
+    accesses++;
+    localStorage.setItem('caa_access_count', accesses.toString());
+    if (accessCounterVal) {
+        accessCounterVal.textContent = accesses;
+    }
 
     // Render interface elements
     renderCards();
@@ -480,17 +633,27 @@ function init() {
     setupEventListeners();
 
     // Check Google Drive & Apps Script Sync on Startup
-    var syncDriveId = localStorage.getItem('caa_sync_drive_id');
-    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
-    var autoBackup = localStorage.getItem('caa_auto_backup') !== 'false';
+    var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
+    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+    var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
 
     if (syncDriveId && syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
     if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
     if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
 
+    var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+    var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+
+    // Record Access in Cloud synchronously if online
+    if (navigator.onLine && syncAppsScriptUrl) {
+        ajaxRequest(syncAppsScriptUrl, 'POST', { action: 'recordAccess', profile: profileName, accesses: accesses }).catch(function(e) {
+            console.warn('Erro ao registrar acesso na nuvem:', e);
+        });
+    }
+
     if (navigator.onLine) {
-        var hasCustomUrl = !!localStorage.getItem('caa_sync_apps_script_url');
-        var isNewDevice = !localStorage.getItem('caa_custom_cards');
+        var hasCustomUrl = !!localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+        var isNewDevice = !localStorage.getItem('caa_custom_cards_' + currentProfileId);
         if (syncAppsScriptUrl && (hasCustomUrl || isNewDevice)) {
             syncWithAppsScript(syncAppsScriptUrl);
         } else if (syncDriveId) {
@@ -504,7 +667,7 @@ function init() {
 
 function saveCardsToStorage(triggerCloudUpload) {
     if (triggerCloudUpload === undefined) triggerCloudUpload = true;
-    localStorage.setItem('caa_custom_cards', JSON.stringify(cards));
+    localStorage.setItem('caa_custom_cards_' + currentProfileId, JSON.stringify(cards));
     if (triggerCloudUpload) {
         uploadBackupToCloud();
     }
@@ -755,7 +918,7 @@ function fetchJSONP(url, callbackName) {
 // Sync figures list with Google Apps Script Web App (GET via JSONP)
 function syncWithAppsScript(scriptUrl, showFeedback) {
     if (showFeedback === undefined) showFeedback = false;
-    var urlToUse = scriptUrl || localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
+    var urlToUse = scriptUrl || localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
     if (!urlToUse) return Promise.resolve(false);
 
     if (syncStatusText) {
@@ -769,7 +932,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
                 throw new Error('O arquivo retornado não é uma lista JSON válida.');
             }
 
-            var prevCardsStr = localStorage.getItem('caa_custom_cards');
+            var prevCardsStr = localStorage.getItem('caa_custom_cards_' + currentProfileId);
             var prevCards = [];
             if (prevCardsStr) {
                 try { prevCards = JSON.parse(prevCardsStr); } catch (e) {}
@@ -813,10 +976,73 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
         });
 }
 
+// Sync with Google Drive (JSON Backup File download)
+function syncWithGoogleDrive(fileId, showFeedback) {
+    if (showFeedback === undefined) showFeedback = false;
+    var driveFileId = fileId || localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
+    if (!driveFileId) return Promise.resolve(false);
+
+    if (syncStatusText) {
+        syncStatusText.className = 'sync-status-text loading';
+        syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
+    }
+
+    var corsBypassUrl = 'https://docs.google.com/uc?export=download&id=' + driveFileId;
+
+    return fetchSyncData(corsBypassUrl)
+        .then(function(remoteCards) {
+            if (!Array.isArray(remoteCards)) {
+                throw new Error('O arquivo retornado não é uma lista JSON válida.');
+            }
+
+            var prevCardsStr = localStorage.getItem('caa_custom_cards_' + currentProfileId);
+            var prevCards = [];
+            if (prevCardsStr) {
+                try { prevCards = JSON.parse(prevCardsStr); } catch (e) {}
+            }
+
+            var addedCards = remoteCards.filter(function(newCard) {
+                return !prevCards.some(function(oldCard) { return oldCard.text === newCard.text; });
+            });
+            var removedCards = prevCards.filter(function(oldCard) {
+                return !remoteCards.some(function(newCard) { return newCard.text === oldCard.text; });
+            });
+
+            setAndCleanCards(remoteCards);
+            saveCardsToStorage(false);
+            renderCards();
+            renderManageCustomCards();
+
+            if (prevCards.length > 0 && (addedCards.length > 0 || removedCards.length > 0)) {
+                showChangelogModal(addedCards, removedCards);
+            }
+
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Sincronizado com sucesso! ✅';
+            }
+            if (showFeedback) {
+                showCustomAlert('Sincronização concluída com sucesso! Suas figuras estão atualizadas. ☁️👍');
+            }
+            return true;
+        })
+        .catch(function(error) {
+            console.error('Erro na sincronização automática: ', error);
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text error';
+                syncStatusText.textContent = 'Erro ao sincronizar. Verifique a internet e o ID. ❌';
+            }
+            if (showFeedback) {
+                showCustomAlert('Falha na sincronização. Certifique-se de que o arquivo no Google Drive está compartilhado como "Qualquer pessoa com o link" (público) e o ID está correto.');
+            }
+            return false;
+        });
+}
+
 // Upload backup to Google Apps Script Web App (POST)
 function uploadBackupToCloud() {
-    var scriptUrl = localStorage.getItem('caa_sync_apps_script_url') || DEFAULT_APPS_SCRIPT_URL;
-    var autoBackup = localStorage.getItem('caa_auto_backup') !== 'false';
+    var scriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+    var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
 
     if (!scriptUrl || !autoBackup || !navigator.onLine) return Promise.resolve();
 
@@ -825,7 +1051,12 @@ function uploadBackupToCloud() {
         syncStatusText.textContent = 'Enviando backup para nuvem... 🔄';
     }
 
-    return ajaxRequest(scriptUrl, 'POST', cards)
+    var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+    var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+    var connector = scriptUrl.indexOf('?') >= 0 ? '&' : '?';
+    var uploadUrl = scriptUrl + connector + 'profile=' + encodeURIComponent(profileName);
+
+    return ajaxRequest(uploadUrl, 'POST', cards)
         .then(function() {
             if (syncStatusText) {
                 syncStatusText.className = 'sync-status-text success';
@@ -973,7 +1204,7 @@ function toggleTheme() {
     var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
     document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('caa_theme', newTheme);
+    localStorage.setItem('caa_theme_' + currentProfileId, newTheme);
     updateThemeIcon(newTheme);
 }
 
@@ -1280,8 +1511,7 @@ function setupEventListeners() {
     btnResetCards.addEventListener('click', function() {
         showCustomConfirm('Deseja realmente apagar todos os cartões personalizados e restaurar o padrão original?').then(function(confirmed) {
             if (confirmed) {
-                localStorage.removeItem('caa_custom_cards');
-                localStorage.removeItem('caa_custom_categories');
+                localStorage.removeItem('caa_custom_cards_' + currentProfileId);
                 cards = [...DEFAULT_CARDS];
                 renderCards();
                 closeSettingsModal();
@@ -1296,12 +1526,14 @@ function setupEventListeners() {
                 showCustomAlert('Nenhum cartão para exportar!');
                 return;
             }
+            var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+            var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
             var jsonStr = JSON.stringify(cards, null, 2);
             var blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
             var url = URL.createObjectURL(blob);
             var downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", url);
-            downloadAnchor.setAttribute("download", "backup_comunicador_caa.json");
+            downloadAnchor.setAttribute("download", "backup_comunicador_caa_" + profileName.toLowerCase().replace(/\s+/g, '_') + ".json");
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
@@ -1467,10 +1699,10 @@ function setupEventListeners() {
             var scriptUrl = syncAppsScriptUrlInput.value.trim();
 
             if (scriptUrl) {
-                localStorage.setItem('caa_sync_apps_script_url', scriptUrl);
+                localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, scriptUrl);
                 syncWithAppsScript(scriptUrl, true);
             } else if (fileId) {
-                localStorage.setItem('caa_sync_drive_id', fileId);
+                localStorage.setItem('caa_sync_drive_id_' + currentProfileId, fileId);
                 syncWithGoogleDrive(fileId, true);
             } else {
                 showCustomAlert('Por favor, insira uma URL de Apps Script ou ID do Google Drive para sincronizar.');
@@ -1487,16 +1719,114 @@ function setupEventListeners() {
                 val = val.substring(0, val.lastIndexOf('https://')).trim();
                 syncAppsScriptUrlInput.value = val;
             }
-            localStorage.setItem('caa_sync_apps_script_url', val);
+            localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, val);
+        });
+    }
+
+    // Save Google Drive ID dynamically
+    if (syncDriveIdInput) {
+        syncDriveIdInput.addEventListener('input', function() {
+            var val = syncDriveIdInput.value.trim();
+            localStorage.setItem('caa_sync_drive_id_' + currentProfileId, val);
         });
     }
 
     // Save Auto Backup setting dynamically
     if (checkAutoBackup) {
         checkAutoBackup.addEventListener('change', function() {
-            localStorage.setItem('caa_auto_backup', checkAutoBackup.checked);
+            localStorage.setItem('caa_auto_backup_' + currentProfileId, checkAutoBackup.checked);
             if (checkAutoBackup.checked) {
                 uploadBackupToCloud();
+            }
+        });
+    }
+
+    // Profile Modal Event Listeners
+    if (btnManageProfiles && modalProfiles && btnCloseProfiles) {
+        btnManageProfiles.addEventListener('click', function() {
+            renderProfilesList();
+            modalProfiles.classList.add('open');
+        });
+        
+        btnCloseProfiles.addEventListener('click', function() {
+            modalProfiles.classList.remove('open');
+        });
+        
+        modalProfiles.addEventListener('click', function(e) {
+            if (e.target === modalProfiles) {
+                modalProfiles.classList.remove('open');
+            }
+        });
+    }
+
+    if (selectProfile) {
+        selectProfile.addEventListener('change', function(e) {
+            switchProfile(e.target.value);
+        });
+    }
+
+    if (btnCreateProfile && inputNewProfileName) {
+        btnCreateProfile.addEventListener('click', function() {
+            var name = inputNewProfileName.value.trim();
+            if (!name) return;
+            
+            var id = 'profile_' + new Date().getTime();
+            profiles.push({ id: id, name: name });
+            saveProfiles();
+            renderProfileSelector();
+            renderProfilesList();
+            
+            inputNewProfileName.value = '';
+            showCustomAlert('Perfil "' + name + '" criado com sucesso!');
+        });
+    }
+
+    if (profilesList) {
+        profilesList.addEventListener('click', function(e) {
+            var renameBtn = e.target.closest('.btn-rename-profile');
+            var deleteBtn = e.target.closest('.btn-delete-profile');
+            
+            if (renameBtn) {
+                var pId = renameBtn.dataset.id;
+                var currentName = renameBtn.dataset.name;
+                var newName = prompt('Digite o novo nome para o perfil:', currentName);
+                if (newName && newName.trim()) {
+                    var idx = profiles.findIndex(function(p) { return p.id === pId; });
+                    if (idx !== -1) {
+                        profiles[idx].name = newName.trim();
+                        saveProfiles();
+                        renderProfileSelector();
+                        renderProfilesList();
+                    }
+                }
+            }
+            
+            if (deleteBtn) {
+                var pId = deleteBtn.dataset.id;
+                var idx = profiles.findIndex(function(p) { return p.id === pId; });
+                if (idx !== -1) {
+                    var name = profiles[idx].name;
+                    showCustomConfirm('Deseja realmente excluir o perfil "' + name + '"? Todos os cartões personalizados desse perfil serão excluídos permanentemente.').then(function(confirmed) {
+                        if (confirmed) {
+                            profiles.splice(idx, 1);
+                            // Clear items from localStorage
+                            localStorage.removeItem('caa_custom_cards_' + pId);
+                            localStorage.removeItem('caa_theme_' + pId);
+                            localStorage.removeItem('caa_sync_drive_id_' + pId);
+                            localStorage.removeItem('caa_sync_apps_script_url_' + pId);
+                            localStorage.removeItem('caa_auto_backup_' + pId);
+                            
+                            if (currentProfileId === pId) {
+                                currentProfileId = 'default';
+                            }
+                            saveProfiles();
+                            switchProfile(currentProfileId);
+                            renderProfileSelector();
+                            renderProfilesList();
+                            showCustomAlert('Perfil "' + name + '" excluído.');
+                        }
+                    });
+                }
             }
         });
     }
