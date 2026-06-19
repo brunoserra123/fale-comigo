@@ -879,24 +879,85 @@ window.addEventListener('scroll', function() {
     updateFloatingBar();
 });
 
+// Keep references to utterances in a global array to prevent garbage collection on older iOS/Safari
+window.activeUtterances = [];
+var speechUnlocked = false;
+
+// Function to prime/unlock speech synthesis on first user gesture
+function unlockSpeech() {
+    if (speechUnlocked) return;
+    try {
+        var u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.activeUtterances.push(u);
+        u.onend = function() {
+            var idx = window.activeUtterances.indexOf(u);
+            if (idx !== -1) window.activeUtterances.splice(idx, 1);
+        };
+        synth.speak(u);
+        speechUnlocked = true;
+        console.log('Speech synthesis primed/unlocked.');
+    } catch(e) {
+        console.warn('Erro ao desbloquear fala: ', e);
+    }
+}
+
+// Bind unlock to first interaction
+document.addEventListener('click', unlockSpeech, { once: true });
+document.addEventListener('touchstart', unlockSpeech, { once: true });
+
 // Speak text using Web Speech Synthesis API
 function speakText(text) {
     if (!text) return;
     
-    // Cancel any current speaking
-    synth.cancel();
+    try {
+        // Cancel any current speaking or pending speech to clear the queue
+        synth.cancel();
+    } catch (e) {
+        console.warn('Erro ao cancelar fala anterior: ', e);
+    }
 
     var utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'pt-BR';
     
+    // Save reference to prevent garbage collection
+    window.activeUtterances.push(utterance);
+    
+    var cleanup = function() {
+        var idx = window.activeUtterances.indexOf(utterance);
+        if (idx !== -1) {
+            window.activeUtterances.splice(idx, 1);
+        }
+    };
+    
+    utterance.onend = cleanup;
+    utterance.onerror = cleanup;
+    
     // Choose a local PT-BR voice if available
-    var voices = synth.getVoices();
-    var ptVoice = voices.find(function(voice) { return voice.lang.toLowerCase().indexOf('pt-br') !== -1 || voice.lang.toLowerCase().indexOf('pt_br') !== -1; });
+    var voices = [];
+    try {
+        voices = synth.getVoices();
+    } catch(e) {
+        console.warn('Erro ao obter vozes: ', e);
+    }
+    
+    var ptVoice = voices.find(function(voice) { 
+        return voice.lang && (voice.lang.toLowerCase().indexOf('pt-br') !== -1 || voice.lang.toLowerCase().indexOf('pt_br') !== -1); 
+    });
+    
     if (ptVoice) {
         utterance.voice = ptVoice;
     }
     
-    synth.speak(utterance);
+    // We use a small delay (150ms) to allow Safari's speech queue to clear after synth.cancel()
+    // A delay of 150ms is short enough to preserve user gesture authorization on iOS.
+    setTimeout(function() {
+        try {
+            synth.speak(utterance);
+        } catch(e) {
+            console.error('Erro ao chamar speak(): ', e);
+        }
+    }, 150);
 }
 
 // Handle Theme Change
