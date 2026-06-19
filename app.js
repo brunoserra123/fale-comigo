@@ -449,7 +449,7 @@ function saveCardsToStorage(triggerCloudUpload = true) {
 
 // Render Main AAC Cards Grid
 function renderCards() {
-    const searchQuery = searchInput?.value.toLowerCase().trim() || '';
+    const searchQuery = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
 
     // Filter cards based on search query
     const filtered = cards.filter(card => {
@@ -923,9 +923,9 @@ function setupEventListeners() {
     if (searchInput) {
         searchInput.addEventListener('input', () => {
             if (searchInput.value.trim() !== '') {
-                btnClearSearch?.classList.remove('d-none');
+                if (btnClearSearch) btnClearSearch.classList.remove('d-none');
             } else {
-                btnClearSearch?.classList.add('d-none');
+                if (btnClearSearch) btnClearSearch.classList.add('d-none');
             }
             renderCards();
         });
