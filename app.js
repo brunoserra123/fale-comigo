@@ -1183,6 +1183,20 @@ function setupEventListeners() {
         });
     }
 
+    function fallbackCopyPix(text) {
+        var tempTextarea = document.createElement('textarea');
+        tempTextarea.value = text;
+        document.body.appendChild(tempTextarea);
+        tempTextarea.select();
+        try {
+            document.execCommand('copy');
+            showCustomAlert('Chave Pix copiada com sucesso! 💸\nMuito obrigado pelo seu apoio.');
+        } catch (e) {
+            showCustomAlert('Não foi possível copiar automaticamente. A chave é:\n\n' + text);
+        }
+        document.body.removeChild(tempTextarea);
+    }
+
     // Form inputs radio changes inside settings
     for (var i_radio = 0; i_radio < imageTypeRadios.length; i_radio++) { var radio = imageTypeRadios[i_radio];
         radio.addEventListener('change', function(e) {
@@ -1252,6 +1266,7 @@ function setupEventListeners() {
             value = uploadedImageBase64;
         }
 
+        // Prepend custom card
         // Prepend custom card
         cards.unshift({ text, category, type: imageType, value });
         saveCardsToStorage();
@@ -1375,6 +1390,21 @@ function setupEventListeners() {
         });
     }
 
+    function fallbackCopy(jsonStr) {
+        // Fallback to prompting user to select and copy text
+        var exportTextarea = document.createElement('textarea');
+        exportTextarea.value = jsonStr;
+        document.body.appendChild(exportTextarea);
+        exportTextarea.select();
+        try {
+            document.execCommand('copy');
+            showCustomAlert('Lista de cartões personalizados copiada com sucesso!\n\nAgora você só precisa colar na conversa do WhatsApp ou e-mail e enviar para o desenvolvedor.');
+        } catch (e) {
+            showCustomAlert('Não foi possível copiar automaticamente. Por favor, copie o texto abaixo:\n\n' + jsonStr);
+        }
+        document.body.removeChild(exportTextarea);
+    }
+
     // Quick Add button inside subchoice modal
     btnAddSubChoice.addEventListener('click', function() {
         modalSubChoice.classList.remove('open');
@@ -1452,6 +1482,7 @@ function setupEventListeners() {
     if (syncAppsScriptUrlInput) {
         syncAppsScriptUrlInput.addEventListener('input', function() {
             var val = syncAppsScriptUrlInput.value.trim();
+            // Evita que o link seja colado duplicado
             if (val.indexOf('https://') !== -1 && val.indexOf('https://') !== val.lastIndexOf('https://')) {
                 val = val.substring(0, val.lastIndexOf('https://')).trim();
                 syncAppsScriptUrlInput.value = val;
