@@ -65,6 +65,7 @@ var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKaNfrud
 // Define pre-configured categories with emojis
 var CATEGORIES = [
     { id: 'all', name: 'Todos', icon: '📁', class: '' },
+    { id: 'favorites', name: 'Favoritos', icon: '⭐', class: 'cat-favorites' },
     { id: 'essential', name: 'Essencial', icon: '⭐', class: 'cat-essential' },
     { id: 'action', name: 'Ações', icon: '🟢', class: 'cat-action' },
     { id: 'food', name: 'Alimentação', icon: '🍏', class: 'cat-food' },
@@ -697,6 +698,15 @@ function saveCardsToStorage(triggerCloudUpload) {
     }
 }
 
+function toggleFavorite(cardIndex) {
+    if (cardIndex >= 0 && cardIndex < cards.length) {
+        var card = cards[cardIndex];
+        card.favorite = !card.favorite;
+        saveCardsToStorage();
+        renderCards();
+    }
+}
+
 // Render Main AAC Cards Grid
 function renderCards() {
     var searchQuery = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
@@ -718,6 +728,13 @@ function renderCards() {
 
     // Group cards by category
     var cardsByCategory = {};
+    
+    // Add dynamically the favorites if any card is marked as favorite
+    var favoriteCards = filtered.filter(function(card) { return card.favorite === true; });
+    if (favoriteCards.length > 0) {
+        cardsByCategory['favorites'] = favoriteCards;
+    }
+
     filtered.forEach(function(card) {
         var cat = card.category || 'custom';
         if (!cardsByCategory[cat]) {
@@ -756,9 +773,25 @@ function renderCards() {
                 }
 
                 var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
+                
+                // Favorite properties
+                var isFav = card.favorite === true;
+                var favClass = isFav ? 'active' : '';
+                var favStarSymbol = isFav ? '★' : '☆';
+
+                // Keyboard shortcut indicators for first 9 favorites
+                var shortcutBadgeHtml = '';
+                if (cat.id === 'favorites') {
+                    var favIndex = favoriteCards.findIndex(function(c) { return c.text === card.text; });
+                    if (favIndex >= 0 && favIndex < 9) {
+                        shortcutBadgeHtml = `<div class="card-shortcut-badge">${favIndex + 1}</div>`;
+                    }
+                }
 
                 html += `
                     <div class="aac-card ${catClass}" data-index="${indexInCards}" data-text="${card.text}">
+                        ${shortcutBadgeHtml}
+                        <button type="button" class="card-favorite-btn ${favClass}" data-index="${indexInCards}" title="${isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}">${favStarSymbol}</button>
                         <span class="card-category-tag">${catName}</span>
                         ${visualContent}
                         <span>${card.text}</span>
@@ -1345,8 +1378,17 @@ function setupEventListeners() {
         });
     }
 
-    // Card click (add to sentence and speak immediately)
+    // Card click (add to sentence and speak immediately, or toggle favorite)
     cardsGrid.addEventListener('click', function(e) {
+        // Toggle favorite if star button clicked
+        var favBtn = e.target.closest('.card-favorite-btn');
+        if (favBtn) {
+            e.stopPropagation();
+            var cardIndex = parseInt(favBtn.dataset.index, 10);
+            toggleFavorite(cardIndex);
+            return;
+        }
+
         var cardEl = e.target.closest('.aac-card');
         if (!cardEl) return;
 
@@ -2162,6 +2204,29 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Keyboard shortcuts for favorites (keys 1 to 9)
+    document.addEventListener('keydown', function(e) {
+        var activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag === 'input' || activeTag === 'textarea') {
+            return;
+        }
+
+        if (e.key >= '1' && e.key <= '9') {
+            var shortcutNum = parseInt(e.key, 10);
+            var favoriteCards = cards.filter(function(c) { return c.favorite === true; });
+            if (favoriteCards.length >= shortcutNum) {
+                var card = favoriteCards[shortcutNum - 1];
+                selectedCards.push(card);
+                updateSentenceBuilder();
+                playCardVoice(card);
+                
+                if (card.goToCategory) {
+                    openSubChoiceModal(card.text, card.goToCategory);
+                }
+            }
+        }
+    });
 }
 
 // Ensure voice synth is ready on page load

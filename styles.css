@@ -20,6 +20,9 @@
     --color-danger: #ef4444;  /* Red for Clear */
     --color-danger-hover: #dc2626;
     
+    --color-warning: #f59e0b; /* Amber/Gold for Favorites */
+    --color-warning-hover: #d97706;
+    
     /* Goossens System Color Palette (Soft but distinct) */
     --cat-person: #fef08a; /* Yellow */
     --cat-person-border: #eab308;
@@ -38,6 +41,9 @@
     
     --cat-place: #ffedd5; /* Orange */
     --cat-place-border: #f97316;
+    
+    --cat-favorites: #fffbeb; /* Light Amber */
+    --cat-favorites-border: #f59e0b;
     
     --cat-custom: #f1f5f9; /* Slate Gray */
     --cat-custom-border: #64748b;
@@ -78,6 +84,9 @@
     
     --cat-place: #431407;
     --cat-place-border: #ea580c;
+    
+    --cat-favorites: #451a03; /* Dark Amber */
+    --cat-favorites-border: #d97706;
     
     --cat-custom: #1e293b;
     --cat-custom-border: #475569;
@@ -451,7 +460,63 @@ body {
 .aac-card.cat-feeling { background-color: var(--cat-feeling); border-color: var(--cat-feeling-border); }
 .aac-card.cat-place { background-color: var(--cat-place); border-color: var(--cat-place-border); }
 .aac-card.cat-person { background-color: var(--cat-person); border-color: var(--cat-person-border); }
+.aac-card.cat-favorites { background-color: var(--cat-favorites); border-color: var(--cat-favorites-border); }
 .aac-card.cat-custom { background-color: var(--cat-custom); border-color: var(--cat-custom-border); }
+
+/* Favorite Button on Card */
+.card-favorite-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.25rem;
+    padding: 2px;
+    z-index: 10;
+    line-height: 1;
+    color: var(--text-secondary);
+    opacity: 0.3;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.card-favorite-btn:hover {
+    transform: scale(1.2);
+    opacity: 1;
+}
+
+.aac-card:hover .card-favorite-btn {
+    opacity: 0.8;
+}
+
+.card-favorite-btn.active {
+    color: #f59e0b;
+    opacity: 1;
+    text-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
+
+/* Shortcut badge for keyboard keys 1-9 */
+.card-shortcut-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background-color: var(--color-warning);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--bg-card);
+    box-shadow: var(--shadow-sm);
+    z-index: 9;
+    user-select: none;
+}
 
 /* Modal overlays */
 .modal-overlay {
