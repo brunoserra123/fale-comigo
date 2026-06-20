@@ -60,7 +60,7 @@ function ajaxRequest(url, method, data) {
     });
 }
 
-var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyDyGjcCb7lJzirtLdicwVoSokPozdo7JWaeeyOw-4kvSDeYYOvlPoH3WW8JrlSvsZf/exec';
+var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwi5NN1cqkCeX1nCBzqPmOaP0r-1X-uPI8q38u-d0-fzNx1Z8vSZrsV9SqX_CnZifSc/exec';
 
 // Define pre-configured categories with emojis
 var CATEGORIES = [
@@ -220,6 +220,7 @@ var modalProfiles = document.getElementById('modal-profiles');
 var btnCloseProfiles = document.getElementById('btn-close-profiles');
 var inputNewProfileName = document.getElementById('input-new-profile-name');
 var btnCreateProfile = document.getElementById('btn-create-profile');
+var btnSyncProfilesCloud = document.getElementById('btn-sync-profiles-cloud');
 var profilesList = document.getElementById('profiles-list');
 var accessCounterVal = document.getElementById('access-counter-val');
 
@@ -926,7 +927,12 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
         syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
     }
 
-    return fetchSyncData(urlToUse)
+    var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+    var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+    var connector = urlToUse.indexOf('?') >= 0 ? '&' : '?';
+    var urlWithProfile = urlToUse + connector + 'profile=' + encodeURIComponent(profileName);
+
+    return fetchSyncData(urlWithProfile)
         .then(function(remoteCards) {
             if (!Array.isArray(remoteCards)) {
                 throw new Error('O arquivo retornado não é uma lista JSON válida.');
@@ -1778,6 +1784,62 @@ function setupEventListeners() {
             
             inputNewProfileName.value = '';
             showCustomAlert('Perfil "' + name + '" criado com sucesso!');
+        });
+    }
+
+    if (btnSyncProfilesCloud) {
+        btnSyncProfilesCloud.addEventListener('click', function() {
+            var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+            if (!syncAppsScriptUrl) {
+                showCustomAlert('Por favor, configure a URL do Apps Script primeiro nas Configurações Avançadas.');
+                return;
+            }
+            
+            btnSyncProfilesCloud.disabled = true;
+            var originalText = btnSyncProfilesCloud.innerHTML;
+            btnSyncProfilesCloud.innerHTML = '<span>🔄</span> Buscando perfis...';
+            
+            var connector = syncAppsScriptUrl.indexOf('?') >= 0 ? '&' : '?';
+            var url = syncAppsScriptUrl + connector + 'action=listProfiles';
+            
+            fetchSyncData(url)
+                .then(function(cloudProfiles) {
+                    btnSyncProfilesCloud.disabled = false;
+                    btnSyncProfilesCloud.innerHTML = originalText;
+                    
+                    if (!Array.isArray(cloudProfiles)) {
+                        throw new Error('Lista de perfis inválida recebida da nuvem.');
+                    }
+                    
+                    var addedCount = 0;
+                    cloudProfiles.forEach(function(pName) {
+                        var exists = profiles.some(function(p) {
+                            return p.name.toLowerCase() === pName.toLowerCase();
+                        });
+                        
+                        if (!exists && pName.toLowerCase() !== 'padrao' && pName.toLowerCase() !== 'padrão') {
+                            var id = 'profile_' + new Date().getTime() + Math.floor(Math.random() * 1000);
+                            profiles.push({ id: id, name: pName });
+                            localStorage.setItem('caa_sync_apps_script_url_' + id, syncAppsScriptUrl);
+                            addedCount++;
+                        }
+                    });
+                    
+                    if (addedCount > 0) {
+                        saveProfiles();
+                        renderProfileSelector();
+                        renderProfilesList();
+                        showCustomAlert(addedCount + ' perfil(is) importado(s) da nuvem com sucesso! 🎉\nAgora você pode alternar para eles e sincronizar suas figuras.');
+                    } else {
+                        showCustomAlert('Todos os perfis da nuvem já estão cadastrados localmente.');
+                    }
+                })
+                .catch(function(err) {
+                    btnSyncProfilesCloud.disabled = false;
+                    btnSyncProfilesCloud.innerHTML = originalText;
+                    console.error('Erro ao sincronizar perfis: ', err);
+                    showCustomAlert('Erro ao buscar perfis do Google Drive. Verifique a URL do Apps Script.');
+                });
         });
     }
 
