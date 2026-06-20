@@ -60,7 +60,7 @@ function ajaxRequest(url, method, data) {
     });
 }
 
-var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwi5NN1cqkCeX1nCBzqPmOaP0r-1X-uPI8q38u-d0-fzNx1Z8vSZrsV9SqX_CnZifSc/exec';
+var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
 
 // Define pre-configured categories with emojis
 var CATEGORIES = [
