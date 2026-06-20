@@ -213,6 +213,11 @@ var synth = window.speechSynthesis;
 var currentProfileId = 'default';
 var profiles = [{ id: 'default', name: 'Padrão' }];
 
+// Audio Recording State
+var mediaRecorder = null;
+var audioChunks = [];
+var recordedAudioBase64 = null;
+
 // Profile DOM Elements
 var selectProfile = document.getElementById('select-profile');
 var btnManageProfiles = document.getElementById('btn-manage-profiles');
@@ -223,6 +228,23 @@ var btnCreateProfile = document.getElementById('btn-create-profile');
 var btnSyncProfilesCloud = document.getElementById('btn-sync-profiles-cloud');
 var profilesList = document.getElementById('profiles-list');
 var accessCounterVal = document.getElementById('access-counter-val');
+var cloudStatusIndicator = document.getElementById('cloud-status-indicator');
+var btnRecordAudio = document.getElementById('btn-record-audio');
+var recordStatus = document.getElementById('record-status');
+var audioPreview = document.getElementById('audio-preview');
+var groupAudioRecord = document.getElementById('group-audio-record');
+
+function setCloudStatus(status, titleText) {
+    if (!cloudStatusIndicator) return;
+    cloudStatusIndicator.className = 'cloud-status-indicator ' + status;
+    if (titleText) {
+        cloudStatusIndicator.title = 'Status de Backup: ' + titleText;
+    } else {
+        if (status === 'success') cloudStatusIndicator.title = 'Status de Backup: Sincronizado';
+        if (status === 'loading') cloudStatusIndicator.title = 'Status de Backup: Sincronizando...';
+        if (status === 'error') cloudStatusIndicator.title = 'Status de Backup: Erro ou Desconectado';
+    }
+}
 
 // Dicionário de sugestão de emojis em português
 var EMOJI_DICTIONARY = {
@@ -922,6 +944,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
     var urlToUse = scriptUrl || localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
     if (!urlToUse) return Promise.resolve(false);
 
+    setCloudStatus('loading');
     if (syncStatusText) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
@@ -941,6 +964,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
             // Se o backup na nuvem está vazio, significa que é um perfil novo ou sem backup ainda.
             // Em vez de apagar os dados locais, nós salvamos o estado local atual na nuvem.
             if (remoteCards.length === 0) {
+                setCloudStatus('success');
                 if (syncStatusText) {
                     syncStatusText.className = 'sync-status-text success';
                     syncStatusText.textContent = 'Sincronizado! (Backup criado na nuvem) ✅';
@@ -971,6 +995,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
                 showChangelogModal(addedCards, removedCards);
             }
 
+            setCloudStatus('success');
             if (syncStatusText) {
                 syncStatusText.className = 'sync-status-text success';
                 syncStatusText.textContent = 'Sincronizado com sucesso! ✅';
@@ -982,6 +1007,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
         })
         .catch(function(error) {
             console.error('Erro na sincronização automática: ', error);
+            setCloudStatus('error');
             if (syncStatusText) {
                 syncStatusText.className = 'sync-status-text error';
                 syncStatusText.textContent = 'Erro ao sincronizar com o Apps Script. ❌';
@@ -1063,6 +1089,7 @@ function uploadBackupToCloud() {
 
     if (!scriptUrl || !autoBackup || !navigator.onLine) return Promise.resolve();
 
+    setCloudStatus('loading');
     if (syncStatusText) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Enviando backup para nuvem... 🔄';
@@ -1075,6 +1102,7 @@ function uploadBackupToCloud() {
 
     return ajaxRequest(uploadUrl, 'POST', cards)
         .then(function() {
+            setCloudStatus('success');
             if (syncStatusText) {
                 syncStatusText.className = 'sync-status-text success';
                 syncStatusText.textContent = 'Backup salvo na nuvem! ✅';
@@ -1082,6 +1110,7 @@ function uploadBackupToCloud() {
         })
         .catch(function(error) {
             console.log('Envio de backup concluído/processado');
+            setCloudStatus('success');
             if (syncStatusText) {
                 syncStatusText.className = 'sync-status-text success';
                 syncStatusText.textContent = 'Backup enviado! ✅';
@@ -1208,6 +1237,26 @@ function speakText(text) {
     }, 150);
 }
 
+// Play recorded card voice or fall back to system speech synthesis
+function playCardVoice(card) {
+    if (!card) return;
+    if (card.audio) {
+        try {
+            if (synth) synth.cancel();
+            var audio = new Audio(card.audio);
+            audio.play().catch(function(err) {
+                console.warn('Falha ao reproduzir áudio gravado, usando síntese:', err);
+                speakText(card.text);
+            });
+        } catch(e) {
+            console.error('Erro ao tocar áudio:', e);
+            speakText(card.text);
+        }
+    } else {
+        speakText(card.text);
+    }
+}
+
 // Handle Theme Change
 function updateThemeIcon(theme) {
     var sunSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
@@ -1307,7 +1356,7 @@ function setupEventListeners() {
             var clickedCard = cards[index];
             selectedCards.push(clickedCard);
             updateSentenceBuilder();
-            speakText(clickedCard.text);
+            playCardVoice(clickedCard);
 
             // Automatic sub-choice modal if card has goToCategory defined (abrir por cima)
             if (clickedCard.goToCategory) {
@@ -1375,6 +1424,17 @@ function setupEventListeners() {
         formAddCard.reset();
         imagePreview.innerHTML = '<span>Nenhuma imagem selecionada</span>';
         uploadedImageBase64 = null;
+        recordedAudioBase64 = null;
+        if (audioPreview) {
+            audioPreview.src = '';
+            audioPreview.classList.add('d-none');
+        }
+        if (recordStatus) {
+            recordStatus.textContent = '';
+        }
+        if (groupAudioRecord) {
+            groupAudioRecord.classList.add('d-none');
+        }
         groupEmoji.classList.remove('d-none');
         groupUpload.classList.add('d-none');
     };
@@ -1471,6 +1531,72 @@ function setupEventListeners() {
         reader.readAsDataURL(file);
     });
 
+    // Audio type radio changes inside settings
+    var audioTypeRadios = document.getElementsByName('audio-type');
+    for (var i_audio = 0; i_audio < audioTypeRadios.length; i_audio++) {
+        audioTypeRadios[i_audio].addEventListener('change', function(e) {
+            if (e.target.value === 'record') {
+                groupAudioRecord.classList.remove('d-none');
+            } else {
+                groupAudioRecord.classList.add('d-none');
+            }
+        });
+    }
+
+    // Audio recording logic
+    if (btnRecordAudio) {
+        btnRecordAudio.addEventListener('click', function() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                // Parar gravação
+                mediaRecorder.stop();
+                btnRecordAudio.classList.remove('record-btn-active');
+                btnRecordAudio.innerHTML = '🎤 Iniciar Gravação';
+                recordStatus.textContent = 'Processando gravação...';
+            } else {
+                // Iniciar gravação
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    showCustomAlert('Seu navegador ou dispositivo não suporta gravação de áudio.');
+                    return;
+                }
+
+                audioChunks = [];
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(function(stream) {
+                        mediaRecorder = new MediaRecorder(stream);
+                        mediaRecorder.addEventListener('dataavailable', function(event) {
+                            audioChunks.push(event.data);
+                        });
+
+                        mediaRecorder.addEventListener('stop', function() {
+                            var audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                            var reader = new FileReader();
+                            reader.onload = function(e) {
+                                recordedAudioBase64 = e.target.result;
+                                if (audioPreview) {
+                                    audioPreview.src = recordedAudioBase64;
+                                    audioPreview.classList.remove('d-none');
+                                }
+                                recordStatus.textContent = 'Gravação concluída! 🎧';
+                            };
+                            reader.readAsDataURL(audioBlob);
+
+                            // Parar todas as faixas do stream para liberar o microfone
+                            stream.getTracks().forEach(function(track) { track.stop(); });
+                        });
+
+                        mediaRecorder.start();
+                        btnRecordAudio.classList.add('record-btn-active');
+                        btnRecordAudio.innerHTML = '🛑 Parar Gravação';
+                        recordStatus.textContent = 'Gravando... fale agora!';
+                    })
+                    .catch(function(err) {
+                        console.error('Erro ao acessar microfone:', err);
+                        showCustomAlert('Erro ao acessar o microfone. Certifique-se de dar permissão.');
+                    });
+            }
+        });
+    }
+
     // Auto-suggest emoji while typing card text
     if (cardTextInput && cardEmojiInput) {
         cardTextInput.addEventListener('input', function() {
@@ -1514,9 +1640,23 @@ function setupEventListeners() {
             value = uploadedImageBase64;
         }
 
+        var audioType = document.querySelector('input[name="audio-type"]:checked').value;
+        var audio = null;
+        if (audioType === 'record') {
+            if (!recordedAudioBase64) {
+                showCustomAlert('Por favor, grave um áudio ou selecione a voz do sistema.');
+                return;
+            }
+            audio = recordedAudioBase64;
+        }
+
+        var newCardObj = { text: text, category: category, type: imageType, value: value };
+        if (audio) {
+            newCardObj.audio = audio;
+        }
+
         // Prepend custom card
-        // Prepend custom card
-        cards.unshift({ text, category, type: imageType, value });
+        cards.unshift(newCardObj);
         saveCardsToStorage();
         renderCards();
         showCustomAlert('Figura "' + text + '" criada e salva com sucesso! 🎨').then(function() {
@@ -1677,7 +1817,7 @@ function setupEventListeners() {
             var clickedCard = cards[index];
             selectedCards.push(clickedCard);
             updateSentenceBuilder();
-            speakText(clickedCard.text);
+            playCardVoice(clickedCard);
             modalSubChoice.classList.remove('open');
         }
     });

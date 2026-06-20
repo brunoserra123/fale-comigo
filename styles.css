@@ -882,3 +882,45 @@ body {
         justify-content: center;
     }
 }
+
+/* Cloud Status Indicator & Audio Record Styles */
+.cloud-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-app);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    cursor: default;
+}
+.cloud-status-indicator.success {
+    color: var(--color-primary);
+    border-color: rgba(16, 185, 129, 0.3);
+    background-color: rgba(16, 185, 129, 0.1);
+}
+.cloud-status-indicator.loading {
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.3);
+    background-color: rgba(59, 130, 246, 0.1);
+    animation: pulse-cloud 1.5s infinite;
+}
+.cloud-status-indicator.error {
+    color: var(--color-danger);
+    border-color: rgba(239, 68, 68, 0.3);
+    background-color: rgba(239, 68, 68, 0.1);
+}
+@keyframes pulse-cloud {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+.record-btn-active {
+    background-color: var(--color-danger) !important;
+    color: white !important;
+    border-color: var(--color-danger-hover) !important;
+    animation: pulse-cloud 1s infinite;
+}

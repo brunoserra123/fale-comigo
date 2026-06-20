@@ -38,6 +38,11 @@
                 <h1>Fale Comigo</h1>
             </div>
             <div class="header-actions">
+                <!-- Indicador de Status da Nuvem -->
+                <div id="cloud-status-indicator" class="cloud-status-indicator success" title="Status de Backup: Sincronizado">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.42-1.01-1.39-2.5-3.5-2.5a5.5 5.5 0 0 0-5.5 5.5c0 1.25.5 2.5 1.5 3.25"/><path d="M3 19h14"/></svg>
+                </div>
+
                 <!-- Seletor de Perfil -->
                 <div class="profile-header-container" style="display: flex; align-items: center; gap: 6px; background-color: var(--bg-app); padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
                     <span style="font-size: 1.1rem; cursor: default; display: flex; align-items: center;">👤</span>
@@ -187,6 +192,25 @@
                             <div id="image-preview" class="image-preview-box">
                                 <span>Nenhuma imagem selecionada</span>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Áudio (Voz):</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="audio-type" value="synth" checked> Voz do Sistema
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="audio-type" value="record"> Gravar minha Voz 🎙️
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group d-none" id="group-audio-record">
+                            <label>Gravação de Voz:</label>
+                            <button type="button" id="btn-record-audio" class="btn btn-secondary" style="justify-content: center; gap: 8px;">
+                                🎤 Iniciar Gravação
+                            </button>
+                            <span id="record-status" style="font-size: 0.85rem; font-weight: 600; text-align: center; color: var(--text-secondary);"></span>
+                            <audio id="audio-preview" controls class="d-none" style="width: 100%; margin-top: 8px;"></audio>
                         </div>
                         <div style="margin-top: 15px; display: flex; gap: 10px;">
                             <button type="submit" class="btn btn-primary" style="flex-grow: 1;">Salvar Novo Cartão</button>
