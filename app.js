@@ -938,6 +938,17 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
                 throw new Error('O arquivo retornado não é uma lista JSON válida.');
             }
 
+            // Se o backup na nuvem está vazio, significa que é um perfil novo ou sem backup ainda.
+            // Em vez de apagar os dados locais, nós salvamos o estado local atual na nuvem.
+            if (remoteCards.length === 0) {
+                if (syncStatusText) {
+                    syncStatusText.className = 'sync-status-text success';
+                    syncStatusText.textContent = 'Sincronizado! (Backup criado na nuvem) ✅';
+                }
+                uploadBackupToCloud();
+                return true;
+            }
+
             var prevCardsStr = localStorage.getItem('caa_custom_cards_' + currentProfileId);
             var prevCards = [];
             if (prevCardsStr) {
