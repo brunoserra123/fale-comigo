@@ -576,7 +576,12 @@ function switchProfile(profileId) {
     
     // Setup inputs
     var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId) || '';
-    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+    var oldUrl = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
+    if (!syncAppsScriptUrl || syncAppsScriptUrl === oldUrl) {
+        syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
+        localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
+    }
     var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
     
     if (syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
@@ -659,7 +664,12 @@ function init() {
 
     // Check Google Drive & Apps Script Sync on Startup
     var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
-    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+    var oldUrl = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
+    if (!syncAppsScriptUrl || syncAppsScriptUrl === oldUrl) {
+        syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
+        localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
+    }
     var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
 
     if (syncDriveId && syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
