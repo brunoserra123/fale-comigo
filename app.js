@@ -228,6 +228,7 @@ var btnCreateProfile = document.getElementById('btn-create-profile');
 var btnSyncProfilesCloud = document.getElementById('btn-sync-profiles-cloud');
 var profilesList = document.getElementById('profiles-list');
 var accessCounterVal = document.getElementById('access-counter-val');
+var cloudProfilesList = document.getElementById('cloud-profiles-list');
 var cloudStatusIndicator = document.getElementById('cloud-status-indicator');
 var btnRecordAudio = document.getElementById('btn-record-audio');
 var recordStatus = document.getElementById('record-status');
@@ -1938,6 +1939,16 @@ function setupEventListeners() {
         });
     }
 
+    function formatBytes(bytes) {
+        if (bytes === null || bytes === undefined) return 'Sem dados';
+        if (bytes === 0) return '0 Bytes';
+        var k = 1024;
+        var dm = 1;
+        var sizes = ['Bytes', 'KB', 'MB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
     if (btnSyncProfilesCloud) {
         btnSyncProfilesCloud.addEventListener('click', function() {
             var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
@@ -1962,27 +1973,65 @@ function setupEventListeners() {
                         throw new Error('Lista de perfis inválida recebida da nuvem.');
                     }
                     
-                    var addedCount = 0;
-                    cloudProfiles.forEach(function(pName) {
-                        var exists = profiles.some(function(p) {
-                            return p.name.toLowerCase() === pName.toLowerCase();
+                    if (cloudProfilesList) {
+                        cloudProfilesList.classList.remove('d-none');
+                        
+                        var validCloudProfiles = cloudProfiles.filter(function(cp) {
+                            var isDefault = cp.name.toLowerCase() === 'padrao' || cp.name.toLowerCase() === 'padrão';
+                            return !isDefault;
                         });
                         
-                        if (!exists && pName.toLowerCase() !== 'padrao' && pName.toLowerCase() !== 'padrão') {
-                            var id = 'profile_' + new Date().getTime() + Math.floor(Math.random() * 1000);
-                            profiles.push({ id: id, name: pName });
-                            localStorage.setItem('caa_sync_apps_script_url_' + id, syncAppsScriptUrl);
-                            addedCount++;
+                        if (validCloudProfiles.length === 0) {
+                            cloudProfilesList.innerHTML = '<div style="text-align: center; padding: 10px; color: var(--text-secondary); font-size: 0.85rem;">Nenhum perfil encontrado no Drive.</div>';
+                            return;
                         }
-                    });
-                    
-                    if (addedCount > 0) {
-                        saveProfiles();
-                        renderProfileSelector();
-                        renderProfilesList();
-                        showCustomAlert(addedCount + ' perfil(is) importado(s) da nuvem com sucesso! 🎉\nAgora você pode alternar para eles e sincronizar suas figuras.');
-                    } else {
-                        showCustomAlert('Todos os perfis da nuvem já estão cadastrados localmente.');
+                        
+                        cloudProfilesList.innerHTML = validCloudProfiles.map(function(cp) {
+                            var exists = profiles.some(function(p) {
+                                return p.name.toLowerCase() === cp.name.toLowerCase();
+                            });
+                            
+                            var dateText = cp.lastUpdated ? cp.lastUpdated.split(' ')[0] : 'Sem data';
+                            var sizeText = cp.size ? formatBytes(cp.size) : 'Vazio';
+                            
+                            var btnHtml = '';
+                            if (exists) {
+                                btnHtml = '<span style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary);">Já Importado ✅</span>';
+                            } else {
+                                btnHtml = `<button type="button" class="btn-import-cloud-profile" data-name="${cp.name}" style="background-color: var(--color-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Importar 📥</button>`;
+                            }
+                            
+                            return `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; gap: 8px;">
+                                    <div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">
+                                        <strong style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${cp.name}</strong>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary);">${dateText} • ${sizeText}</span>
+                                    </div>
+                                    <div style="flex-shrink: 0;">
+                                        ${btnHtml}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        // Adicionar evento para os botões de importar recém-gerados
+                        var importBtns = cloudProfilesList.querySelectorAll('.btn-import-cloud-profile');
+                        importBtns.forEach(function(btn) {
+                            btn.addEventListener('click', function() {
+                                var pName = btn.dataset.name;
+                                var id = 'profile_' + new Date().getTime() + Math.floor(Math.random() * 1000);
+                                profiles.push({ id: id, name: pName });
+                                localStorage.setItem('caa_sync_apps_script_url_' + id, syncAppsScriptUrl);
+                                saveProfiles();
+                                renderProfileSelector();
+                                renderProfilesList();
+                                
+                                // Substitui botão por "Já Importado ✅"
+                                var parentDiv = btn.parentNode;
+                                parentDiv.innerHTML = '<span style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary);">Já Importado ✅</span>';
+                                showCustomAlert('Perfil "' + pName + '" importado! Selecione-o no menu superior e clique em "Sincronizar Agora" nas opções avançadas para carregar suas figuras.');
+                            });
+                        });
                     }
                 })
                 .catch(function(err) {
