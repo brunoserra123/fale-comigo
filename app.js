@@ -1476,7 +1476,7 @@ function setupEventListeners() {
 
     if (btnCopyPix && pixKeyInput) {
         btnCopyPix.addEventListener('click', function() {
-            var keyText = pixKeyInput.value.trim();
+            var keyText = pixKeyInput.getAttribute('data-payload') || pixKeyInput.value.trim();
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(keyText)
                     .then(function() {

@@ -1,11 +1,12 @@
-const CACHE_NAME = 'caa-comunicador-v17';
+const CACHE_NAME = 'caa-comunicador-v20';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
   './manifest.json',
-  './icon.png'
+  './icon.png',
+  './pix_qr.png'
 ];
 
 // Install Service Worker
