@@ -1526,54 +1526,6 @@ function setupEventListeners() {
         });
     }
 
-    var formFeedback = document.getElementById('form-feedback');
-    if (formFeedback) {
-        formFeedback.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            var feedbackName = document.getElementById('feedback-name').value.trim();
-            var feedbackMessage = document.getElementById('feedback-message').value.trim();
-            var btnSubmitFeedback = document.getElementById('btn-submit-feedback');
-            
-            if (!feedbackMessage) return;
-            
-            var scriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
-            if (!scriptUrl) {
-                showCustomAlert('Configuração de sincronização não encontrada. Por favor, adicione a URL do Apps Script.');
-                return;
-            }
-            
-            if (btnSubmitFeedback) {
-                btnSubmitFeedback.disabled = true;
-                btnSubmitFeedback.textContent = 'Enviando... ⏳';
-            }
-            
-            var postData = {
-                action: 'submitFeedback',
-                name: feedbackName,
-                message: feedbackMessage
-            };
-            
-            ajaxRequest(scriptUrl, 'POST', postData)
-                .then(function(res) {
-                    if (btnSubmitFeedback) {
-                        btnSubmitFeedback.disabled = false;
-                        btnSubmitFeedback.textContent = 'Enviar Comentário 🚀';
-                    }
-                    formFeedback.reset();
-                    showCustomAlert('Comentário enviado com sucesso! Muito obrigado por nos ajudar a melhorar o app. ❤️');
-                })
-                .catch(function(err) {
-                    console.error('Erro ao enviar feedback:', err);
-                    if (btnSubmitFeedback) {
-                        btnSubmitFeedback.disabled = false;
-                        btnSubmitFeedback.textContent = 'Enviar Comentário 🚀';
-                    }
-                    formFeedback.reset();
-                    showCustomAlert('Comentário enviado! Muito obrigado por nos ajudar a melhorar o app. ❤️');
-                });
-        });
-    }
 
     if (btnCopyPix && pixKeyInput) {
         btnCopyPix.addEventListener('click', function() {
