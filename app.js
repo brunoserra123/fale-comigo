@@ -2548,7 +2548,7 @@ function setupEventListeners() {
     if (btnToggleReorder) {
         btnToggleReorder.addEventListener('click', function() {
             if (!checkPremiumStatus()) {
-                showCustomAlert("Recurso Premium! 🌟\n\nOrganizar e reordenar as figuras é um recurso exclusivo da versão Premium.\n\nPara liberar esse recurso, digite o código 'vip 99' no campo 'Ativação Premium' dentro das Opções Avançadas de Configurações.");
+                showCustomAlert("Recurso Premium! 🌟\n\nOrganizar e reordenar as figuras é um recurso exclusivo da versão Premium.\n\nPara liberar esse recurso, insira o seu código de ativação no campo 'Ativação Premium' dentro das Opções Avançadas de Configurações.");
                 return;
             }
 
