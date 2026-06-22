@@ -56,6 +56,12 @@
                     <button id="btn-manage-profiles" class="btn-profile-manage" style="background: none; border: none; cursor: pointer; font-size: 1rem; padding: 2px; display: flex; align-items: center;" title="Gerenciar Perfis">⚙️</button>
                 </div>
 
+                <!-- Botão de Bloqueio Infantil -->
+                <button id="btn-lock-app" class="btn btn-icon" title="Bloquear Configurações" style="color: var(--color-primary); border-color: rgba(16, 185, 129, 0.3);">
+                    <!-- Ícone cadeado aberto por padrão -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                </button>
+
                 <button id="btn-settings" class="btn btn-icon" title="Configurações (Tutor)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
@@ -425,6 +431,26 @@
                 <p id="custom-dialog-message" style="font-size: 1rem; color: var(--text-secondary); line-height: 1.5; text-align: center; margin-bottom: 10px;"></p>
                 <div id="custom-dialog-buttons" style="display: flex; gap: 10px; width: 100%; justify-content: center;">
                     <!-- Buttons generated dynamically -->
+                </div>
+            </div>
+        </div>
+    <!-- MODAL: LOCK SCREEN (DESBLOQUEIO) -->
+    <div id="modal-lock-challenge" class="modal-overlay">
+        <div class="modal-content" style="max-width: 360px; text-align: center;">
+            <div class="modal-header" style="justify-content: center; border-bottom: 1px solid var(--border-color); padding: 12px;">
+                <h2 style="font-size: 1.25rem; font-weight: 700;">🔒 Controle do Tutor</h2>
+            </div>
+            <div class="modal-body" style="gap: 16px; padding: 20px; align-items: center;">
+                <p style="font-size: 0.95rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+                    Para liberar as configurações, resolva a conta matemática abaixo:
+                </p>
+                <div style="font-size: 2rem; font-weight: 800; color: var(--color-primary); padding: 12px 24px; margin: 10px 0; background-color: var(--bg-app); border-radius: var(--radius-sm); border: 1px solid var(--border-color); letter-spacing: 2px; width: 100%;" id="lock-math-question">
+                    3 + 5 = ?
+                </div>
+                <input type="number" id="lock-math-answer" placeholder="Digite o resultado..." style="width: 100%; padding: 12px; font-size: 1.25rem; text-align: center; border-radius: var(--radius-sm); border: 2px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
+                    <button id="btn-lock-cancel" type="button" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; padding: 12px;">Cancelar</button>
+                    <button id="btn-lock-submit" type="button" class="btn btn-primary" style="flex-grow: 1; justify-content: center; padding: 12px;">Desbloquear</button>
                 </div>
             </div>
         </div>

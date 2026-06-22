@@ -119,7 +119,7 @@ var DEFAULT_CARDS = [
     { text: 'Feliz', category: 'feeling', type: 'emoji', value: '😊' },
     { text: 'Triste', category: 'feeling', type: 'emoji', value: '😢' },
     { text: 'Cansado', category: 'feeling', type: 'emoji', value: '🥱' },
-    { text: 'Dor', category: 'feeling', type: 'emoji', value: '🤕' },
+    { text: 'Dor', category: 'feeling', type: 'emoji', value: '🤕', goToCategory: 'pain' },
     { text: 'Machucado', category: 'feeling', type: 'emoji', value: '🩹' },
     { text: 'Bravo', category: 'feeling', type: 'emoji', value: '😡' },
     { text: 'Assustado', category: 'feeling', type: 'emoji', value: '😨' },
@@ -137,7 +137,17 @@ var DEFAULT_CARDS = [
     { text: 'Mamãe', category: 'person', type: 'emoji', value: '👩' },
     { text: 'Papai', category: 'person', type: 'emoji', value: '👨' },
     { text: 'Professor(a)', category: 'person', type: 'emoji', value: '👩‍🏫' },
-    { text: 'Amigo', category: 'person', type: 'emoji', value: '👦' }
+    { text: 'Amigo', category: 'person', type: 'emoji', value: '👦' },
+
+    // Pain sub-choices
+    { text: 'Dor de Cabeça', category: 'pain', type: 'emoji', value: '🤕' },
+    { text: 'Dor de Barriga', category: 'pain', type: 'emoji', value: '🤢' },
+    { text: 'Dor de Dente', category: 'pain', type: 'emoji', value: '🦷' },
+    { text: 'Dor de Ouvido', category: 'pain', type: 'emoji', value: '👂' },
+    { text: 'Dor na Garganta', category: 'pain', type: 'emoji', value: '🗣️' },
+    { text: 'Dor nas Costas', category: 'pain', type: 'emoji', value: '🧍' },
+    { text: 'Dor no Braço', category: 'pain', type: 'emoji', value: '💪' },
+    { text: 'Dor na Perna', category: 'pain', type: 'emoji', value: '🦵' }
 ];
 
 // App State
@@ -235,6 +245,46 @@ var btnRecordAudio = document.getElementById('btn-record-audio');
 var recordStatus = document.getElementById('record-status');
 var audioPreview = document.getElementById('audio-preview');
 var groupAudioRecord = document.getElementById('group-audio-record');
+
+// Lock App Mode State & DOM Elements
+var isAppLocked = false;
+var currentLockAnswer = 0;
+var btnLockApp = document.getElementById('btn-lock-app');
+var modalLockChallenge = document.getElementById('modal-lock-challenge');
+var lockMathQuestion = document.getElementById('lock-math-question');
+var lockMathAnswer = document.getElementById('lock-math-answer');
+var btnLockCancel = document.getElementById('btn-lock-cancel');
+var btnLockSubmit = document.getElementById('btn-lock-submit');
+
+function updateLockUI() {
+    var openLockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
+    var closedLockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    if (isAppLocked) {
+        document.body.classList.add('is-locked');
+        if (btnLockApp) {
+            btnLockApp.innerHTML = closedLockSvg;
+            btnLockApp.title = "Desbloquear Configurações";
+        }
+    } else {
+        document.body.classList.remove('is-locked');
+        if (btnLockApp) {
+            btnLockApp.innerHTML = openLockSvg;
+            btnLockApp.title = "Bloquear Configurações";
+        }
+    }
+}
+
+function generateLockChallenge() {
+    var num1 = Math.floor(Math.random() * 8) + 2; // 2 to 9
+    var num2 = Math.floor(Math.random() * 8) + 2; // 2 to 9
+    currentLockAnswer = num1 + num2;
+    if (lockMathQuestion) {
+        lockMathQuestion.textContent = num1 + " + " + num2 + " = ?";
+    }
+    if (lockMathAnswer) {
+        lockMathAnswer.value = '';
+    }
+}
 
 // IndexedDB Helper for storing card data locally (bypassing 5MB localStorage limit)
 var dbHelper = {
@@ -752,6 +802,9 @@ window.switchProfile = switchProfile;
 
 // Load app data
 function init() {
+    isAppLocked = localStorage.getItem('caa_app_locked') === 'true';
+    updateLockUI();
+
     loadProfiles();
     renderProfileSelector();
     renderProfilesList();
@@ -1181,8 +1234,20 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
                 return !remoteCards.some(function(newCard) { return newCard.text === oldCard.text; });
             });
 
-            setAndCleanCards(remoteCards);
-            saveCardsToStorage(false);
+            // Merge local custom cards that are missing from remoteCards to prevent data loss
+            var missingLocalCards = prevCards.filter(function(localCard) {
+                var isDefault = DEFAULT_CARDS.some(function(d) { return d.text === localCard.text; });
+                if (isDefault) return false;
+                var inRemote = remoteCards.some(function(rc) { return rc.text === localCard.text; });
+                return !inRemote;
+            });
+            var mergedRemoteCards = remoteCards.concat(missingLocalCards);
+
+            setAndCleanCards(mergedRemoteCards);
+            
+            // If we merged missing local cards, trigger upload to keep cloud updated
+            var hasMissingLocalMerged = missingLocalCards.length > 0;
+            saveCardsToStorage(hasMissingLocalMerged);
             renderCards();
             renderManageCustomCards();
 
@@ -1248,8 +1313,20 @@ function syncWithGoogleDrive(fileId, showFeedback) {
                 return !remoteCards.some(function(newCard) { return newCard.text === oldCard.text; });
             });
 
-            setAndCleanCards(remoteCards);
-            saveCardsToStorage(false);
+            // Merge local custom cards that are missing from remoteCards to prevent data loss
+            var missingLocalCards = prevCards.filter(function(localCard) {
+                var isDefault = DEFAULT_CARDS.some(function(d) { return d.text === localCard.text; });
+                if (isDefault) return false;
+                var inRemote = remoteCards.some(function(rc) { return rc.text === localCard.text; });
+                return !inRemote;
+            });
+            var mergedRemoteCards = remoteCards.concat(missingLocalCards);
+
+            setAndCleanCards(mergedRemoteCards);
+            
+            // If we merged missing local cards, trigger upload to keep cloud updated
+            var hasMissingLocalMerged = missingLocalCards.length > 0;
+            saveCardsToStorage(hasMissingLocalMerged);
             renderCards();
             renderManageCustomCards();
 
@@ -1488,6 +1565,9 @@ function openSubChoiceModal(actionText, categoryId) {
     } else if (categoryId === 'place') {
         subChoiceTitle.textContent = 'Aonde você quer ir?';
         subCards = cards.filter(function(c) { return c.category === 'place'; });
+    } else if (categoryId === 'pain') {
+        subChoiceTitle.textContent = 'Onde está doendo?';
+        subCards = cards.filter(function(c) { return c.category === 'pain'; });
     } else {
         subChoiceTitle.textContent = `Escolha um(a) ${actionText}`;
         subCards = cards.filter(function(c) { return c.category === categoryId; });
@@ -2317,6 +2397,66 @@ function setupEventListeners() {
         modalChangelog.addEventListener('click', function(e) {
             if (e.target === modalChangelog) {
                 modalChangelog.classList.remove('open');
+            }
+        });
+    }
+
+    // Lock app controls & Modal challenge handlers
+    if (btnLockApp) {
+        btnLockApp.addEventListener('click', function() {
+            if (isAppLocked) {
+                // Open modal challenge
+                generateLockChallenge();
+                if (modalLockChallenge) {
+                    modalLockChallenge.classList.add('open');
+                }
+                if (lockMathAnswer) {
+                    setTimeout(function() { lockMathAnswer.focus(); }, 150);
+                }
+            } else {
+                // Lock app immediately
+                isAppLocked = true;
+                localStorage.setItem('caa_app_locked', 'true');
+                updateLockUI();
+                showCustomAlert("Configurações bloqueadas! 🔒\nO menu do tutor e seletor de perfil estão ocultos.");
+            }
+        });
+    }
+
+    if (btnLockCancel && modalLockChallenge) {
+        btnLockCancel.addEventListener('click', function() {
+            modalLockChallenge.classList.remove('open');
+        });
+    }
+
+    var submitUnlockAnswer = function() {
+        if (!lockMathAnswer) return;
+        var userAnswer = parseInt(lockMathAnswer.value, 10);
+        if (userAnswer === currentLockAnswer) {
+            isAppLocked = false;
+            localStorage.setItem('caa_app_locked', 'false');
+            updateLockUI();
+            if (modalLockChallenge) {
+                modalLockChallenge.classList.remove('open');
+            }
+            showCustomAlert("Configurações desbloqueadas! 🔓");
+        } else {
+            showCustomAlert("Resposta incorreta! Tente novamente. ❌");
+            generateLockChallenge();
+            if (lockMathAnswer) {
+                lockMathAnswer.focus();
+            }
+        }
+    };
+
+    if (btnLockSubmit) {
+        btnLockSubmit.addEventListener('click', submitUnlockAnswer);
+    }
+
+    if (lockMathAnswer) {
+        lockMathAnswer.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                submitUnlockAnswer();
             }
         });
     }

@@ -1054,3 +1054,15 @@ body {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
+
+/* Lock App Mode styling */
+body.is-locked #btn-settings,
+body.is-locked .profile-header-container {
+    display: none !important;
+}
+
+body.is-locked #btn-lock-app {
+    color: var(--color-danger) !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    background-color: rgba(239, 68, 68, 0.05);
+}
