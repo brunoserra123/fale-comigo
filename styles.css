@@ -704,29 +704,50 @@ body {
     .sentence-container {
         padding: 10px;
         min-height: 95px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
     }
     
     .sentence-list {
         min-height: 75px;
+        flex-grow: 1;
     }
     
     .sentence-controls {
-        flex-direction: row;
-        align-self: center;
-        width: 100%;
+        flex-direction: column;
+        align-self: stretch;
+        justify-content: center;
+        width: auto;
+        min-width: 95px;
         gap: 6px;
     }
     
     .btn-speak {
-        flex-grow: 2;
-        padding: 12px 16px;
-        font-size: 1.1rem;
+        padding: 10px 8px;
+        font-size: 0.85rem;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
     }
 
     .sentence-controls .btn-danger {
-        flex-grow: 1;
-        padding: 12px 16px;
-        font-size: 0.9rem;
+        padding: 8px 8px;
+        font-size: 0.75rem;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .sentence-controls .btn-primary svg,
+    .sentence-controls .btn-danger svg {
+        width: 14px;
+        height: 14px;
     }
     
     .cards-grid {
@@ -1065,4 +1086,49 @@ body.is-locked #btn-lock-app {
     color: var(--color-danger) !important;
     border-color: rgba(239, 68, 68, 0.3) !important;
     background-color: rgba(239, 68, 68, 0.05);
+}
+
+/* Reorder Mode styling */
+body.is-reordering .aac-card {
+    cursor: grab;
+    animation: wobble 0.2s ease infinite alternate;
+    position: relative;
+    border-style: dashed;
+}
+
+body.is-reordering .aac-card:active {
+    cursor: grabbing;
+}
+
+body.is-reordering .aac-card::before {
+    content: "⋮⋮";
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    font-weight: bold;
+}
+
+@keyframes wobble {
+    0% { transform: rotate(-0.8deg); }
+    100% { transform: rotate(0.8deg); }
+}
+
+body.is-reordering #btn-toggle-reorder {
+    color: var(--color-primary) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+    background-color: rgba(16, 185, 129, 0.05);
+}
+
+.aac-card.is-dragging {
+    opacity: 0.4;
+    transform: scale(0.95);
+    border-color: var(--color-primary) !important;
+}
+
+.aac-card.drag-over {
+    border: 4px dashed var(--color-primary) !important;
+    transform: scale(1.02);
 }
