@@ -2787,6 +2787,44 @@ function setupEventListeners() {
             }
         }
     });
+
+    // Lógica do formulário de feedback (Web3Forms)
+    var feedbackForm = document.getElementById('form');
+    if (feedbackForm) {
+        var feedbackSubmitBtn = feedbackForm.querySelector('button[type="submit"]');
+        feedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var formData = new FormData(feedbackForm);
+            formData.append("access_key", "4f2eccbe-593a-4c25-871b-103e3931b8ff");
+
+            var originalText = feedbackSubmitBtn.innerHTML;
+            feedbackSubmitBtn.innerHTML = "<span>Enviando... 🚀</span>";
+            feedbackSubmitBtn.disabled = true;
+
+            fetch("https://api.web3forms.com/submit", {
+                method: "POST",
+                body: formData
+            })
+            .then(function(response) {
+                return response.json().then(function(data) {
+                    if (response.ok) {
+                        showCustomAlert("Sucesso! Sua mensagem foi enviada com sucesso. 🚀");
+                        feedbackForm.reset();
+                    } else {
+                        showCustomAlert("Erro: " + (data.message || "Não foi possível enviar no momento."));
+                    }
+                });
+            })
+            .catch(function(error) {
+                showCustomAlert("Algo deu errado. Por favor, tente novamente.");
+            })
+            .finally(function() {
+                feedbackSubmitBtn.innerHTML = originalText;
+                feedbackSubmitBtn.disabled = false;
+            });
+        });
+    }
 }
 
 // Ensure voice synth is ready on page load

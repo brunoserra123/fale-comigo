@@ -636,8 +636,10 @@ body {
 }
 
 .form-group input[type="text"],
+.form-group input[type="email"],
 .form-group select,
-.form-group input[type="file"] {
+.form-group input[type="file"],
+.form-group textarea {
     padding: 10px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
