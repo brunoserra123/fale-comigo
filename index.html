@@ -23,7 +23,11 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('sw.js')
-                    .then(function(reg) { console.log('Service Worker registrado com sucesso! Scope:', reg.scope); })
+                    .then(function(reg) { 
+                        console.log('Service Worker registrado com sucesso! Scope:', reg.scope); 
+                        // Força a checagem de atualizações a cada carregamento de página
+                        reg.update();
+                    })
                     .catch(function(err) { console.error('Falha ao registrar Service Worker:', err); });
             });
         }
