@@ -1134,3 +1134,54 @@ body.is-reordering #btn-toggle-reorder {
     border: 4px dashed var(--color-primary) !important;
     transform: scale(1.02);
 }
+
+/* Low Vision Accessibility Styles */
+body.low-vision .cards-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+    gap: 20px !important;
+}
+
+body.low-vision .aac-card {
+    padding: 20px !important;
+    border-width: 6px !important;
+    aspect-ratio: 1 / 1.15 !important;
+}
+
+body.low-vision .aac-card .card-emoji {
+    font-size: 5.5rem !important;
+}
+
+body.low-vision .aac-card img {
+    max-height: 70% !important;
+    max-width: 90% !important;
+}
+
+body.low-vision .aac-card span {
+    font-size: 1.6rem !important;
+    margin-top: 12px !important;
+}
+
+body.low-vision .sentence-list::before {
+    font-size: 1.6rem !important;
+}
+
+body.low-vision .sentence-card {
+    width: 130px !important;
+    height: 140px !important;
+}
+
+body.low-vision .sentence-card img,
+body.low-vision .sentence-card .card-emoji {
+    height: 80px !important;
+    width: 80px !important;
+    font-size: 3.5rem !important;
+}
+
+body.low-vision .sentence-card span {
+    font-size: 1.2rem !important;
+}
+
+body.low-vision #search-input {
+    font-size: 1.6rem !important;
+    padding: 16px 20px !important;
+}

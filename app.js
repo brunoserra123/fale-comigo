@@ -168,6 +168,9 @@ var btnClearSearch = document.getElementById('btn-clear-search');
 var btnSpeak = document.getElementById('btn-speak');
 var btnClearAll = document.getElementById('btn-clear-all');
 var btnToggleTheme = document.getElementById('btn-toggle-theme');
+var btnToggleLowVision = document.getElementById('btn-toggle-low-vision');
+var seletorVozes = document.getElementById('seletor-vozes');
+var vozesDisponiveis = [];
 
 // Settings Modal Elements
 var btnSettings = document.getElementById('btn-settings');
@@ -223,6 +226,44 @@ var changelogRemovedList = document.getElementById('changelog-removed-list');
 
 // Initialize Web Speech Synthesis
 var synth = window.speechSynthesis;
+
+// Function to load Portuguese voices
+function carregarVozes() {
+    if (!seletorVozes || !synth) return;
+    try {
+        vozesDisponiveis = synth.getVoices();
+    } catch(e) {
+        console.warn('Erro ao obter vozes:', e);
+        return;
+    }
+    seletorVozes.innerHTML = '';
+    
+    // Filter PT voices
+    var vozesPT = vozesDisponiveis.filter(function(voz) {
+        return voz.lang && voz.lang.toLowerCase().indexOf('pt') !== -1;
+    });
+
+    if (vozesPT.length === 0) {
+        seletorVozes.innerHTML = '<option value="">Nenhuma voz PT encontrada</option>';
+        return;
+    }
+
+    var savedVoiceName = localStorage.getItem('caa_selected_voice_' + currentProfileId) || '';
+    
+    vozesPT.forEach(function(voz) {
+        var opcao = document.createElement('option');
+        opcao.value = voz.name;
+        opcao.textContent = voz.name + ' (' + (voz.lang.toLowerCase().indexOf('br') !== -1 ? 'Brasil' : 'Portugal') + ')';
+        if (voz.name === savedVoiceName) {
+            opcao.selected = true;
+        }
+        seletorVozes.appendChild(opcao);
+    });
+}
+
+if (synth && synth.onvoiceschanged !== undefined) {
+    synth.onvoiceschanged = carregarVozes;
+}
 
 // Profile State Variables
 var currentProfileId = 'default';
@@ -859,6 +900,18 @@ function switchProfile(profileId) {
         document.documentElement.setAttribute('data-theme', savedTheme);
         updateThemeIcon(savedTheme);
         
+        // Set Low Vision Mode for this profile
+        var lowVision = localStorage.getItem('caa_low_vision_' + currentProfileId) === 'true';
+        if (lowVision) {
+            document.body.classList.add('low-vision');
+        } else {
+            document.body.classList.remove('low-vision');
+        }
+        updateLowVisionIcon(lowVision);
+
+        // Load voices for this profile
+        carregarVozes();
+        
         // Setup inputs
         var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId) || '';
         var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
@@ -927,6 +980,18 @@ function init() {
         var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
         updateThemeIcon(savedTheme);
+
+        // Set Low Vision Mode
+        var lowVision = localStorage.getItem('caa_low_vision_' + currentProfileId) === 'true';
+        if (lowVision) {
+            document.body.classList.add('low-vision');
+        } else {
+            document.body.classList.remove('low-vision');
+        }
+        updateLowVisionIcon(lowVision);
+
+        // Load system voices
+        carregarVozes();
 
         // Increment Access Counter
         var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
@@ -1578,7 +1643,7 @@ function speakText(text) {
     utterance.onend = cleanup;
     utterance.onerror = cleanup;
     
-    // Choose a local PT-BR voice if available
+    // Choose a local PT-BR voice or user selected voice
     var voices = [];
     try {
         voices = synth.getVoices();
@@ -1586,12 +1651,21 @@ function speakText(text) {
         console.warn('Erro ao obter vozes: ', e);
     }
     
-    var ptVoice = voices.find(function(voice) { 
-        return voice.lang && (voice.lang.toLowerCase().indexOf('pt-br') !== -1 || voice.lang.toLowerCase().indexOf('pt_br') !== -1); 
-    });
+    var savedVoiceName = localStorage.getItem('caa_selected_voice_' + currentProfileId) || '';
+    var selectedVoiceObj = null;
+    if (savedVoiceName && voices.length > 0) {
+        selectedVoiceObj = voices.find(function(v) { return v.name === savedVoiceName; });
+    }
     
-    if (ptVoice) {
-        utterance.voice = ptVoice;
+    if (selectedVoiceObj) {
+        utterance.voice = selectedVoiceObj;
+    } else {
+        var ptVoice = voices.find(function(voice) { 
+            return voice.lang && (voice.lang.toLowerCase().indexOf('pt-br') !== -1 || voice.lang.toLowerCase().indexOf('pt_br') !== -1); 
+        });
+        if (ptVoice) {
+            utterance.voice = ptVoice;
+        }
     }
     
     // We use a small delay (150ms) to allow Safari's speech queue to clear after synth.cancel()
@@ -1636,10 +1710,29 @@ function updateThemeIcon(theme) {
 function toggleTheme() {
     var currentTheme = document.documentElement.getAttribute('data-theme');
     var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('caa_theme_' + currentProfileId, newTheme);
     updateThemeIcon(newTheme);
+}
+
+// Handle Low Vision Mode Change
+function updateLowVisionIcon(active) {
+    if (!btnToggleLowVision) return;
+    btnToggleLowVision.innerHTML = `<span>${active ? 'Ativado 👁️' : 'Desativado ❌'}</span>`;
+}
+
+function toggleLowVision() {
+    var active = document.body.classList.contains('low-vision');
+    var newStatus = !active;
+    
+    if (newStatus) {
+        document.body.classList.add('low-vision');
+    } else {
+        document.body.classList.remove('low-vision');
+    }
+    
+    localStorage.setItem('caa_low_vision_' + currentProfileId, newStatus ? 'true' : 'false');
+    updateLowVisionIcon(newStatus);
 }
 
 // Open category subchoice modal (abrir por cima)
@@ -1781,6 +1874,18 @@ function setupEventListeners() {
 
     // Theme toggle
     btnToggleTheme.addEventListener('click', toggleTheme);
+
+    // Low Vision toggle
+    if (btnToggleLowVision) {
+        btnToggleLowVision.addEventListener('click', toggleLowVision);
+    }
+
+    // Voice selector change
+    if (seletorVozes) {
+        seletorVozes.addEventListener('change', function() {
+            localStorage.setItem('caa_selected_voice_' + currentProfileId, seletorVozes.value);
+        });
+    }
 
     // Settings Modal controls
     btnSettings.addEventListener('click', function() {
