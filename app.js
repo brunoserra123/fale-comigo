@@ -61,6 +61,7 @@ function ajaxRequest(url, method, data) {
 }
 
 var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec';
+var isDevMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' || new URLSearchParams(window.location.search).has('dev');
 var MAX_FREE_PROFILES = 2;
 var DRINK_KEYWORDS = ['agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'bebida', 'beber', 'toddy', 'achocolatado', 'iogurte', 'coca', 'mate', 'chimarrao', 'suquinh'];
 var PAIN_KEYWORDS = ['dor de', 'dor na', 'dor no', 'dor nas', 'dor nos', 'doi a', 'doi o', 'doi as', 'doi os', 'machucado'];
@@ -1084,9 +1085,15 @@ function renderCards() {
                 }
 
                 var draggableAttr = isReorderModeActive ? 'draggable="true"' : '';
+                var apiBadgeHtml = '';
+                if (card.fromApi) {
+                    apiBadgeHtml = `<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>`;
+                }
+
                 html += `
                     <div class="aac-card ${catClass}" ${draggableAttr} data-index="${indexInCards}" data-text="${card.text}">
                         ${shortcutBadgeHtml}
+                        ${apiBadgeHtml}
                         <button type="button" class="card-favorite-btn ${favClass}" data-index="${indexInCards}" title="${isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}">${favStarSymbol}</button>
                         <span class="card-category-tag">${catName}</span>
                         ${visualContent}
@@ -1672,8 +1679,14 @@ function openSubChoiceModal(actionText, categoryId) {
         var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
         var catClass = catObj ? catObj.class : 'cat-custom';
 
+        var apiBadgeHtml = '';
+        if (card.fromApi) {
+            apiBadgeHtml = `<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>`;
+        }
+
         return `
             <div class="aac-card ${catClass}" data-text="${card.text}">
+                ${apiBadgeHtml}
                 ${visualContent}
                 <span>${card.text}</span>
             </div>
@@ -1977,6 +1990,10 @@ function setupEventListeners() {
     // Auto-suggest emoji while typing card text
     var emojiDebounceTimer = null;
     if (cardTextInput && cardEmojiInput) {
+        cardEmojiInput.addEventListener('input', function() {
+            cardEmojiInput.dataset.fromApi = 'false';
+        });
+
         cardTextInput.addEventListener('input', function() {
             var text = cardTextInput.value.trim();
             if (!text) return;
@@ -1985,6 +2002,7 @@ function setupEventListeners() {
             // 1. Match exato da frase inteira na lista local
             if (EMOJI_DICTIONARY[fullNormalized]) {
                 cardEmojiInput.value = EMOJI_DICTIONARY[fullNormalized];
+                cardEmojiInput.dataset.fromApi = 'false';
                 return;
             }
             
@@ -1995,6 +2013,7 @@ function setupEventListeners() {
                 var word = words[i];
                 if (word && EMOJI_DICTIONARY[word]) {
                     cardEmojiInput.value = EMOJI_DICTIONARY[word];
+                    cardEmojiInput.dataset.fromApi = 'false';
                     foundLocal = true;
                     break;
                 }
@@ -2016,6 +2035,7 @@ function setupEventListeners() {
                                 var emojiCharacter = data[0].character;
                                 if (emojiCharacter) {
                                     cardEmojiInput.value = emojiCharacter;
+                                    cardEmojiInput.dataset.fromApi = 'true';
                                 }
                             }
                         })
@@ -2062,6 +2082,9 @@ function setupEventListeners() {
         }
 
         var newCardObj = { text: text, category: category, type: imageType, value: value };
+        if (imageType === 'emoji' && cardEmojiInput.dataset.fromApi === 'true') {
+            newCardObj.fromApi = true;
+        }
         if (audio) {
             newCardObj.audio = audio;
         }
