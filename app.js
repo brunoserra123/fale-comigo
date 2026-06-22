@@ -256,6 +256,84 @@ var lockMathAnswer = document.getElementById('lock-math-answer');
 var btnLockCancel = document.getElementById('btn-lock-cancel');
 var btnLockSubmit = document.getElementById('btn-lock-submit');
 
+// Premium & Reordering Mode State & DOM Elements
+var isReorderModeActive = false;
+var btnToggleReorder = document.getElementById('btn-toggle-reorder');
+var premiumCodeInput = document.getElementById('premium-code-input');
+var premiumStatusLabel = document.getElementById('premium-status-label');
+
+function checkPremiumStatus() {
+    var activeLocally = location.hostname === 'localhost' || 
+                        location.hostname === '127.0.0.1' || 
+                        location.protocol === 'file:';
+    var activeSaved = localStorage.getItem('caa_premium_active') === 'true';
+    return activeLocally || activeSaved;
+}
+
+function updatePremiumUI() {
+    var isPremium = checkPremiumStatus();
+    var isDevMode = localStorage.getItem('caa_dev_mode') === 'true';
+    var activeLocally = location.hostname === 'localhost' || 
+                        location.hostname === '127.0.0.1' || 
+                        location.protocol === 'file:';
+
+    if (premiumStatusLabel) {
+        if (activeLocally) {
+            premiumStatusLabel.innerHTML = 'Status: Local/Dev (Premium Ativado) 💻';
+            premiumStatusLabel.style.color = "var(--color-primary)";
+        } else if (isDevMode) {
+            premiumStatusLabel.innerHTML = 'Status: Modo Dev (Premium Ativado) 🛠️ <a href="#" id="btn-disable-premium-dev" style="color: var(--color-danger); margin-left: 10px; font-weight: bold; text-decoration: underline; cursor: pointer;">Desativar</a>';
+            premiumStatusLabel.style.color = "var(--color-primary)";
+            
+            // Attach event handler to the deactivation link after rendering
+            setTimeout(function() {
+                var btnDisable = document.getElementById('btn-disable-premium-dev');
+                if (btnDisable) {
+                    // Remove listener if any and add a new one
+                    btnDisable.onclick = function(e) {
+                        e.preventDefault();
+                        localStorage.removeItem('caa_premium_active');
+                        localStorage.removeItem('caa_dev_mode');
+                        if (premiumCodeInput) {
+                            premiumCodeInput.value = '';
+                            premiumCodeInput.disabled = false;
+                        }
+                        updatePremiumUI();
+                        showCustomAlert("Modo Premium desativado. Agora você está testando a versão Grátis!");
+                    };
+                }
+            }, 0);
+        } else if (isPremium) {
+            premiumStatusLabel.textContent = "Status: Premium Ativado! 🌟";
+            premiumStatusLabel.style.color = "var(--color-primary)";
+        } else {
+            premiumStatusLabel.textContent = "Status: Versão Grátis";
+            premiumStatusLabel.style.color = "var(--text-secondary)";
+        }
+    }
+
+    if (premiumCodeInput) {
+        if (activeLocally) {
+            premiumCodeInput.value = "localhost bypass";
+            premiumCodeInput.disabled = true;
+        } else if (isDevMode) {
+            premiumCodeInput.value = "dev 99";
+            premiumCodeInput.disabled = false; // Keep editable/clearable
+        } else if (isPremium) {
+            premiumCodeInput.value = "vip 99";
+            premiumCodeInput.disabled = true;
+        } else {
+            // Only clear it if it contains one of the key values
+            var val = premiumCodeInput.value.trim().toLowerCase().replace(/\s+/g, '');
+            if (val === 'vip99' || val === 'dev99' || val === 'mimidev' || val === 'localhostbypass') {
+                premiumCodeInput.value = '';
+            }
+            premiumCodeInput.disabled = false;
+        }
+    }
+}
+
+
 function updateLockUI() {
     var openLockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
     var closedLockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
@@ -804,6 +882,7 @@ window.switchProfile = switchProfile;
 function init() {
     isAppLocked = localStorage.getItem('caa_app_locked') === 'true';
     updateLockUI();
+    updatePremiumUI();
 
     loadProfiles();
     renderProfileSelector();
@@ -998,8 +1077,9 @@ function renderCards() {
                     }
                 }
 
+                var draggableAttr = isReorderModeActive ? 'draggable="true"' : '';
                 html += `
-                    <div class="aac-card ${catClass}" data-index="${indexInCards}" data-text="${card.text}">
+                    <div class="aac-card ${catClass}" ${draggableAttr} data-index="${indexInCards}" data-text="${card.text}">
                         ${shortcutBadgeHtml}
                         <button type="button" class="card-favorite-btn ${favClass}" data-index="${indexInCards}" title="${isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}">${favStarSymbol}</button>
                         <span class="card-category-tag">${catName}</span>
@@ -1624,6 +1704,9 @@ function setupEventListeners() {
 
     // Card click (add to sentence and speak immediately, or toggle favorite)
     cardsGrid.addEventListener('click', function(e) {
+        if (isReorderModeActive) {
+            return; // Bloqueia clicks se estiver organizando figuras
+        }
         // Toggle favorite if star button clicked
         var favBtn = e.target.closest('.card-favorite-btn');
         if (favBtn) {
@@ -2460,6 +2543,178 @@ function setupEventListeners() {
             }
         });
     }
+
+    // Reorder Mode toggle
+    if (btnToggleReorder) {
+        btnToggleReorder.addEventListener('click', function() {
+            if (!checkPremiumStatus()) {
+                showCustomAlert("Recurso Premium! 🌟\n\nOrganizar e reordenar as figuras é um recurso exclusivo da versão Premium.\n\nPara liberar esse recurso, digite o código 'vip 99' no campo 'Ativação Premium' dentro das Opções Avançadas de Configurações.");
+                return;
+            }
+
+            isReorderModeActive = !isReorderModeActive;
+            if (isReorderModeActive) {
+                document.body.classList.add('is-reordering');
+                showCustomAlert("Modo de Organização Ativo! ⇄\nArraste as figuras para mudar a ordem.");
+            } else {
+                document.body.classList.remove('is-reordering');
+            }
+            renderCards();
+        });
+    }
+
+    // License key input listener
+    if (premiumCodeInput) {
+        premiumCodeInput.addEventListener('input', function() {
+            var val = premiumCodeInput.value.trim().toLowerCase().replace(/\s+/g, '');
+            if (val === 'vip99') {
+                localStorage.setItem('caa_premium_active', 'true');
+                localStorage.removeItem('caa_dev_mode');
+                updatePremiumUI();
+                showCustomAlert("Premium Ativado! 🌟\n\nMuito obrigado por apoiar o projeto. Os recursos exclusivos estão liberados.");
+            } else if (val === 'dev99' || val === 'mimidev') {
+                localStorage.setItem('caa_premium_active', 'true');
+                localStorage.setItem('caa_dev_mode', 'true');
+                updatePremiumUI();
+                showCustomAlert("Modo Desenvolvedor Ativado! 🛠️\n\nPremium liberado para testes. Você pode desativar este modo a qualquer momento no painel de configurações para testar a versão gratuita.");
+            }
+        });
+    }
+
+    // Drag & Drop HTML5 Events
+    var dragStartIndex = null;
+
+    cardsGrid.addEventListener('dragstart', function(e) {
+        if (!isReorderModeActive) return;
+        var card = e.target.closest('.aac-card');
+        if (!card) return;
+        
+        dragStartIndex = parseInt(card.dataset.index, 10);
+        card.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', dragStartIndex);
+    });
+
+    cardsGrid.addEventListener('dragover', function(e) {
+        if (!isReorderModeActive) return;
+        e.preventDefault();
+        var card = e.target.closest('.aac-card');
+        if (card) {
+            card.classList.add('drag-over');
+        }
+    });
+
+    cardsGrid.addEventListener('dragleave', function(e) {
+        if (!isReorderModeActive) return;
+        var card = e.target.closest('.aac-card');
+        if (card) {
+            card.classList.remove('drag-over');
+        }
+    });
+
+    cardsGrid.addEventListener('drop', function(e) {
+        if (!isReorderModeActive) return;
+        e.preventDefault();
+        
+        var targetCard = e.target.closest('.aac-card');
+        if (targetCard) {
+            targetCard.classList.remove('drag-over');
+            var dragEndIndex = parseInt(targetCard.dataset.index, 10);
+            
+            if (dragStartIndex !== null && dragStartIndex !== dragEndIndex) {
+                // Swap cards
+                var temp = cards[dragStartIndex];
+                cards[dragStartIndex] = cards[dragEndIndex];
+                cards[dragEndIndex] = temp;
+                
+                saveCardsToStorage();
+                renderCards();
+            }
+        }
+        dragStartIndex = null;
+    });
+
+    cardsGrid.addEventListener('dragend', function(e) {
+        if (!isReorderModeActive) return;
+        var card = e.target.closest('.aac-card');
+        if (card) {
+            card.classList.remove('is-dragging');
+        }
+        
+        // Clean up any remaining hover states
+        var overs = cardsGrid.querySelectorAll('.drag-over');
+        overs.forEach(function(o) { o.classList.remove('drag-over'); });
+    });
+
+    // Touch Reordering Events (Mobile/Tablet Support)
+    var touchStartIndex = null;
+    var currentTouchTarget = null;
+
+    cardsGrid.addEventListener('touchstart', function(e) {
+        if (!isReorderModeActive) return;
+        
+        var card = e.target.closest('.aac-card');
+        if (!card) return;
+        
+        touchStartIndex = parseInt(card.dataset.index, 10);
+        card.classList.add('is-dragging');
+        currentTouchTarget = card;
+    }, { passive: true });
+
+    cardsGrid.addEventListener('touchmove', function(e) {
+        if (!isReorderModeActive) return;
+        if (touchStartIndex === null) return;
+        
+        // Prevent scrolling while dragging
+        if (e.cancelable) e.preventDefault();
+        
+        var touch = e.touches[0];
+        var element = document.elementFromPoint(touch.clientX, touch.clientY);
+        var targetCard = element ? element.closest('.aac-card') : null;
+        
+        // Remove hover from previous target
+        var previousOvers = cardsGrid.querySelectorAll('.drag-over');
+        previousOvers.forEach(function(o) { 
+            if (o !== targetCard) o.classList.remove('drag-over'); 
+        });
+        
+        if (targetCard && targetCard !== currentTouchTarget) {
+            targetCard.classList.add('drag-over');
+        }
+    }, { passive: false });
+
+    cardsGrid.addEventListener('touchend', function(e) {
+        if (!isReorderModeActive) return;
+        if (touchStartIndex === null) return;
+        
+        var previousOvers = cardsGrid.querySelectorAll('.drag-over');
+        previousOvers.forEach(function(o) { o.classList.remove('drag-over'); });
+        
+        if (currentTouchTarget) {
+            currentTouchTarget.classList.remove('is-dragging');
+        }
+        
+        // We look at the last touch position to find the target card
+        var touch = e.changedTouches[0];
+        var element = document.elementFromPoint(touch.clientX, touch.clientY);
+        var targetCard = element ? element.closest('.aac-card') : null;
+        
+        if (targetCard) {
+            var touchEndIndex = parseInt(targetCard.dataset.index, 10);
+            if (touchStartIndex !== touchEndIndex) {
+                // Swap
+                var temp = cards[touchStartIndex];
+                cards[touchStartIndex] = cards[touchEndIndex];
+                cards[touchEndIndex] = temp;
+                
+                saveCardsToStorage();
+                renderCards();
+            }
+        }
+        
+        touchStartIndex = null;
+        currentTouchTarget = null;
+    });
 
     // Keyboard shortcuts for favorites (keys 1 to 9)
     document.addEventListener('keydown', function(e) {
