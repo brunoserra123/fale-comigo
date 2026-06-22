@@ -61,6 +61,9 @@ function ajaxRequest(url, method, data) {
 }
 
 var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec';
+var MAX_FREE_PROFILES = 2;
+var DRINK_KEYWORDS = ['agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'bebida', 'beber', 'toddy', 'achocolatado', 'iogurte', 'coca', 'mate', 'chimarrao', 'suquinh'];
+var PAIN_KEYWORDS = ['dor de', 'dor na', 'dor no', 'dor nas', 'dor nos', 'doi a', 'doi o', 'doi as', 'doi os', 'machucado'];
 
 // Define pre-configured categories with emojis
 var CATEGORIES = [
@@ -263,72 +266,18 @@ var premiumCodeInput = document.getElementById('premium-code-input');
 var premiumStatusLabel = document.getElementById('premium-status-label');
 
 function checkPremiumStatus() {
-    var activeLocally = location.hostname === 'localhost' || 
-                        location.hostname === '127.0.0.1' || 
-                        location.protocol === 'file:';
-    var activeSaved = localStorage.getItem('caa_premium_active') === 'true';
-    return activeLocally || activeSaved;
+    return true;
 }
 
 function updatePremiumUI() {
-    var isPremium = checkPremiumStatus();
-    var isDevMode = localStorage.getItem('caa_dev_mode') === 'true';
-    var activeLocally = location.hostname === 'localhost' || 
-                        location.hostname === '127.0.0.1' || 
-                        location.protocol === 'file:';
-
     if (premiumStatusLabel) {
-        if (activeLocally) {
-            premiumStatusLabel.innerHTML = 'Status: Local/Dev (Premium Ativado) 💻';
-            premiumStatusLabel.style.color = "var(--color-primary)";
-        } else if (isDevMode) {
-            premiumStatusLabel.innerHTML = 'Status: Modo Dev (Premium Ativado) 🛠️ <a href="#" id="btn-disable-premium-dev" style="color: var(--color-danger); margin-left: 10px; font-weight: bold; text-decoration: underline; cursor: pointer;">Desativar</a>';
-            premiumStatusLabel.style.color = "var(--color-primary)";
-            
-            // Attach event handler to the deactivation link after rendering
-            setTimeout(function() {
-                var btnDisable = document.getElementById('btn-disable-premium-dev');
-                if (btnDisable) {
-                    // Remove listener if any and add a new one
-                    btnDisable.onclick = function(e) {
-                        e.preventDefault();
-                        localStorage.removeItem('caa_premium_active');
-                        localStorage.removeItem('caa_dev_mode');
-                        if (premiumCodeInput) {
-                            premiumCodeInput.value = '';
-                            premiumCodeInput.disabled = false;
-                        }
-                        updatePremiumUI();
-                        showCustomAlert("Modo Premium desativado. Agora você está testando a versão Grátis!");
-                    };
-                }
-            }, 0);
-        } else if (isPremium) {
-            premiumStatusLabel.textContent = "Status: Premium Ativado! 🌟";
-            premiumStatusLabel.style.color = "var(--color-primary)";
-        } else {
-            premiumStatusLabel.textContent = "Status: Versão Grátis";
-            premiumStatusLabel.style.color = "var(--text-secondary)";
-        }
+        premiumStatusLabel.innerHTML = 'Status: Versão Completa 🌟';
+        premiumStatusLabel.style.color = "var(--color-primary)";
     }
-
     if (premiumCodeInput) {
-        if (activeLocally) {
-            premiumCodeInput.value = "localhost bypass";
-            premiumCodeInput.disabled = true;
-        } else if (isDevMode) {
-            premiumCodeInput.value = "dev 99";
-            premiumCodeInput.disabled = false; // Keep editable/clearable
-        } else if (isPremium) {
-            premiumCodeInput.value = "vip 99";
-            premiumCodeInput.disabled = true;
-        } else {
-            // Only clear it if it contains one of the key values
-            var val = premiumCodeInput.value.trim().toLowerCase().replace(/\s+/g, '');
-            if (val === 'vip99' || val === 'dev99' || val === 'mimidev' || val === 'localhostbypass') {
-                premiumCodeInput.value = '';
-            }
-            premiumCodeInput.disabled = false;
+        var parent = premiumCodeInput.parentElement;
+        if (parent) {
+            parent.style.display = 'none';
         }
     }
 }
@@ -562,10 +511,28 @@ function normalizeText(text) {
         .trim();
 }
 
+function isDrinkCard(card) {
+    if (card.category === 'drink') return true;
+    var norm = normalizeText(card.text);
+    return DRINK_KEYWORDS.some(function(kw) {
+        return norm === kw || norm.indexOf(kw) !== -1;
+    });
+}
+
 // Função para identificar a categoria correspondente a partir do texto digitado
 function detectCategory(text) {
     var normalized = normalizeText(text);
     
+    // Dor (pain)
+    if (PAIN_KEYWORDS.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'pain';
+    }
+
+    // Bebida (drink)
+    if (DRINK_KEYWORDS.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'drink';
+    }
+
     // Pessoas (person)
     var personKeywords = [
         'eu', 'voce', 'mamae', 'mae', 'papai', 'pai', 'vovo', 'vovo', 'irmao', 'irma', 'amigo', 'amiga', 
@@ -689,7 +656,6 @@ function showCustomConfirm(message) {
     });
 }
 
-// Set cards, clean obsolete ones, sync properties and ensure DEFAULT_CARDS are always present
 function setAndCleanCards(newCards) {
     var cleaned = newCards.slice();
     // Remove obsolete cards
@@ -706,13 +672,21 @@ function setAndCleanCards(newCards) {
         return savedCard;
     });
     
-    // Ensure all default cards are present
-    DEFAULT_CARDS.forEach(function(defaultCard) {
-        var exists = cleaned.some(function(c) { return c.text === defaultCard.text; });
-        if (!exists) {
-            cleaned.push(defaultCard);
-        }
-    });
+    var isPremium = checkPremiumStatus();
+    if (!isPremium) {
+        // If not premium, keep ONLY the default cards
+        cleaned = cleaned.filter(function(card) {
+            return DEFAULT_CARDS.some(function(defaultCard) { return defaultCard.text === card.text; });
+        });
+    } else {
+        // Ensure all default cards are present
+        DEFAULT_CARDS.forEach(function(defaultCard) {
+            var exists = cleaned.some(function(c) { return c.text === defaultCard.text; });
+            if (!exists) {
+                cleaned.push(defaultCard);
+            }
+        });
+    }
 
     cards = cleaned;
 }
@@ -807,9 +781,30 @@ function renderProfilesList() {
     }).join('');
 }
 
+function loadSpecialProfileBackup(profileName) {
+    if (!profileName) return Promise.resolve([]);
+    var normalizedName = normalizeText(profileName);
+    if (normalizedName === 'mauro') {
+        return ajaxRequest('backup_comunicador_caa_mauro.json')
+            .then(function(res) {
+                if (Array.isArray(res)) return res;
+                return [];
+            })
+            .catch(function(e) {
+                console.warn('Erro ao carregar backup do Mauro:', e);
+                return [];
+            });
+    }
+    return Promise.resolve([]);
+}
+
 function loadProfileCards(profileId) {
+    var profileObj = profiles.find(function(p) { return p.id === profileId; });
+    var profileName = profileObj ? profileObj.name : '';
+
+    var fetchPromise;
     if (dbHelper.db) {
-        return dbHelper.get('caa_custom_cards_' + profileId).then(function(dbCards) {
+        fetchPromise = dbHelper.get('caa_custom_cards_' + profileId).then(function(dbCards) {
             if (dbCards) {
                 return dbCards;
             }
@@ -823,17 +818,27 @@ function loadProfileCards(profileId) {
                     return parsed;
                 } catch(e) {}
             }
-            return [];
+            return null;
         });
     } else {
         var savedCards = localStorage.getItem('caa_custom_cards_' + profileId);
         if (savedCards) {
             try {
-                return Promise.resolve(JSON.parse(savedCards));
-            } catch(e) {}
+                fetchPromise = Promise.resolve(JSON.parse(savedCards));
+            } catch(e) {
+                fetchPromise = Promise.resolve(null);
+            }
+        } else {
+            fetchPromise = Promise.resolve(null);
         }
-        return Promise.resolve([]);
     }
+
+    return fetchPromise.then(function(cardsLoaded) {
+        if (cardsLoaded && cardsLoaded.length > 0) {
+            return cardsLoaded;
+        }
+        return loadSpecialProfileBackup(profileName);
+    });
 }
 
 function switchProfile(profileId) {
@@ -1026,6 +1031,7 @@ function renderCards() {
 
     filtered.forEach(function(card) {
         var cat = card.category || 'custom';
+        if (cat === 'drink') cat = 'food';
         if (!cardsByCategory[cat]) {
             cardsByCategory[cat] = [];
         }
@@ -1635,10 +1641,10 @@ function openSubChoiceModal(actionText, categoryId) {
     
     if (categoryId === 'food') {
         subChoiceTitle.textContent = 'O que você quer comer?';
-        subCards = cards.filter(function(c) { return c.category === 'food' && c.text !== 'Água' && c.text !== 'Suco'; });
+        subCards = cards.filter(function(c) { return (c.category === 'food' || c.category === 'drink') && !isDrinkCard(c); });
     } else if (categoryId === 'drink') {
         subChoiceTitle.textContent = 'O que você quer beber?';
-        subCards = cards.filter(function(c) { return c.category === 'food' && (c.text === 'Água' || c.text === 'Suco'); });
+        subCards = cards.filter(function(c) { return (c.category === 'food' || c.category === 'drink') && isDrinkCard(c); });
     } else if (categoryId === 'person') {
         subChoiceTitle.textContent = 'Com quem você quer falar?';
         subCards = cards.filter(function(c) { return c.category === 'person'; });
@@ -1969,25 +1975,54 @@ function setupEventListeners() {
     }
 
     // Auto-suggest emoji while typing card text
+    var emojiDebounceTimer = null;
     if (cardTextInput && cardEmojiInput) {
         cardTextInput.addEventListener('input', function() {
-            var text = cardTextInput.value;
+            var text = cardTextInput.value.trim();
+            if (!text) return;
             var fullNormalized = normalizeText(text);
             
-            // 1. Match exato da frase inteira
+            // 1. Match exato da frase inteira na lista local
             if (EMOJI_DICTIONARY[fullNormalized]) {
                 cardEmojiInput.value = EMOJI_DICTIONARY[fullNormalized];
                 return;
             }
             
-            // 2. Match palavra por palavra (da direita para a esquerda)
+            // 2. Match palavra por palavra local
             var words = text.split(/\s+/).map(normalizeText);
+            var foundLocal = false;
             for (var i = words.length - 1; i >= 0; i--) {
                 var word = words[i];
                 if (word && EMOJI_DICTIONARY[word]) {
                     cardEmojiInput.value = EMOJI_DICTIONARY[word];
+                    foundLocal = true;
                     break;
                 }
+            }
+            
+            if (foundLocal) return;
+
+            // 3. Se não achou na lista local, busca na API dinamicamente (com debounce)
+            if (text.length >= 3) {
+                if (emojiDebounceTimer) clearTimeout(emojiDebounceTimer);
+                emojiDebounceTimer = setTimeout(function() {
+                    var apiKey = 'd2de36964848b8e14e2b16a7ba69449635f4bb38';
+                    var searchWord = words[words.length - 1];
+                    var url = 'https://emoji-api.com/emojis?search=' + encodeURIComponent(searchWord) + '&access_key=' + apiKey;
+                    
+                    ajaxRequest(url)
+                        .then(function(data) {
+                            if (Array.isArray(data) && data.length > 0) {
+                                var emojiCharacter = data[0].character;
+                                if (emojiCharacter) {
+                                    cardEmojiInput.value = emojiCharacter;
+                                }
+                            }
+                        })
+                        .catch(function(e) {
+                            console.warn('Erro ao buscar emoji na API:', e);
+                        });
+                }, 600);
             }
         });
     }
@@ -1995,6 +2030,11 @@ function setupEventListeners() {
     // Add card submission inside settings
     formAddCard.addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        if (!checkPremiumStatus()) {
+            showCustomAlert("Recurso Premium! 🌟\n\nCriar cartões personalizados é um recurso exclusivo da versão Premium.\n\nPara liberar esse recurso, insira o seu código de ativação no campo 'Ativação Premium' dentro das Opções Avançadas de Configurações.");
+            return;
+        }
         
         var text = document.getElementById('card-text').value.trim();
         var category = detectCategory(text);
@@ -2298,6 +2338,11 @@ function setupEventListeners() {
             var name = inputNewProfileName.value.trim();
             if (!name) return;
             
+            if (!checkPremiumStatus() && profiles.length >= MAX_FREE_PROFILES) {
+                showCustomAlert("Limite de perfis atingido! 👥\n\nNa versão gratuita você pode ter no máximo " + MAX_FREE_PROFILES + " perfis.\n\nAtive a versão Premium para criar perfis ilimitados.");
+                return;
+            }
+            
             var id = 'profile_' + new Date().getTime();
             profiles.push({ id: id, name: name });
             saveProfiles();
@@ -2388,6 +2433,10 @@ function setupEventListeners() {
                         var importBtns = cloudProfilesList.querySelectorAll('.btn-import-cloud-profile');
                         importBtns.forEach(function(btn) {
                             btn.addEventListener('click', function() {
+                                if (!checkPremiumStatus() && profiles.length >= MAX_FREE_PROFILES) {
+                                    showCustomAlert("Limite de perfis atingido! 👥\n\nNa versão gratuita você pode ter no máximo " + MAX_FREE_PROFILES + " perfis.\n\nAtive a versão Premium para importar perfis ilimitados.");
+                                    return;
+                                }
                                 var pName = btn.dataset.name;
                                 var id = 'profile_' + new Date().getTime() + Math.floor(Math.random() * 1000);
                                 profiles.push({ id: id, name: pName });

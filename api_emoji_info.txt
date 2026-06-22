@@ -1,0 +1,8 @@
+SITE DA API DE EMOJIS:
+https://emoji-api.com/
+
+Chave de Acesso (API Key):
+d2de36964848b8e14e2b16a7ba69449635f4bb38
+
+Este site fornece uma API pública para buscar emojis por palavras-chave em inglês.
+Útil para gerar sugestões e buscas de imagens automaticamente no aplicativo Fale Comigo.
