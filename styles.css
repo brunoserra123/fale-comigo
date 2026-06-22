@@ -1001,3 +1001,56 @@ body {
     border-color: var(--color-danger-hover) !important;
     animation: pulse-cloud 1s infinite;
 }
+
+/* Spinner animation for Cloud Status SVG */
+.cloud-status-indicator.loading svg {
+    animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Skeleton Loading styles */
+.skeleton-card {
+    background-color: var(--bg-card);
+    border: 4px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    aspect-ratio: 1 / 1.05;
+    position: relative;
+    cursor: wait;
+    overflow: hidden;
+    opacity: 0.75;
+}
+
+.skeleton-visual {
+    width: 60px;
+    height: 60px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg, var(--border-color) 25%, var(--bg-app) 50%, var(--border-color) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-glow 1.5s infinite;
+    flex-grow: 1;
+    margin-bottom: 12px;
+    margin-top: 10px;
+}
+
+.skeleton-text {
+    width: 80%;
+    height: 14px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--border-color) 25%, var(--bg-app) 50%, var(--border-color) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-glow 1.5s infinite;
+}
+
+@keyframes skeleton-glow {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}

@@ -236,6 +236,136 @@ var recordStatus = document.getElementById('record-status');
 var audioPreview = document.getElementById('audio-preview');
 var groupAudioRecord = document.getElementById('group-audio-record');
 
+// IndexedDB Helper for storing card data locally (bypassing 5MB localStorage limit)
+var dbHelper = {
+    dbName: 'caa_db',
+    dbVersion: 1,
+    db: null,
+
+    init: function() {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+            if (!window.indexedDB) {
+                console.warn('IndexedDB não é suportado pelo seu navegador.');
+                resolve(null);
+                return;
+            }
+            var request = indexedDB.open(self.dbName, self.dbVersion);
+
+            request.onupgradeneeded = function(e) {
+                var db = e.target.result;
+                if (!db.objectStoreNames.contains('profiles_data')) {
+                    db.createObjectStore('profiles_data', { keyPath: 'id' });
+                }
+            };
+
+            request.onsuccess = function(e) {
+                self.db = e.target.result;
+                resolve(self.db);
+            };
+
+            request.onerror = function(e) {
+                console.error('Erro ao abrir IndexedDB:', e.target.error);
+                resolve(null);
+            };
+        });
+    },
+
+    get: function(key) {
+        var self = this;
+        return new Promise(function(resolve) {
+            if (!self.db) {
+                resolve(null);
+                return;
+            }
+            try {
+                var transaction = self.db.transaction(['profiles_data'], 'readonly');
+                var store = transaction.objectStore('profiles_data');
+                var request = store.get(key);
+
+                request.onsuccess = function(e) {
+                    resolve(e.target.result ? e.target.result.value : null);
+                };
+
+                request.onerror = function() {
+                    resolve(null);
+                };
+            } catch(err) {
+                console.error('Erro no IndexedDB get:', err);
+                resolve(null);
+            }
+        });
+    },
+
+    set: function(key, value) {
+        var self = this;
+        return new Promise(function(resolve) {
+            if (!self.db) {
+                resolve(false);
+                return;
+            }
+            try {
+                var transaction = self.db.transaction(['profiles_data'], 'readwrite');
+                var store = transaction.objectStore('profiles_data');
+                var request = store.put({ id: key, value: value });
+
+                request.onsuccess = function() {
+                    resolve(true);
+                };
+
+                request.onerror = function(e) {
+                    console.error('Erro no IndexedDB set:', e.target.error);
+                    resolve(false);
+                };
+            } catch(err) {
+                console.error('Erro no IndexedDB set:', err);
+                resolve(false);
+            }
+        });
+    },
+
+    delete: function(key) {
+        var self = this;
+        return new Promise(function(resolve) {
+            if (!self.db) {
+                resolve(false);
+                return;
+            }
+            try {
+                var transaction = self.db.transaction(['profiles_data'], 'readwrite');
+                var store = transaction.objectStore('profiles_data');
+                var request = store.delete(key);
+
+                request.onsuccess = function() {
+                    resolve(true);
+                };
+
+                request.onerror = function() {
+                    resolve(false);
+                };
+            } catch(err) {
+                console.error('Erro no IndexedDB delete:', err);
+                resolve(false);
+            }
+        });
+    }
+};
+
+// Render loading skeletons in the grid
+function showSkeletonLoading() {
+    if (!cardsGrid) return;
+    var html = '';
+    for (var i = 0; i < 8; i++) {
+        html += `
+            <div class="skeleton-card">
+                <div class="skeleton-visual"></div>
+                <div class="skeleton-text"></div>
+            </div>
+        `;
+    }
+    cardsGrid.innerHTML = html;
+}
+
 function setCloudStatus(status, titleText) {
     if (!cloudStatusIndicator) return;
     cloudStatusIndicator.className = 'cloud-status-indicator ' + status;
@@ -549,6 +679,35 @@ function renderProfilesList() {
     }).join('');
 }
 
+function loadProfileCards(profileId) {
+    if (dbHelper.db) {
+        return dbHelper.get('caa_custom_cards_' + profileId).then(function(dbCards) {
+            if (dbCards) {
+                return dbCards;
+            }
+            // fallback
+            var savedCards = localStorage.getItem('caa_custom_cards_' + profileId);
+            if (savedCards) {
+                try {
+                    var parsed = JSON.parse(savedCards);
+                    // migrate to db
+                    dbHelper.set('caa_custom_cards_' + profileId, parsed);
+                    return parsed;
+                } catch(e) {}
+            }
+            return [];
+        });
+    } else {
+        var savedCards = localStorage.getItem('caa_custom_cards_' + profileId);
+        if (savedCards) {
+            try {
+                return Promise.resolve(JSON.parse(savedCards));
+            } catch(e) {}
+        }
+        return Promise.resolve([]);
+    }
+}
+
 function switchProfile(profileId) {
     if (profileId === currentProfileId) return;
     currentProfileId = profileId;
@@ -558,43 +717,36 @@ function switchProfile(profileId) {
     selectedCards = [];
     
     // Load and clean cards for this profile
-    var savedCards = localStorage.getItem('caa_custom_cards_' + currentProfileId);
-    if (savedCards) {
-        try {
-            setAndCleanCards(JSON.parse(savedCards));
-        } catch (e) {
-            setAndCleanCards([]);
+    loadProfileCards(currentProfileId).then(function(loadedCards) {
+        setAndCleanCards(loadedCards);
+        
+        // Set theme for this profile
+        var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+        
+        // Setup inputs
+        var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId) || '';
+        var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+        var oldUrl = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
+        if (!syncAppsScriptUrl || syncAppsScriptUrl === oldUrl) {
+            syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
+            localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
         }
-    } else {
-        setAndCleanCards([]);
-    }
-    
-    // Set theme for this profile
-    var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
-    
-    // Setup inputs
-    var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId) || '';
-    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
-    var oldUrl = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
-    if (!syncAppsScriptUrl || syncAppsScriptUrl === oldUrl) {
-        syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
-        localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
-    }
-    var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
-    
-    if (syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
-    if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
-    if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
-    
-    // Render
-    renderCards();
-    updateSentenceBuilder();
-    renderProfileSelector();
-    renderProfilesList();
-    
-    if (modalProfiles) modalProfiles.classList.remove('open');
+        var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
+        
+        if (syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
+        if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
+        if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
+        
+        // Render
+        renderCards();
+        updateSentenceBuilder();
+        renderProfileSelector();
+        renderProfilesList();
+        
+        if (modalProfiles) modalProfiles.classList.remove('open');
+    });
 }
 window.switchProfile = switchProfile;
 
@@ -626,83 +778,78 @@ function init() {
         localStorage.setItem('caa_auto_backup_default', oldAutoBackup);
     }
 
-    // Load custom cards for current profile
-    var savedCards = localStorage.getItem('caa_custom_cards_' + currentProfileId);
-    if (savedCards) {
-        try {
-            var parsed = JSON.parse(savedCards);
-            setAndCleanCards(parsed);
-        } catch (e) {
-            console.error('Erro ao ler cartões salvos: ', e);
-            setAndCleanCards([]);
-        }
+    dbHelper.init().then(function() {
+        return loadProfileCards(currentProfileId);
+    }).then(function(loadedCards) {
+        setAndCleanCards(loadedCards);
+        // Force save to IndexedDB just in case it was migrated from localStorage
         saveCardsToStorage(false);
-    } else {
-        setAndCleanCards([]);
-        saveCardsToStorage(false);
-    }
 
-    // Set Theme
-    var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcon(savedTheme);
+        // Set Theme
+        var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
 
-    // Increment Access Counter
-    var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
-    accesses++;
-    localStorage.setItem('caa_access_count', accesses.toString());
-    if (accessCounterVal) {
-        accessCounterVal.textContent = accesses;
-    }
-
-    // Render interface elements
-    renderCards();
-    updateSentenceBuilder();
-
-    // Setup event listeners
-    setupEventListeners();
-
-    // Check Google Drive & Apps Script Sync on Startup
-    var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
-    var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
-    var oldUrl = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
-    if (!syncAppsScriptUrl || syncAppsScriptUrl === oldUrl) {
-        syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
-        localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
-    }
-    var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
-
-    if (syncDriveId && syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
-    if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
-    if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
-
-    var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
-    var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
-
-    // Record Access in Cloud synchronously if online
-    if (navigator.onLine && syncAppsScriptUrl) {
-        ajaxRequest(syncAppsScriptUrl, 'POST', { action: 'recordAccess', profile: profileName, accesses: accesses }).catch(function(e) {
-            console.warn('Erro ao registrar acesso na nuvem:', e);
-        });
-    }
-
-    if (navigator.onLine) {
-        var hasCustomUrl = !!localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
-        var isNewDevice = !localStorage.getItem('caa_custom_cards_' + currentProfileId);
-        if (syncAppsScriptUrl && (hasCustomUrl || isNewDevice)) {
-            syncWithAppsScript(syncAppsScriptUrl);
-        } else if (syncDriveId) {
-            syncWithGoogleDrive(syncDriveId);
+        // Increment Access Counter
+        var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
+        accesses++;
+        localStorage.setItem('caa_access_count', accesses.toString());
+        if (accessCounterVal) {
+            accessCounterVal.textContent = accesses;
         }
-    } else if (syncStatusText) {
-        syncStatusText.className = 'sync-status-text success';
-        syncStatusText.textContent = 'Offline (Usando figuras salvas em cache) 💾';
-    }
+
+        // Render interface elements
+        renderCards();
+        updateSentenceBuilder();
+
+        // Setup event listeners
+        setupEventListeners();
+
+        // Check Google Drive & Apps Script Sync on Startup
+        var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
+        var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+        var oldUrl = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
+        if (!syncAppsScriptUrl || syncAppsScriptUrl === oldUrl) {
+            syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
+            localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
+        }
+        var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
+
+        if (syncDriveId && syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
+        if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
+        if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
+
+        var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+        var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+
+        // Record Access in Cloud synchronously if online
+        if (navigator.onLine && syncAppsScriptUrl) {
+            ajaxRequest(syncAppsScriptUrl, 'POST', { action: 'recordAccess', profile: profileName, accesses: accesses }).catch(function(e) {
+                console.warn('Erro ao registrar acesso na nuvem:', e);
+            });
+        }
+
+        if (navigator.onLine) {
+            var hasCustomUrl = !!localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+            var isNewDevice = !localStorage.getItem('caa_custom_cards_' + currentProfileId);
+            if (syncAppsScriptUrl && (hasCustomUrl || isNewDevice)) {
+                syncWithAppsScript(syncAppsScriptUrl);
+            } else if (syncDriveId) {
+                syncWithGoogleDrive(syncDriveId);
+            }
+        } else if (syncStatusText) {
+            syncStatusText.className = 'sync-status-text success';
+            syncStatusText.textContent = 'Offline (Usando figuras salvas em cache) 💾';
+        }
+    });
 }
 
 function saveCardsToStorage(triggerCloudUpload) {
     if (triggerCloudUpload === undefined) triggerCloudUpload = true;
     localStorage.setItem('caa_custom_cards_' + currentProfileId, JSON.stringify(cards));
+    if (dbHelper.db) {
+        dbHelper.set('caa_custom_cards_' + currentProfileId, cards);
+    }
     if (triggerCloudUpload) {
         uploadBackupToCloud();
     }
@@ -870,6 +1017,7 @@ function syncWithGoogleDrive(fileId, showFeedback) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Sincronizando figuras... 🔄';
     }
+    showSkeletonLoading();
 
     var url;
     if (fileId.indexOf('http://') === 0 || fileId.indexOf('https://') === 0) {
@@ -931,6 +1079,7 @@ function syncWithGoogleDrive(fileId, showFeedback) {
                 syncStatusText.className = 'sync-status-text error';
                 syncStatusText.textContent = 'Erro ao sincronizar. Verifique a internet e o ID. ❌';
             }
+            renderCards();
             if (showFeedback) {
                 showCustomAlert('Falha na sincronização. Certifique-se de que o arquivo no Google Drive está compartilhado como "Qualquer pessoa com o link" (público) e o ID está correto.');
             }
@@ -993,6 +1142,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
     }
+    showSkeletonLoading();
 
     var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
     var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
@@ -1014,6 +1164,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
                     syncStatusText.textContent = 'Sincronizado! (Backup criado na nuvem) ✅';
                 }
                 uploadBackupToCloud();
+                renderCards();
                 return true;
             }
 
@@ -1056,6 +1207,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
                 syncStatusText.className = 'sync-status-text error';
                 syncStatusText.textContent = 'Erro ao sincronizar com o Apps Script. ❌';
             }
+            renderCards();
             if (showFeedback) {
                 showCustomAlert('Falha ao sincronizar com o Google Apps Script. Verifique a URL e a internet.');
             }
@@ -1073,6 +1225,7 @@ function syncWithGoogleDrive(fileId, showFeedback) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
     }
+    showSkeletonLoading();
 
     var corsBypassUrl = 'https://docs.google.com/uc?export=download&id=' + driveFileId;
 
@@ -1119,6 +1272,7 @@ function syncWithGoogleDrive(fileId, showFeedback) {
                 syncStatusText.className = 'sync-status-text error';
                 syncStatusText.textContent = 'Erro ao sincronizar. Verifique a internet e o ID. ❌';
             }
+            renderCards();
             if (showFeedback) {
                 showCustomAlert('Falha na sincronização. Certifique-se de que o arquivo no Google Drive está compartilhado como "Qualquer pessoa com o link" (público) e o ID está correto.');
             }
