@@ -227,6 +227,213 @@ var changelogRemovedList = document.getElementById('changelog-removed-list');
 // Initialize Web Speech Synthesis
 var synth = window.speechSynthesis;
 
+// Elementos de Velocidade e Tom da Voz
+var inputVoiceRate = document.getElementById('input-voice-rate');
+var valVoiceRate = document.getElementById('val-voice-rate');
+var inputVoicePitch = document.getElementById('input-voice-pitch');
+var valVoicePitch = document.getElementById('val-voice-pitch');
+var btnShareWhatsapp = document.getElementById('btn-share-whatsapp');
+var btnShareFloat = document.getElementById('btn-share-float');
+
+// Elementos da API ARASAAC
+var groupArasaac = document.getElementById('group-arasaac');
+var arasaacSearchInput = document.getElementById('arasaac-search-input');
+var btnArasaacSearch = document.getElementById('btn-arasaac-search');
+var arasaacResultsContainer = document.getElementById('arasaac-results-container');
+var selectedArasaacIdInput = document.getElementById('selected-arasaac-id');
+var selectedArasaacBase64 = null;
+
+// Elementos do Histórico de Frases Recentes
+var recentSentencesSection = document.getElementById('recent-sentences-section');
+var recentSentencesList = document.getElementById('recent-sentences-list');
+var recentSentences = [];
+
+function convertImageUrlToBase64(url) {
+    return new Promise(function(resolve, reject) {
+        fetch(url)
+            .then(function(res) {
+                if (!res.ok) throw new Error('Falha no download da imagem');
+                return res.blob();
+            })
+            .then(function(blob) {
+                var reader = new FileReader();
+                reader.onloadend = function() {
+                    resolve(reader.result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            })
+            .catch(reject);
+    });
+}
+
+function carregarVozConfig() {
+    var voiceRate = localStorage.getItem('caa_voice_rate_' + currentProfileId) || '1.0';
+    var voicePitch = localStorage.getItem('caa_voice_pitch_' + currentProfileId) || '1.0';
+    
+    if (inputVoiceRate) inputVoiceRate.value = voiceRate;
+    if (valVoiceRate) valVoiceRate.textContent = parseFloat(voiceRate).toFixed(1);
+    if (inputVoicePitch) inputVoicePitch.value = voicePitch;
+    if (valVoicePitch) valVoicePitch.textContent = parseFloat(voicePitch).toFixed(1);
+}
+
+function carregarRecentes() {
+    if (!recentSentencesSection || !recentSentencesList) return;
+    
+    var stored = localStorage.getItem('caa_recent_sentences_' + currentProfileId);
+    recentSentences = [];
+    if (stored) {
+        try {
+            recentSentences = JSON.parse(stored);
+        } catch (e) {
+            console.error('Erro ao fazer parse das frases recentes:', e);
+        }
+    }
+    
+    if (!Array.isArray(recentSentences) || recentSentences.length === 0) {
+        recentSentencesSection.classList.add('d-none');
+        recentSentencesList.innerHTML = '';
+        return;
+    }
+    
+    recentSentencesSection.classList.remove('d-none');
+    var html = '';
+    recentSentences.forEach(function(sentenceCards, idx) {
+        var textLabel = sentenceCards.map(function(c) { return c.text; }).join(' ');
+        var firstCard = sentenceCards[0];
+        var iconHtml = '';
+        if (firstCard) {
+            if (firstCard.type === 'emoji') {
+                iconHtml = `<span style="font-size: 1rem; flex-shrink: 0;">${firstCard.value}</span>`;
+            } else {
+                iconHtml = `<img src="${firstCard.value}" style="width: 16px; height: 16px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">`;
+            }
+        }
+        
+        html += `
+            <button type="button" class="recent-chip" data-idx="${idx}">
+                ${iconHtml}
+                <span style="overflow: hidden; text-overflow: ellipsis; max-width: 140px; white-space: nowrap;">${textLabel}</span>
+            </button>
+        `;
+    });
+    
+    recentSentencesList.innerHTML = html;
+    
+    var chips = recentSentencesList.querySelectorAll('.recent-chip');
+    chips.forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            var idx = parseInt(chip.dataset.idx, 10);
+            var selectedList = recentSentences[idx];
+            if (Array.isArray(selectedList)) {
+                selectedCards = [...selectedList];
+                updateSentenceBuilder();
+                
+                var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
+                speakText(fullSentence);
+            }
+        });
+    });
+}
+
+function adicionarFraseRecente(cardsArray) {
+    if (!Array.isArray(cardsArray) || cardsArray.length === 0) return;
+    
+    var currentText = cardsArray.map(function(c) { return c.text; }).join(' ').trim();
+    if (!currentText) return;
+    
+    var stored = localStorage.getItem('caa_recent_sentences_' + currentProfileId);
+    var list = [];
+    if (stored) {
+        try { list = JSON.parse(stored); } catch (e) {}
+    }
+    if (!Array.isArray(list)) list = [];
+    
+    list = list.filter(function(sentenceCards) {
+        var text = sentenceCards.map(function(c) { return c.text; }).join(' ').trim();
+        return text !== currentText;
+    });
+    
+    list.unshift(cardsArray);
+    
+    if (list.length > 5) {
+        list = list.slice(0, 5);
+    }
+    
+    localStorage.setItem('caa_recent_sentences_' + currentProfileId, JSON.stringify(list));
+    carregarRecentes();
+}
+
+function carregarEstatisticas() {
+    var statsContainer = document.getElementById('stats-usage-list');
+    if (!statsContainer) return;
+    
+    var stored = localStorage.getItem('caa_stats_' + currentProfileId);
+    var stats = {};
+    if (stored) {
+        try { stats = JSON.parse(stored); } catch(e) {}
+    }
+    
+    var statsArray = [];
+    for (var key in stats) {
+        if (stats.hasOwnProperty(key)) {
+            statsArray.push({ text: key, count: stats[key] });
+        }
+    }
+    
+    statsArray.sort(function(a, b) { return b.count - a.count; });
+    
+    if (statsArray.length === 0) {
+        statsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary); text-align: center; display: block; padding: 10px 0;">Nenhum uso registrado ainda.</span>';
+        return;
+    }
+    
+    var topStats = statsArray.slice(0, 7);
+    var html = '';
+    topStats.forEach(function(item) {
+        var card = cards.find(function(c) { return c.text === item.text; });
+        var iconHtml = '🖼️';
+        if (card) {
+            if (card.type === 'emoji') {
+                iconHtml = card.value;
+            } else {
+                iconHtml = `<img src="${card.value}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">`;
+            }
+        }
+        
+        html += `
+            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                    <span style="font-size: 1.1rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;">${iconHtml}</span>
+                    <span style="font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis;">${item.text}</span>
+                </div>
+                <span style="font-weight: 700; color: var(--color-primary); flex-shrink: 0;">${item.count} ${item.count === 1 ? 'toque' : 'toques'}</span>
+            </div>
+        `;
+    });
+    
+    statsContainer.innerHTML = html;
+}
+
+function registrarUsoFigura(text) {
+    if (!text) return;
+    
+    var stored = localStorage.getItem('caa_stats_' + currentProfileId);
+    var stats = {};
+    if (stored) {
+        try { stats = JSON.parse(stored); } catch(e) {}
+    }
+    
+    stats[text] = (stats[text] || 0) + 1;
+    
+    localStorage.setItem('caa_stats_' + currentProfileId, JSON.stringify(stats));
+    
+    var modalSettingsEl = document.getElementById('modal-settings');
+    if (modalSettingsEl && modalSettingsEl.classList.contains('open')) {
+        carregarEstatisticas();
+    }
+}
+
 // Function to load Portuguese voices
 function carregarVozes() {
     if (!seletorVozes || !synth) return;
@@ -630,6 +837,87 @@ function detectCategory(text) {
     return 'custom';
 }
 
+function fallbackCopyText(text) {
+    var textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        showCustomAlert('Frase copiada para a área de transferência! 📋');
+    } catch (err) {
+        console.error('Erro ao copiar texto: ', err);
+    }
+    document.body.removeChild(textArea);
+}
+
+function showShareOptions(sentence) {
+    if (!sentence) return;
+    
+    var dialog = document.getElementById('modal-custom-dialog');
+    var title = document.getElementById('custom-dialog-title');
+    var msg = document.getElementById('custom-dialog-message');
+    var buttonsContainer = document.getElementById('custom-dialog-buttons');
+
+    if (!dialog || !msg || !buttonsContainer) {
+        var opt = confirm('Deseja enviar no WhatsApp? (Se não, copiará para área de transferência)');
+        if (opt) {
+            window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(sentence), '_blank');
+        } else {
+            navigator.clipboard.writeText(sentence);
+            alert('Frase copiada!');
+        }
+        return;
+    }
+
+    title.textContent = 'Enviar Frase 📤';
+    msg.innerHTML = 'O que deseja fazer com a frase:<br><strong style="font-size: 1.15rem; color: var(--text-primary); display: block; margin-top: 8px;">"' + sentence + '"</strong>';
+    
+    buttonsContainer.innerHTML = `
+        <button id="btn-share-whatsapp-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; background-color: var(--color-share); color: white; border: none; font-weight: 700; gap: 6px;">
+            <span>💬</span> WhatsApp
+        </button>
+        <button id="btn-share-copy-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; font-weight: 700; gap: 6px;">
+            <span>📋</span> Copiar
+        </button>
+        <button id="btn-share-cancel-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px;">
+            Fechar
+        </button>
+    `;
+
+    dialog.classList.add('open');
+
+    var btnWhatsapp = document.getElementById('btn-share-whatsapp-action');
+    var btnCopy = document.getElementById('btn-share-copy-action');
+    var btnCancel = document.getElementById('btn-share-cancel-action');
+
+    btnWhatsapp.addEventListener('click', function() {
+        dialog.classList.remove('open');
+        var url = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(sentence);
+        window.open(url, '_blank');
+    }, { once: true });
+
+    btnCopy.addEventListener('click', function() {
+        dialog.classList.remove('open');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(sentence).then(function() {
+                showCustomAlert('Frase copiada para a área de transferência! 📋');
+            }).catch(function() {
+                fallbackCopyText(sentence);
+            });
+        } else {
+            fallbackCopyText(sentence);
+        }
+    }, { once: true });
+
+    btnCancel.addEventListener('click', function() {
+        dialog.classList.remove('open');
+    }, { once: true });
+}
+
 // Custom alert modal using HTML (bypasses native alert blocks on iOS WebView)
 function showCustomAlert(message) {
     return new Promise(function(resolve) {
@@ -911,6 +1199,9 @@ function switchProfile(profileId) {
 
         // Load voices for this profile
         carregarVozes();
+        carregarVozConfig();
+        carregarRecentes();
+        carregarEstatisticas();
         
         // Setup inputs
         var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId) || '';
@@ -992,6 +1283,9 @@ function init() {
 
         // Load system voices
         carregarVozes();
+        carregarVozConfig();
+        carregarRecentes();
+        carregarEstatisticas();
 
         // Increment Access Counter
         var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
@@ -1630,6 +1924,12 @@ function speakText(text) {
     var utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'pt-BR';
     
+    // Configura velocidade (rate) e tom (pitch)
+    var savedRate = localStorage.getItem('caa_voice_rate_' + currentProfileId) || '1.0';
+    var savedPitch = localStorage.getItem('caa_voice_pitch_' + currentProfileId) || '1.0';
+    utterance.rate = parseFloat(savedRate);
+    utterance.pitch = parseFloat(savedPitch);
+    
     // Save reference to prevent garbage collection
     window.activeUtterances.push(utterance);
     
@@ -1839,6 +2139,7 @@ function setupEventListeners() {
             selectedCards.push(clickedCard);
             updateSentenceBuilder();
             playCardVoice(clickedCard);
+            registrarUsoFigura(clickedCard.text);
 
             // Automatic sub-choice modal if card has goToCategory defined (abrir por cima)
             if (clickedCard.goToCategory) {
@@ -1864,6 +2165,7 @@ function setupEventListeners() {
         // Combine text of all selected cards
         var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
         speakText(fullSentence);
+        adicionarFraseRecente(selectedCards);
     });
 
     // Clear all
@@ -1887,11 +2189,66 @@ function setupEventListeners() {
         });
     }
 
+    // Controle de velocidade e tom da voz
+    if (inputVoiceRate) {
+        inputVoiceRate.addEventListener('input', function() {
+            var val = parseFloat(inputVoiceRate.value).toFixed(1);
+            if (valVoiceRate) valVoiceRate.textContent = val;
+            localStorage.setItem('caa_voice_rate_' + currentProfileId, val);
+        });
+    }
+
+    if (inputVoicePitch) {
+        inputVoicePitch.addEventListener('input', function() {
+            var val = parseFloat(inputVoicePitch.value).toFixed(1);
+            if (valVoicePitch) valVoicePitch.textContent = val;
+            localStorage.setItem('caa_voice_pitch_' + currentProfileId, val);
+        });
+    }
+
+    // Compartilhamento / Envio de frases
+    if (btnShareWhatsapp) {
+        btnShareWhatsapp.addEventListener('click', function() {
+            if (selectedCards.length === 0) {
+                showCustomAlert('Por favor, monte uma frase primeiro tocando nas figuras! 😊');
+                return;
+            }
+            var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
+            showShareOptions(fullSentence);
+        });
+    }
+
+    if (btnShareFloat) {
+        btnShareFloat.addEventListener('click', function() {
+            if (selectedCards.length === 0) {
+                showCustomAlert('Por favor, monte uma frase primeiro tocando nas figuras! 😊');
+                return;
+            }
+            var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
+            showShareOptions(fullSentence);
+        });
+    }
+
     // Settings Modal controls
     btnSettings.addEventListener('click', function() {
         modalSettings.classList.add('open');
         renderManageCustomCards();
+        carregarEstatisticas();
     });
+
+    // Limpar Estatísticas
+    var btnClearStats = document.getElementById('btn-clear-stats');
+    if (btnClearStats) {
+        btnClearStats.addEventListener('click', function() {
+            showCustomConfirm('Deseja realmente apagar o histórico de toques das figuras? 📊').then(function(confirmed) {
+                if (confirmed) {
+                    localStorage.removeItem('caa_stats_' + currentProfileId);
+                    carregarEstatisticas();
+                    showCustomAlert('Estatísticas apagadas com sucesso! 🗑️');
+                }
+            });
+        });
+    }
 
     // Delete custom card event listener
     var customCardsList = document.getElementById('custom-cards-list');
@@ -1919,6 +2276,13 @@ function setupEventListeners() {
         imagePreview.innerHTML = '<span>Nenhuma imagem selecionada</span>';
         uploadedImageBase64 = null;
         recordedAudioBase64 = null;
+        selectedArasaacBase64 = null;
+        if (arasaacResultsContainer) {
+            arasaacResultsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center; display: block; margin: auto;">Digite um termo e clique em Buscar para ver os desenhos...</span>';
+        }
+        if (arasaacSearchInput) arasaacSearchInput.value = '';
+        if (selectedArasaacIdInput) selectedArasaacIdInput.value = '';
+        
         if (audioPreview) {
             audioPreview.src = '';
             audioPreview.classList.add('d-none');
@@ -1930,6 +2294,7 @@ function setupEventListeners() {
             groupAudioRecord.classList.add('d-none');
         }
         groupEmoji.classList.remove('d-none');
+        if (groupArasaac) groupArasaac.classList.add('d-none');
         groupUpload.classList.add('d-none');
     };
 
@@ -2003,11 +2368,18 @@ function setupEventListeners() {
     // Form inputs radio changes inside settings
     for (var i_radio = 0; i_radio < imageTypeRadios.length; i_radio++) { var radio = imageTypeRadios[i_radio];
         radio.addEventListener('change', function(e) {
-            if (e.target.value === 'emoji') {
+            var val = e.target.value;
+            if (val === 'emoji') {
                 groupEmoji.classList.remove('d-none');
+                if (groupArasaac) groupArasaac.classList.add('d-none');
+                groupUpload.classList.add('d-none');
+            } else if (val === 'arasaac') {
+                groupEmoji.classList.add('d-none');
+                if (groupArasaac) groupArasaac.classList.remove('d-none');
                 groupUpload.classList.add('d-none');
             } else {
                 groupEmoji.classList.add('d-none');
+                if (groupArasaac) groupArasaac.classList.add('d-none');
                 groupUpload.classList.remove('d-none');
             }
         });
@@ -2166,8 +2538,21 @@ function setupEventListeners() {
         var imageType = document.querySelector('input[name="image-type"]:checked').value;
         
         var value = '';
+        var finalType = imageType;
         if (imageType === 'emoji') {
             value = document.getElementById('card-emoji').value.trim() || '✨';
+        } else if (imageType === 'arasaac') {
+            var selectedId = selectedArasaacIdInput ? selectedArasaacIdInput.value : '';
+            if (!selectedId) {
+                showCustomAlert('Por favor, busque e selecione um desenho do ARASAAC. 🎨');
+                return;
+            }
+            if (!selectedArasaacBase64) {
+                showCustomAlert('Aguarde o download do desenho para uso offline... ⏳');
+                return;
+            }
+            value = selectedArasaacBase64;
+            finalType = 'image'; // Salvar como imagem para carregar via tag img
         } else {
             if (!uploadedImageBase64) {
                 showCustomAlert('Por favor, envie ou selecione uma imagem.');
@@ -2186,7 +2571,7 @@ function setupEventListeners() {
             audio = recordedAudioBase64;
         }
 
-        var newCardObj = { text: text, category: category, type: imageType, value: value };
+        var newCardObj = { text: text, category: category, type: finalType, value: value };
         if (imageType === 'emoji' && cardEmojiInput.dataset.fromApi === 'true') {
             newCardObj.fromApi = true;
         }
@@ -2202,6 +2587,95 @@ function setupEventListeners() {
             closeSettingsModal();
         });
     });
+
+    // Lógica de busca do ARASAAC
+    if (btnArasaacSearch && arasaacSearchInput) {
+        var executarBuscaArasaac = function() {
+            var term = arasaacSearchInput.value.trim();
+            if (!term) {
+                showCustomAlert('Por favor, digite um termo para buscar. 🔍');
+                return;
+            }
+            if (arasaacResultsContainer) {
+                arasaacResultsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center; display: block; margin: auto;">Buscando desenhos... 🔍</span>';
+            }
+            selectedArasaacBase64 = null;
+            if (selectedArasaacIdInput) selectedArasaacIdInput.value = '';
+            
+            fetch('https://api.arasaac.org/api/pictograms/pt/search/' + encodeURIComponent(term))
+                .then(function(res) {
+                    if (!res.ok) throw new Error('Erro na resposta');
+                    return res.json();
+                })
+                .then(function(data) {
+                    if (!arasaacResultsContainer) return;
+                    if (!Array.isArray(data) || data.length === 0) {
+                        arasaacResultsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--color-danger); width: 100%; text-align: center; display: block; margin: auto;">Nenhum desenho encontrado para essa palavra. 😢</span>';
+                        return;
+                    }
+                    
+                    var results = data.slice(0, 15);
+                    var html = '';
+                    results.forEach(function(item) {
+                        var id = item._id;
+                        html += `
+                            <div class="arasaac-item" data-id="${id}" style="width: 60px; height: 60px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: white; padding: 4px; position: relative; transition: all 0.2s; flex-shrink: 0; box-sizing: border-box;">
+                                <img src="https://api.arasaac.org/api/pictograms/${id}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${term}">
+                            </div>
+                        `;
+                    });
+                    arasaacResultsContainer.innerHTML = html;
+                    
+                    var items = arasaacResultsContainer.querySelectorAll('.arasaac-item');
+                    items.forEach(function(item) {
+                        item.addEventListener('click', function() {
+                            // Desmarcar anteriores
+                            items.forEach(function(el) {
+                                el.style.borderColor = 'var(--border-color)';
+                                el.style.boxShadow = 'none';
+                            });
+                            
+                            // Selecionar atual
+                            item.style.borderColor = 'var(--color-primary)';
+                            item.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.4)';
+                            
+                            var id = item.dataset.id;
+                            if (selectedArasaacIdInput) selectedArasaacIdInput.value = id;
+                            
+                            selectedArasaacBase64 = null;
+                            item.style.opacity = '0.5';
+                            
+                            var imgUrl = 'https://api.arasaac.org/api/pictograms/' + id;
+                            convertImageUrlToBase64(imgUrl)
+                                .then(function(base64) {
+                                    selectedArasaacBase64 = base64;
+                                    item.style.opacity = '1';
+                                })
+                                .catch(function(err) {
+                                    console.warn('Erro ao baixar pictograma para base64, usando URL direta:', err);
+                                    // Fallback para link direto
+                                    selectedArasaacBase64 = imgUrl;
+                                    item.style.opacity = '1';
+                                });
+                        });
+                    });
+                })
+                .catch(function(err) {
+                    console.error(err);
+                    if (arasaacResultsContainer) {
+                        arasaacResultsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--color-danger); width: 100%; text-align: center; display: block; margin: auto;">Erro ao carregar desenhos. Verifique sua conexão. 🌐</span>';
+                    }
+                });
+        };
+        
+        btnArasaacSearch.addEventListener('click', executarBuscaArasaac);
+        arasaacSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executarBuscaArasaac();
+            }
+        });
+    }
 
     // Reset default cards button inside settings
     btnResetCards.addEventListener('click', function() {
@@ -2357,6 +2831,7 @@ function setupEventListeners() {
             selectedCards.push(clickedCard);
             updateSentenceBuilder();
             playCardVoice(clickedCard);
+            registrarUsoFigura(clickedCard.text);
             modalSubChoice.classList.remove('open');
         }
     });
@@ -2378,6 +2853,7 @@ function setupEventListeners() {
             if (selectedCards.length === 0) return;
             var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
             speakText(fullSentence);
+            adicionarFraseRecente(selectedCards);
         });
     }
 

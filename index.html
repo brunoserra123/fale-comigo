@@ -87,6 +87,10 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
                         <span>FALAR</span>
                     </button>
+                    <button id="btn-share-whatsapp" class="btn btn-secondary btn-share" title="Enviar / Copiar Frase">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        <span>ENVIAR</span>
+                    </button>
                     <button id="btn-clear-all" class="btn btn-danger" title="Limpar tudo">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                         <span>LIMPAR</span>
@@ -100,6 +104,16 @@
             <div class="search-container">
                 <input type="text" id="search-input" placeholder="Buscar figura... 🔍" aria-label="Buscar figura">
                 <button id="btn-clear-search" class="btn-clear-search d-none" title="Limpar busca">&times;</button>
+            </div>
+        </section>
+
+        <!-- RECENT SENTENCES BAR -->
+        <section class="recent-sentences-section d-none" id="recent-sentences-section" style="width: 100%; margin-top: 10px; margin-bottom: 5px;">
+            <div class="recent-sentences-container" style="display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 10px 14px; background-color: var(--bg-card); border: 2px solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); scrollbar-width: none;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: 4px; user-select: none;">⏱️ Recentes:</span>
+                <div id="recent-sentences-list" style="display: flex; gap: 8px; overflow-x: auto; flex-grow: 1; padding: 2px 0; scrollbar-width: none;">
+                    <!-- Recent phrase chips will be generated here -->
+                </div>
             </div>
         </section>
 
@@ -215,8 +229,34 @@
                     </div>
 
                     <div class="settings-row">
+                        <label>Velocidade da Voz:</label>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; max-width: 180px; width: 100%;">
+                            <input type="range" id="input-voice-rate" min="0.5" max="2.0" step="0.1" value="1.0" style="flex-grow: 1; cursor: pointer;">
+                            <span id="val-voice-rate" style="font-weight: 700; min-width: 25px; text-align: right;">1.0</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-row">
+                        <label>Tom da Voz:</label>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; max-width: 180px; width: 100%;">
+                            <input type="range" id="input-voice-pitch" min="0.5" max="2.0" step="0.1" value="1.0" style="flex-grow: 1; cursor: pointer;">
+                            <span id="val-voice-pitch" style="font-weight: 700; min-width: 25px; text-align: right;">1.0</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-row">
                         <label>Total de Acessos:</label>
                         <span id="access-counter-val" style="font-weight: 700; font-size: 1.1rem; color: var(--color-primary);">1</span>
+                    </div>
+
+                    <div class="form-group" style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-sm); margin-top: 10px; flex-direction: column; display: flex; width: 100%;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 1rem; display: flex; align-items: center; gap: 6px; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">📊 Figuras Mais Usadas</h3>
+                        <div id="stats-usage-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
+                            <span style="font-size: 0.85rem; color: var(--text-secondary); text-align: center; display: block; padding: 10px 0;">Nenhum uso registrado ainda.</span>
+                        </div>
+                        <button type="button" id="btn-clear-stats" class="btn btn-secondary" style="width: 100%; margin-top: 10px; padding: 8px; font-size: 0.85rem; font-weight: 700; justify-content: center; gap: 6px;">
+                            <span>🗑️</span> Limpar Estatísticas
+                        </button>
                     </div>
 
                     <hr class="modal-divider">
@@ -236,6 +276,9 @@
                                     <input type="radio" name="image-type" value="emoji" checked> Emoji
                                 </label>
                                 <label class="radio-label">
+                                    <input type="radio" name="image-type" value="arasaac"> Desenho CAA (ARASAAC)
+                                </label>
+                                <label class="radio-label">
                                     <input type="radio" name="image-type" value="upload"> Enviar Imagem
                                 </label>
                             </div>
@@ -243,6 +286,17 @@
                         <div class="form-group" id="group-emoji">
                             <label for="card-emoji">Emoji:</label>
                             <input type="text" id="card-emoji" value="✨" placeholder="Insira um emoji">
+                        </div>
+                        <div class="form-group d-none" id="group-arasaac">
+                            <label for="arasaac-search-input">Buscar Desenho CAA:</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="arasaac-search-input" placeholder="Ex: maçã, brincar, dor..." style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                                <button type="button" id="btn-arasaac-search" class="btn btn-secondary" style="padding: 10px 14px; font-weight: 700;">Buscar</button>
+                            </div>
+                            <div id="arasaac-results-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background-color: var(--bg-app); min-height: 50px;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center; display: block; margin: auto;">Digite um termo e clique em Buscar para ver os desenhos...</span>
+                            </div>
+                            <input type="hidden" id="selected-arasaac-id" value="">
                         </div>
                         <div class="form-group d-none" id="group-upload">
                             <label for="card-image-file">Selecionar Foto/Imagem:</label>
@@ -416,6 +470,9 @@
             <button id="btn-speak-float" class="btn btn-primary" title="Falar Frase">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
                 <span>FALAR</span>
+            </button>
+            <button id="btn-share-float" class="btn btn-secondary btn-share-float" title="Enviar / Copiar Frase" style="background-color: var(--color-share); color: white; border: none; padding: 10px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); cursor: pointer;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
             <button id="btn-clear-float" class="btn btn-danger" title="Limpar tudo">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>

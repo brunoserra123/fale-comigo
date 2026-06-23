@@ -19,6 +19,8 @@
     --color-primary-hover: #059669;
     --color-danger: #ef4444;  /* Red for Clear */
     --color-danger-hover: #dc2626;
+    --color-share: #25d366;   /* WhatsApp Green */
+    --color-share-hover: #128c7e;
     
     --color-warning: #f59e0b; /* Amber/Gold for Favorites */
     --color-warning-hover: #d97706;
@@ -228,6 +230,17 @@ body {
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
+.btn-share {
+    background-color: var(--color-share);
+    color: white;
+}
+
+.btn-share:hover {
+    background-color: var(--color-share-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
+}
+
 .btn:active {
     transform: translateY(1px) scale(0.98);
 }
@@ -327,6 +340,13 @@ body {
 .sentence-controls .btn-danger {
     padding: 8px 16px;
     font-size: 0.85rem;
+}
+
+.sentence-controls .btn-share {
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 1rem;
+    border-radius: var(--radius-sm);
 }
 /* Search Bar styling */
 .search-section {
@@ -746,7 +766,18 @@ body {
         gap: 4px;
     }
 
+    .sentence-controls .btn-share {
+        padding: 8px 8px;
+        font-size: 0.75rem;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
     .sentence-controls .btn-primary svg,
+    .sentence-controls .btn-share svg,
     .sentence-controls .btn-danger svg {
         width: 14px;
         height: 14px;
@@ -1184,4 +1215,36 @@ body.low-vision .sentence-card span {
 body.low-vision #search-input {
     font-size: 1.6rem !important;
     padding: 16px 20px !important;
+}
+
+/* Recent Sentences Styling */
+.recent-sentences-container::-webkit-scrollbar,
+#recent-sentences-list::-webkit-scrollbar {
+    display: none; /* Hide scrollbars for Chrome, Safari and Opera */
+}
+
+.recent-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease-in-out;
+}
+
+.recent-chip:hover {
+    background-color: var(--border-color);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.recent-chip:active {
+    transform: translateY(1px);
 }
