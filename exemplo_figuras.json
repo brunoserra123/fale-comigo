@@ -1,0 +1,62 @@
+[
+  {
+    "text": "Sim",
+    "category": "essential",
+    "type": "emoji",
+    "value": "👍"
+  },
+  {
+    "text": "Não",
+    "category": "essential",
+    "type": "emoji",
+    "value": "👎"
+  },
+  {
+    "text": "Por Favor",
+    "category": "essential",
+    "type": "emoji",
+    "value": "🙏"
+  },
+  {
+    "text": "Obrigado",
+    "category": "essential",
+    "type": "emoji",
+    "value": "💖"
+  },
+  {
+    "text": "Comer",
+    "category": "action",
+    "type": "emoji",
+    "value": "😋"
+  },
+  {
+    "text": "Beber",
+    "category": "action",
+    "type": "emoji",
+    "value": "🥛"
+  },
+  {
+    "text": "Água",
+    "category": "food",
+    "type": "emoji",
+    "value": "💧"
+  },
+  {
+    "text": "Casa",
+    "category": "place",
+    "type": "emoji",
+    "value": "🏠"
+  },
+  {
+    "text": "Mamãe",
+    "category": "person",
+    "type": "emoji",
+    "value": "👩"
+  },
+  {
+    "text": "Papai",
+    "category": "person",
+    "type": "emoji",
+    "value": "👨"
+  }
+]

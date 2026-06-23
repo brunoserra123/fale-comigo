@@ -1,0 +1,367 @@
+[
+  {
+    "text": "TOMAR BANHO",
+    "category": "action",
+    "type": "emoji",
+    "value": "🚿"
+  },
+  {
+    "text": "Sim",
+    "category": "essential",
+    "type": "emoji",
+    "value": "👍"
+  },
+  {
+    "text": "Não",
+    "category": "essential",
+    "type": "emoji",
+    "value": "👎"
+  },
+  {
+    "text": "Por Favor",
+    "category": "essential",
+    "type": "emoji",
+    "value": "🙏"
+  },
+  {
+    "text": "Obrigado",
+    "category": "essential",
+    "type": "emoji",
+    "value": "💖"
+  },
+  {
+    "text": "Oi / Olá",
+    "category": "essential",
+    "type": "emoji",
+    "value": "👋"
+  },
+  {
+    "text": "Tchau",
+    "category": "essential",
+    "type": "emoji",
+    "value": "👋"
+  },
+  {
+    "text": "Socorro / Ajuda",
+    "category": "essential",
+    "type": "emoji",
+    "value": "🆘"
+  },
+  {
+    "text": "Minha vez",
+    "category": "essential",
+    "type": "emoji",
+    "value": "🙋‍♂️"
+  },
+  {
+    "text": "Sua vez",
+    "category": "essential",
+    "type": "emoji",
+    "value": "🫵"
+  },
+  {
+    "text": "Mais",
+    "category": "essential",
+    "type": "emoji",
+    "value": "➕"
+  },
+  {
+    "text": "Acabou",
+    "category": "essential",
+    "type": "emoji",
+    "value": "🛑"
+  },
+  {
+    "text": "Diferente",
+    "category": "essential",
+    "type": "emoji",
+    "value": "🔀"
+  },
+  {
+    "text": "Igual",
+    "category": "essential",
+    "type": "emoji",
+    "value": "👥"
+  },
+  {
+    "text": "Eu Quero",
+    "category": "action",
+    "type": "emoji",
+    "value": "👉"
+  },
+  {
+    "text": "Não quero",
+    "category": "action",
+    "type": "emoji",
+    "value": "🙅‍♂️"
+  },
+  {
+    "text": "Comer",
+    "category": "action",
+    "type": "emoji",
+    "value": "😋",
+    "goToCategory": "food"
+  },
+  {
+    "text": "Beber",
+    "category": "action",
+    "type": "emoji",
+    "value": "🥛",
+    "goToCategory": "drink"
+  },
+  {
+    "text": "Falar com",
+    "category": "action",
+    "type": "emoji",
+    "value": "🗣️",
+    "goToCategory": "person"
+  },
+  {
+    "text": "Ir",
+    "category": "action",
+    "type": "emoji",
+    "value": "🚶",
+    "goToCategory": "place"
+  },
+  {
+    "text": "Parar",
+    "category": "action",
+    "type": "emoji",
+    "value": "🛑"
+  },
+  {
+    "text": "Ver / Olhar",
+    "category": "action",
+    "type": "emoji",
+    "value": "👀"
+  },
+  {
+    "text": "Gostar",
+    "category": "action",
+    "type": "emoji",
+    "value": "❤️"
+  },
+  {
+    "text": "Não gostar",
+    "category": "action",
+    "type": "emoji",
+    "value": "💔"
+  },
+  {
+    "text": "Brincar",
+    "category": "action",
+    "type": "emoji",
+    "value": "🧸"
+  },
+  {
+    "text": "Dormir",
+    "category": "action",
+    "type": "emoji",
+    "value": "😴"
+  },
+  {
+    "text": "Ouvir",
+    "category": "action",
+    "type": "emoji",
+    "value": "👂"
+  },
+  {
+    "text": "Água",
+    "category": "food",
+    "type": "emoji",
+    "value": "💧"
+  },
+  {
+    "text": "Suco",
+    "category": "food",
+    "type": "emoji",
+    "value": "🧃"
+  },
+  {
+    "text": "Fruta",
+    "category": "food",
+    "type": "emoji",
+    "value": "🍎"
+  },
+  {
+    "text": "Pão",
+    "category": "food",
+    "type": "emoji",
+    "value": "🍞"
+  },
+  {
+    "text": "Comida",
+    "category": "food",
+    "type": "emoji",
+    "value": "🍽️"
+  },
+  {
+    "text": "Bolo",
+    "category": "food",
+    "type": "emoji",
+    "value": "🍰"
+  },
+  {
+    "text": "Fome",
+    "category": "food",
+    "type": "emoji",
+    "value": "😋"
+  },
+  {
+    "text": "Feliz",
+    "category": "feeling",
+    "type": "emoji",
+    "value": "😊"
+  },
+  {
+    "text": "Triste",
+    "category": "feeling",
+    "type": "emoji",
+    "value": "😢"
+  },
+  {
+    "text": "Cansado",
+    "category": "feeling",
+    "type": "emoji",
+    "value": "🥱"
+  },
+  {
+    "text": "Dor",
+    "category": "feeling",
+    "type": "emoji",
+    "value": "🤕",
+    "goToCategory": "pain"
+  },
+  {
+    "text": "Machucado",
+    "category": "feeling",
+    "type": "emoji",
+    "value": "🩹"
+  },
+  {
+    "text": "Bravo",
+    "category": "feeling",
+    "type": "emoji",
+    "value": "😡"
+  },
+  {
+    "text": "Assustado",
+    "category": "feeling",
+    "type": "emoji",
+    "value": "😨"
+  },
+  {
+    "text": "Banheiro",
+    "category": "place",
+    "type": "emoji",
+    "value": "🚾"
+  },
+  {
+    "text": "Casa",
+    "category": "place",
+    "type": "emoji",
+    "value": "🏠"
+  },
+  {
+    "text": "Escola",
+    "category": "place",
+    "type": "emoji",
+    "value": "🏫"
+  },
+  {
+    "text": "Parque / Rua",
+    "category": "place",
+    "type": "emoji",
+    "value": "🌳"
+  },
+  {
+    "text": "Quarto",
+    "category": "place",
+    "type": "emoji",
+    "value": "🛏️"
+  },
+  {
+    "text": "Eu",
+    "category": "person",
+    "type": "emoji",
+    "value": "🙋"
+  },
+  {
+    "text": "Você",
+    "category": "person",
+    "type": "emoji",
+    "value": "🫵"
+  },
+  {
+    "text": "Mamãe",
+    "category": "person",
+    "type": "emoji",
+    "value": "👩"
+  },
+  {
+    "text": "Papai",
+    "category": "person",
+    "type": "emoji",
+    "value": "👨"
+  },
+  {
+    "text": "Professor(a)",
+    "category": "person",
+    "type": "emoji",
+    "value": "👩‍🏫"
+  },
+  {
+    "text": "Amigo",
+    "category": "person",
+    "type": "emoji",
+    "value": "👦"
+  },
+  {
+    "text": "Dor de Cabeça",
+    "category": "pain",
+    "type": "emoji",
+    "value": "🤕"
+  },
+  {
+    "text": "Dor de Barriga",
+    "category": "pain",
+    "type": "emoji",
+    "value": "🤢"
+  },
+  {
+    "text": "Dor de Dente",
+    "category": "pain",
+    "type": "emoji",
+    "value": "🦷"
+  },
+  {
+    "text": "Dor de Ouvido",
+    "category": "pain",
+    "type": "emoji",
+    "value": "👂"
+  },
+  {
+    "text": "Dor na Garganta",
+    "category": "pain",
+    "type": "emoji",
+    "value": "🗣️"
+  },
+  {
+    "text": "Dor nas Costas",
+    "category": "pain",
+    "type": "emoji",
+    "value": "🧍"
+  },
+  {
+    "text": "Dor no Braço",
+    "category": "pain",
+    "type": "emoji",
+    "value": "💪"
+  },
+  {
+    "text": "Dor na Perna",
+    "category": "pain",
+    "type": "emoji",
+    "value": "🦵"
+  }
+]

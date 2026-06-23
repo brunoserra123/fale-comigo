@@ -2927,7 +2927,7 @@ function setupEventListeners() {
             formData.append("access_key", "4f2eccbe-593a-4c25-871b-103e3931b8ff");
 
             var originalText = feedbackSubmitBtn.innerHTML;
-            feedbackSubmitBtn.innerHTML = "<span>Enviando... 🚀</span>";
+            feedbackSubmitBtn.innerHTML = "<span>Carregando... ⏳</span>";
             feedbackSubmitBtn.disabled = true;
 
             fetch("https://api.web3forms.com/submit", {
@@ -2937,8 +2937,38 @@ function setupEventListeners() {
             .then(function(response) {
                 return response.json().then(function(data) {
                     if (response.ok) {
-                        showCustomAlert("Sucesso! Sua mensagem foi enviada com sucesso. 🚀");
                         feedbackForm.reset();
+                        
+                        var oldMsg = feedbackForm.querySelector('.feedback-success-msg');
+                        if (oldMsg) oldMsg.remove();
+
+                        var successMsg = document.createElement('div');
+                        successMsg.className = 'feedback-success-msg';
+                        successMsg.textContent = 'Ideia enviada! Obrigado por ajudar a construir o projeto.';
+                        successMsg.style.backgroundColor = 'var(--color-primary)';
+                        successMsg.style.color = '#ffffff';
+                        successMsg.style.padding = '12px';
+                        successMsg.style.borderRadius = 'var(--radius-sm)';
+                        successMsg.style.marginTop = '10px';
+                        successMsg.style.fontWeight = 'bold';
+                        successMsg.style.textAlign = 'center';
+                        successMsg.style.opacity = '0';
+                        successMsg.style.transition = 'opacity 0.3s ease';
+                        
+                        feedbackForm.appendChild(successMsg);
+                        
+                        setTimeout(function() {
+                            successMsg.style.opacity = '1';
+                        }, 50);
+                        
+                        setTimeout(function() {
+                            successMsg.style.opacity = '0';
+                            setTimeout(function() {
+                                if (successMsg.parentNode) {
+                                    successMsg.parentNode.removeChild(successMsg);
+                                }
+                            }, 300);
+                        }, 4000);
                     } else {
                         showCustomAlert("Erro: " + (data.message || "Não foi possível enviar no momento."));
                     }
