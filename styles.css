@@ -1293,3 +1293,33 @@ body.low-vision #search-input {
 .recent-chip:active {
     transform: translateY(1px);
 }
+
+/* Seletor de Perfil no Header */
+.select-profile {
+    background: transparent !important;
+    border: none;
+    font-family: var(--font-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    outline: none;
+    padding-right: 4px;
+    max-width: 120px;
+    transition: color 0.2s ease;
+}
+
+.select-profile:hover {
+    color: var(--color-primary) !important;
+}
+
+.select-profile:focus {
+    background: transparent !important;
+    color: var(--text-primary);
+}
+
+/* Estilo global das opções para evitar texto invisível no modo escuro */
+select option {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+}
