@@ -45,7 +45,7 @@ function ajaxRequest(url, method, data) {
         var xhr = new XMLHttpRequest();
         xhr.open(method || 'GET', url, true);
         if (method === 'POST') {
-            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('Content-Type', 'text/plain');
         }
         xhr.onload = function() {
             if (xhr.status >= 200 && xhr.status < 300) {
