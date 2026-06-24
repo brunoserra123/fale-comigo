@@ -65,7 +65,7 @@ function ajaxRequest(url, method, data) {
     });
 }
 
-var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzd4p77phKJbytTG2qdg7BIRGabxWWAh-hopTP2KZOjkgNUj2pmKt6lX4gLejlorE4V/exec';
+var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx5P5dKHLf_vKImUzZIEqQwVTlaprf9Sen5_fLHcJJUWSGzWZL48Rtybstf1ScIBMlN8g/exec';
 var isDevMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' || (window.URLSearchParams ? new URLSearchParams(window.location.search).has('dev') : /[?&]dev\b/.test(window.location.search));
 var MAX_FREE_PROFILES = 2;
 var DRINK_KEYWORDS = ['agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'bebida', 'beber', 'toddy', 'achocolatado', 'iogurte', 'coca', 'mate', 'chimarrao', 'suquinh'];
@@ -3185,6 +3185,41 @@ function setupEventListeners() {
             } else {
                 showCustomAlert('Por favor, insira uma URL de Apps Script ou ID do Google Drive para sincronizar.');
             }
+        });
+    }
+
+    // Test Discord Webhook notification manually
+    var btnTestDiscord = document.getElementById('btn-test-discord');
+    if (btnTestDiscord) {
+        btnTestDiscord.addEventListener('click', function() {
+            var scriptUrl = (syncAppsScriptUrlInput ? syncAppsScriptUrlInput.value.trim() : '') || DEFAULT_APPS_SCRIPT_URL;
+            if (!scriptUrl) {
+                showCustomAlert('Por favor, insira a URL do Google Apps Script primeiro.');
+                return;
+            }
+
+            var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+            var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+
+            btnTestDiscord.disabled = true;
+            var originalText = btnTestDiscord.innerHTML;
+            btnTestDiscord.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Enviando...';
+
+            ajaxRequest(scriptUrl, 'POST', {
+                action: 'recordAccess',
+                profile: profileName + ' (Teste Manual)',
+                accesses: 'Teste'
+            })
+            .then(function() {
+                btnTestDiscord.disabled = false;
+                btnTestDiscord.innerHTML = originalText;
+                showCustomAlert('Notificação de teste enviada! Verifique o seu Discord. 💬✅');
+            })
+            .catch(function(err) {
+                btnTestDiscord.disabled = false;
+                btnTestDiscord.innerHTML = originalText;
+                showCustomAlert('Erro ao enviar teste: ' + err.message);
+            });
         });
     }
 
