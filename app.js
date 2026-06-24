@@ -34,6 +34,11 @@ if (!Array.prototype.findIndex) {
     };
 }
 
+// Polyfill for NodeList.prototype.forEach (missing in older browsers like iOS 9 Safari)
+if (window.NodeList && !NodeList.prototype.forEach) {
+    NodeList.prototype.forEach = Array.prototype.forEach;
+}
+
 // Simple AJAX helper returning Promise (supported in iOS 9)
 function ajaxRequest(url, method, data) {
     return new Promise(function(resolve, reject) {
@@ -61,7 +66,7 @@ function ajaxRequest(url, method, data) {
 }
 
 var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec';
-var isDevMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' || new URLSearchParams(window.location.search).has('dev');
+var isDevMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' || (window.URLSearchParams ? new URLSearchParams(window.location.search).has('dev') : /[?&]dev\b/.test(window.location.search));
 var MAX_FREE_PROFILES = 2;
 var DRINK_KEYWORDS = ['agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'bebida', 'beber', 'toddy', 'achocolatado', 'iogurte', 'coca', 'mate', 'chimarrao', 'suquinh'];
 var PAIN_KEYWORDS = ['dor de', 'dor na', 'dor no', 'dor nas', 'dor nos', 'doi a', 'doi o', 'doi as', 'doi os', 'machucado'];
@@ -326,7 +331,7 @@ function carregarRecentes() {
             var idx = parseInt(chip.dataset.idx, 10);
             var selectedList = recentSentences[idx];
             if (Array.isArray(selectedList)) {
-                selectedCards = [...selectedList];
+                selectedCards = selectedList.slice();
                 updateSentenceBuilder();
                 
                 var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
@@ -1402,7 +1407,7 @@ function renderCards() {
     var html = '';
     
     // We want to preserve the order of CATEGORIES
-    var categoriesOrder = [...CATEGORIES.filter(function(c) { return c.id !== 'all'; }), { id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }];
+    var categoriesOrder = CATEGORIES.filter(function(c) { return c.id !== 'all'; }).concat([{ id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }]);
     
     categoriesOrder.forEach(function(cat) {
         var catCards = cardsByCategory[cat.id];
@@ -2682,7 +2687,7 @@ function setupEventListeners() {
         showCustomConfirm('Deseja realmente apagar todos os cartões personalizados e restaurar o padrão original?').then(function(confirmed) {
             if (confirmed) {
                 localStorage.removeItem('caa_custom_cards_' + currentProfileId);
-                cards = [...DEFAULT_CARDS];
+                cards = DEFAULT_CARDS.slice();
                 renderCards();
                 closeSettingsModal();
             }
