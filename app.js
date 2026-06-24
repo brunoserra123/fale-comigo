@@ -1590,7 +1590,9 @@ function init() {
         var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
         var oldUrls = [
             'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec',
-            'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec'
+            'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec',
+            'https://script.google.com/macros/s/AKfycbzd4p77phKJbytTG2qdg7BIRGabxWWAh-hopTP2KZOjkgNUj2pmKt6lX4gLejlorE4V/exec',
+            'https://script.google.com/macros/s/AKfycby3c-3VUtkTYMxAaQipkA1A1QqVau2_Y2Lxr7fL68rGmWwMewn-6LlsfwHQnOx7LRje/exec'
         ];
         if (!syncAppsScriptUrl || oldUrls.indexOf(syncAppsScriptUrl) !== -1) {
             syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
