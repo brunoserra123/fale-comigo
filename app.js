@@ -65,7 +65,7 @@ function ajaxRequest(url, method, data) {
     });
 }
 
-var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec';
+var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzd4p77phKJbytTG2qdg7BIRGabxWWAh-hopTP2KZOjkgNUj2pmKt6lX4gLejlorE4V/exec';
 var isDevMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' || (window.URLSearchParams ? new URLSearchParams(window.location.search).has('dev') : /[?&]dev\b/.test(window.location.search));
 var MAX_FREE_PROFILES = 2;
 var DRINK_KEYWORDS = ['agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'bebida', 'beber', 'toddy', 'achocolatado', 'iogurte', 'coca', 'mate', 'chimarrao', 'suquinh'];
@@ -519,20 +519,25 @@ var recentSentences = [];
 
 function convertImageUrlToBase64(url) {
     return new Promise(function(resolve, reject) {
-        fetch(url)
-            .then(function(res) {
-                if (!res.ok) throw new Error('Falha no download da imagem');
-                return res.blob();
-            })
-            .then(function(blob) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'blob';
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
                 var reader = new FileReader();
                 reader.onloadend = function() {
                     resolve(reader.result);
                 };
                 reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            })
-            .catch(reject);
+                reader.readAsDataURL(xhr.response);
+            } else {
+                reject(new Error('Falha no download da imagem: HTTP ' + xhr.status));
+            }
+        };
+        xhr.onerror = function() {
+            reject(new Error('Erro de rede ao baixar imagem.'));
+        };
+        xhr.send();
     });
 }
 
@@ -573,18 +578,17 @@ function carregarRecentes() {
         var iconHtml = '';
         if (firstCard) {
             if (firstCard.type === 'emoji') {
-                iconHtml = `<span style="font-size: 1rem; flex-shrink: 0;">${firstCard.value}</span>`;
+                iconHtml = '<span style="font-size: 1rem; flex-shrink: 0;">' + firstCard.value + '</span>';
             } else {
-                iconHtml = `<img src="${firstCard.value}" style="width: 16px; height: 16px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">`;
+                iconHtml = '<img src="' + firstCard.value + '" style="width: 16px; height: 16px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">';
             }
         }
         
-        html += `
-            <button type="button" class="recent-chip" data-idx="${idx}">
-                ${iconHtml}
-                <span style="overflow: hidden; text-overflow: ellipsis; max-width: 140px; white-space: nowrap;">${textLabel}</span>
-            </button>
-        `;
+        html += 
+            '<button type="button" class="recent-chip" data-idx="' + idx + '">' +
+                iconHtml +
+                '<span style="overflow: hidden; text-overflow: ellipsis; max-width: 140px; white-space: nowrap;">' + textLabel + '</span>' +
+            '</button>';
     });
     
     recentSentencesList.innerHTML = html;
@@ -666,19 +670,18 @@ function carregarEstatisticas() {
             if (card.type === 'emoji') {
                 iconHtml = card.value;
             } else {
-                iconHtml = `<img src="${card.value}" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">`;
+                iconHtml = '<img src="' + card.value + '" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">';
             }
         }
         
-        html += `
-            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
-                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                    <span style="font-size: 1.1rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;">${iconHtml}</span>
-                    <span style="font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis;">${item.text}</span>
-                </div>
-                <span style="font-weight: 700; color: var(--color-primary); flex-shrink: 0;">${item.count} ${item.count === 1 ? 'toque' : 'toques'}</span>
-            </div>
-        `;
+        html += 
+            '<div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);">' +
+                '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
+                    '<span style="font-size: 1.1rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;">' + iconHtml + '</span>' +
+                    '<span style="font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis;">' + item.text + '</span>' +
+                '</div>' +
+                '<span style="font-weight: 700; color: var(--color-primary); flex-shrink: 0;">' + item.count + ' ' + (item.count === 1 ? 'toque' : 'toques') + '</span>' +
+            '</div>';
     });
     
     statsContainer.innerHTML = html;
@@ -811,8 +814,8 @@ function updatePremiumUI() {
 
 
 function updateLockUI() {
-    var openLockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
-    var closedLockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
+    var openLockSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+    var closedLockSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
     if (isAppLocked) {
         document.body.classList.add('is-locked');
         if (btnLockApp) {
@@ -960,12 +963,11 @@ function showSkeletonLoading() {
     if (!cardsGrid) return;
     var html = '';
     for (var i = 0; i < 8; i++) {
-        html += `
-            <div class="skeleton-card">
-                <div class="skeleton-visual"></div>
-                <div class="skeleton-text"></div>
-            </div>
-        `;
+        html += 
+            '<div class="skeleton-card">' +
+                '<div class="skeleton-visual"></div>' +
+                '<div class="skeleton-text"></div>' +
+            '</div>';
     }
     cardsGrid.innerHTML = html;
 }
@@ -1154,17 +1156,16 @@ function showShareOptions(sentence) {
     title.textContent = 'Enviar Frase 📤';
     msg.innerHTML = 'O que deseja fazer com a frase:<br><strong style="font-size: 1.15rem; color: var(--text-primary); display: block; margin-top: 8px;">"' + sentence + '"</strong>';
     
-    buttonsContainer.innerHTML = `
-        <button id="btn-share-whatsapp-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; background-color: var(--color-share); color: white; border: none; font-weight: 700; gap: 6px;">
-            <span>💬</span> WhatsApp
-        </button>
-        <button id="btn-share-copy-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; font-weight: 700; gap: 6px;">
-            <span>📋</span> Copiar
-        </button>
-        <button id="btn-share-cancel-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px;">
-            Fechar
-        </button>
-    `;
+    buttonsContainer.innerHTML = 
+        '<button id="btn-share-whatsapp-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; background-color: var(--color-share); color: white; border: none; font-weight: 700; gap: 6px;">' +
+            '<span>💬</span> WhatsApp' +
+        '</button>' +
+        '<button id="btn-share-copy-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; font-weight: 700; gap: 6px;">' +
+            '<span>📋</span> Copiar' +
+        '</button>' +
+        '<button id="btn-share-cancel-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px;">' +
+            'Fechar' +
+        '</button>';
 
     dialog.classList.add('open');
 
@@ -1212,9 +1213,8 @@ function showCustomAlert(message) {
 
         title.textContent = 'Aviso 💡';
         msg.textContent = message;
-        buttonsContainer.innerHTML = `
-            <button id="btn-dialog-ok" class="btn btn-primary" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">OK</button>
-        `;
+        buttonsContainer.innerHTML = 
+            '<button id="btn-dialog-ok" class="btn btn-primary" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">OK</button>';
 
         dialog.classList.add('open');
 
@@ -1242,10 +1242,9 @@ function showCustomConfirm(message) {
 
         title.textContent = 'Confirmação ❓';
         msg.textContent = message;
-        buttonsContainer.innerHTML = `
-            <button id="btn-dialog-cancel" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">Cancelar</button>
-            <button id="btn-dialog-confirm" class="btn btn-danger" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">Confirmar</button>
-        `;
+        buttonsContainer.innerHTML = 
+            '<button id="btn-dialog-cancel" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">Cancelar</button>' +
+            '<button id="btn-dialog-confirm" class="btn btn-danger" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">Confirmar</button>';
 
         dialog.classList.add('open');
 
@@ -1314,17 +1313,16 @@ function renderManageCustomCards() {
 
     listContainer.innerHTML = customCards.map(function(card) {
         var displayVal = card.type === 'emoji' ? card.value : '🖼️';
-        return `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                    <span style="font-size: 1.2rem; flex-shrink: 0;">${displayVal}</span>
-                    <span style="font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis;">${card.text}</span>
-                </div>
-                <button type="button" class="btn-delete-card" data-text="${card.text}" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Cartão">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                </button>
-            </div>
-        `;
+        return 
+            '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
+                '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
+                    '<span style="font-size: 1.2rem; flex-shrink: 0;">' + displayVal + '</span>' +
+                    '<span style="font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis;">' + card.text + '</span>' +
+                '</div>' +
+                '<button type="button" class="btn-delete-card" data-text="' + card.text + '" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Cartão">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>' +
+                '</button>' +
+            '</div>';
     }).join('');
 }
 
@@ -1366,26 +1364,24 @@ function renderProfilesList() {
         var isCurrent = p.id === currentProfileId;
         var deleteBtn = '';
         if (p.id !== 'default') {
-            deleteBtn = `
-                <button type="button" class="btn-delete-profile" data-id="${p.id}" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Perfil">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                </button>
-            `;
+            deleteBtn = 
+                '<button type="button" class="btn-delete-profile" data-id="' + p.id + '" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Perfil">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>' +
+                '</button>';
         }
         var activeBadge = isCurrent ? '<span style="font-size: 0.8rem; background-color: var(--color-primary); color: white; padding: 2px 6px; border-radius: 10px; font-weight: bold;">Ativo</span>' : '';
         
-        return `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                    <span style="font-weight: 600; font-size: 0.95rem; cursor: pointer;" onclick="switchProfile('${p.id}')">${p.name}</span>
-                    ${activeBadge}
-                </div>
-                <div style="display: flex; gap: 6px; align-items: center;">
-                    <button type="button" class="btn-rename-profile" data-id="${p.id}" data-name="${p.name}" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Renomear Perfil">✏️</button>
-                    ${deleteBtn}
-                </div>
-            </div>
-        `;
+        return 
+            '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
+                '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
+                    '<span style="font-weight: 600; font-size: 0.95rem; cursor: pointer;" onclick="switchProfile(\'' + p.id + '\')">' + p.name + '</span>' +
+                    activeBadge +
+                '</div>' +
+                '<div style="display: flex; gap: 6px; align-items: center;">' +
+                    '<button type="button" class="btn-rename-profile" data-id="' + p.id + '" data-name="' + p.name + '" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Renomear Perfil">✏️</button>' +
+                    deleteBtn +
+                '</div>' +
+            '</div>';
     }).join('');
 }
 
@@ -1487,8 +1483,11 @@ function switchProfile(profileId) {
         // Setup inputs
         var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId) || '';
         var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
-        var oldUrl = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
-        if (!syncAppsScriptUrl || syncAppsScriptUrl === oldUrl) {
+        var oldUrls = [
+            'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec',
+            'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec'
+        ];
+        if (!syncAppsScriptUrl || oldUrls.indexOf(syncAppsScriptUrl) !== -1) {
             syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
             localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
         }
@@ -1589,8 +1588,11 @@ function init() {
         // Check Google Drive & Apps Script Sync on Startup
         var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
         var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
-        var oldUrl = 'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec';
-        if (!syncAppsScriptUrl || syncAppsScriptUrl === oldUrl) {
+        var oldUrls = [
+            'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec',
+            'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec'
+        ];
+        if (!syncAppsScriptUrl || oldUrls.indexOf(syncAppsScriptUrl) !== -1) {
             syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
             localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
         }
@@ -1662,12 +1664,11 @@ function renderCards() {
         if (lang === 'en') noResultsMsg = 'No figure found for';
         else if (lang === 'es') noResultsMsg = 'No se encontró figura para';
 
-        cardsGrid.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary); width: 100%;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block; color: var(--text-secondary);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <p>${noResultsMsg} "${searchQuery}".</p>
-            </div>
-        `;
+        cardsGrid.innerHTML = 
+            '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary); width: 100%;">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block; color: var(--text-secondary);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' +
+                '<p>' + noResultsMsg + ' "' + searchQuery + '".</p>' +
+            '</div>';
         return;
     }
 
@@ -1699,11 +1700,10 @@ function renderCards() {
         var catCards = cardsByCategory[cat.id];
         if (catCards && catCards.length > 0) {
             // Add category section header
-            html += `
-                <div class="category-group-header">
-                    <h3><span>${cat.icon}</span> ${getCategoryName(cat.id).toUpperCase()}</h3>
-                </div>
-            `;
+            html += 
+                '<div class="category-group-header">' +
+                    '<h3><span>' + cat.icon + '</span> ' + getCategoryName(cat.id).toUpperCase() + '</h3>' +
+                '</div>';
             
             // Add cards
             catCards.forEach(function(card) {
@@ -1730,26 +1730,25 @@ function renderCards() {
                 if (cat.id === 'favorites') {
                     var favIndex = favoriteCards.findIndex(function(c) { return c.text === card.text; });
                     if (favIndex >= 0 && favIndex < 9) {
-                        shortcutBadgeHtml = `<div class="card-shortcut-badge">${favIndex + 1}</div>`;
+                        shortcutBadgeHtml = '<div class="card-shortcut-badge">' + (favIndex + 1) + '</div>';
                     }
                 }
 
                 var draggableAttr = isReorderModeActive ? 'draggable="true"' : '';
                 var apiBadgeHtml = '';
                 if (card.fromApi) {
-                    apiBadgeHtml = `<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>`;
+                    apiBadgeHtml = '<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>';
                 }
 
-                html += `
-                    <div class="aac-card ${catClass}" ${draggableAttr} data-index="${indexInCards}" data-text="${card.text}">
-                        ${shortcutBadgeHtml}
-                        ${apiBadgeHtml}
-                        <button type="button" class="card-favorite-btn ${favClass}" data-index="${indexInCards}" title="${isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}">${favStarSymbol}</button>
-                        <span class="card-category-tag">${catName}</span>
-                        ${visualContent}
-                        <span>${getCardText(card)}</span>
-                    </div>
-                `;
+                html += 
+                    '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                        shortcutBadgeHtml +
+                        apiBadgeHtml +
+                        '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                        '<span class="card-category-tag">' + catName + '</span>' +
+                        visualContent +
+                        '<span>' + getCardText(card) + '</span>' +
+                    '</div>';
             });
         }
     });
@@ -1766,12 +1765,11 @@ function updateSentenceBuilder() {
         } else {
             visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '">';
         }
-        return `
-            <div class="sentence-card" data-idx="${idx}">
-                ${visualContent}
-                <span>${getCardText(card)}</span>
-            </div>
-        `;
+        return 
+            '<div class="sentence-card" data-idx="' + idx + '">' +
+                visualContent +
+                '<span>' + getCardText(card) + '</span>' +
+            '</div>';
     }).join('');
 
     updateFloatingBar();
@@ -2144,7 +2142,7 @@ function showChangelogModal(addedCards, removedCards) {
     if (addedCards.length > 0) {
         changelogAddedSection.classList.remove('d-none');
         changelogAddedList.innerHTML = addedCards.map(function(c) {
-            var displayVal = c.type === 'emoji' ? `${c.value} ` : '';
+            var displayVal = c.type === 'emoji' ? c.value + ' ' : '';
             return '<li>' + displayVal + c.text + '</li>';
         }).join('');
     } else {
@@ -2155,7 +2153,7 @@ function showChangelogModal(addedCards, removedCards) {
     if (removedCards.length > 0) {
         changelogRemovedSection.classList.remove('d-none');
         changelogRemovedList.innerHTML = removedCards.map(function(c) {
-            var displayVal = c.type === 'emoji' ? `${c.value} ` : '';
+            var displayVal = c.type === 'emoji' ? c.value + ' ' : '';
             return '<li>' + displayVal + c.text + '</li>';
         }).join('');
     } else {
@@ -2303,10 +2301,10 @@ function playCardVoice(card) {
 
 // Handle Theme Change
 function updateThemeIcon(theme) {
-    var sunSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
-    var moonSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+    var sunSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+    var moonSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
 
-    btnToggleTheme.innerHTML = `${theme === 'dark' ? sunSvg : moonSvg} <span>Alternar Tema</span>`;
+    btnToggleTheme.innerHTML = (theme === 'dark' ? sunSvg : moonSvg) + ' <span>Alternar Tema</span>';
 }
 
 function toggleTheme() {
@@ -2320,7 +2318,7 @@ function toggleTheme() {
 // Handle Low Vision Mode Change
 function updateLowVisionIcon(active) {
     if (!btnToggleLowVision) return;
-    btnToggleLowVision.innerHTML = `<span>${active ? 'Ativado 👁️' : 'Desativado ❌'}</span>`;
+    btnToggleLowVision.innerHTML = '<span>' + (active ? 'Ativado 👁️' : 'Desativado ❌') + '</span>';
 }
 
 function toggleLowVision() {
@@ -2357,7 +2355,7 @@ function openSubChoiceModal(actionText, categoryId) {
         subChoiceTitle.textContent = 'Onde está doendo?';
         subCards = cards.filter(function(c) { return c.category === 'pain'; });
     } else {
-        subChoiceTitle.textContent = `Escolha um(a) ${actionText}`;
+        subChoiceTitle.textContent = 'Escolha um(a) ' + actionText;
         subCards = cards.filter(function(c) { return c.category === categoryId; });
     }
 
@@ -2376,16 +2374,15 @@ function openSubChoiceModal(actionText, categoryId) {
 
         var apiBadgeHtml = '';
         if (card.fromApi) {
-            apiBadgeHtml = `<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>`;
+            apiBadgeHtml = '<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>';
         }
 
-        return `
-            <div class="aac-card ${catClass}" data-text="${card.text}">
-                ${apiBadgeHtml}
-                ${visualContent}
-                <span>${card.text}</span>
-            </div>
-        `;
+        return 
+            '<div class="aac-card ' + catClass + '" data-text="' + card.text + '">' +
+                apiBadgeHtml +
+                visualContent +
+                '<span>' + card.text + '</span>' +
+            '</div>';
     }).join('');
 
     modalSubChoice.classList.add('open');
@@ -2578,7 +2575,7 @@ function setupEventListeners() {
                     saveCardsToStorage();
                     renderCards();
                     renderManageCustomCards();
-                    showCustomAlert(`Figura "${cardText}" excluída com sucesso! 🗑️`);
+                    showCustomAlert('Figura "' + cardText + '" excluída com sucesso! 🗑️');
                 }
             });
         });
@@ -2707,7 +2704,7 @@ function setupEventListeners() {
         var reader = new FileReader();
         reader.onload = function(event) {
             uploadedImageBase64 = event.target.result;
-            imagePreview.innerHTML = `<img src="${uploadedImageBase64}" alt="Preview">`;
+            imagePreview.innerHTML = '<img src="' + uploadedImageBase64 + '" alt="Preview">';
         };
         reader.readAsDataURL(file);
     });
@@ -2916,11 +2913,7 @@ function setupEventListeners() {
             selectedArasaacBase64 = null;
             if (selectedArasaacIdInput) selectedArasaacIdInput.value = '';
             
-            fetch('https://api.arasaac.org/api/pictograms/pt/search/' + encodeURIComponent(term))
-                .then(function(res) {
-                    if (!res.ok) throw new Error('Erro na resposta');
-                    return res.json();
-                })
+            ajaxRequest('https://api.arasaac.org/api/pictograms/pt/search/' + encodeURIComponent(term))
                 .then(function(data) {
                     if (!arasaacResultsContainer) return;
                     if (!Array.isArray(data) || data.length === 0) {
@@ -2932,11 +2925,10 @@ function setupEventListeners() {
                     var html = '';
                     results.forEach(function(item) {
                         var id = item._id;
-                        html += `
-                            <div class="arasaac-item" data-id="${id}" style="width: 60px; height: 60px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: white; padding: 4px; position: relative; transition: all 0.2s; flex-shrink: 0; box-sizing: border-box;">
-                                <img src="https://api.arasaac.org/api/pictograms/${id}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="${term}">
-                            </div>
-                        `;
+                        html += 
+                            '<div class="arasaac-item" data-id="' + id + '" style="width: 60px; height: 60px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: white; padding: 4px; position: relative; transition: all 0.2s; flex-shrink: 0; box-sizing: border-box;">' +
+                                '<img src="https://api.arasaac.org/api/pictograms/' + id + '" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="' + term + '">' +
+                            '</div>';
                     });
                     arasaacResultsContainer.innerHTML = html;
                     
@@ -3331,20 +3323,19 @@ function setupEventListeners() {
                             if (exists) {
                                 btnHtml = '<span style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary);">Já Importado ✅</span>';
                             } else {
-                                btnHtml = `<button type="button" class="btn-import-cloud-profile" data-name="${cp.name}" style="background-color: var(--color-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Importar 📥</button>`;
+                                btnHtml = '<button type="button" class="btn-import-cloud-profile" data-name="' + cp.name + '" style="background-color: var(--color-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Importar 📥</button>';
                             }
                             
-                            return `
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; gap: 8px;">
-                                    <div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">
-                                        <strong style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${cp.name}</strong>
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary);">${dateText} • ${sizeText}</span>
-                                    </div>
-                                    <div style="flex-shrink: 0;">
-                                        ${btnHtml}
-                                    </div>
-                                </div>
-                            `;
+                            return 
+                                '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; gap: 8px;">' +
+                                    '<div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">' +
+                                        '<strong style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">' + cp.name + '</strong>' +
+                                        '<span style="font-size: 0.75rem; color: var(--text-secondary);">' + dateText + ' • ' + sizeText + '</span>' +
+                                    '</div>' +
+                                    '<div style="flex-shrink: 0;">' +
+                                        btnHtml +
+                                    '</div>' +
+                                '</div>';
                         }).join('');
                         
                         // Adicionar evento para os botões de importar recém-gerados
@@ -3720,57 +3711,60 @@ function setupEventListeners() {
             feedbackSubmitBtn.innerHTML = "<span>Carregando... ⏳</span>";
             feedbackSubmitBtn.disabled = true;
 
-            fetch("https://api.web3forms.com/submit", {
-                method: "POST",
-                body: formData
-            })
-            .then(function(response) {
-                return response.json().then(function(data) {
-                    if (response.ok) {
-                        feedbackForm.reset();
-                        
-                        var oldMsg = feedbackForm.querySelector('.feedback-success-msg');
-                        if (oldMsg) oldMsg.remove();
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "https://api.web3forms.com/submit", true);
+            xhr.onload = function() {
+                var data;
+                try {
+                    data = JSON.parse(xhr.responseText);
+                } catch(e) {
+                    data = {};
+                }
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    feedbackForm.reset();
+                    
+                    var oldMsg = feedbackForm.querySelector('.feedback-success-msg');
+                    if (oldMsg) oldMsg.remove();
 
-                        var successMsg = document.createElement('div');
-                        successMsg.className = 'feedback-success-msg';
-                        successMsg.textContent = 'Ideia enviada! Obrigado por ajudar a construir o projeto.';
-                        successMsg.style.backgroundColor = 'var(--color-primary)';
-                        successMsg.style.color = '#ffffff';
-                        successMsg.style.padding = '12px';
-                        successMsg.style.borderRadius = 'var(--radius-sm)';
-                        successMsg.style.marginTop = '10px';
-                        successMsg.style.fontWeight = 'bold';
-                        successMsg.style.textAlign = 'center';
+                    var successMsg = document.createElement('div');
+                    successMsg.className = 'feedback-success-msg';
+                    successMsg.textContent = 'Ideia enviada! Obrigado por ajudar a construir o projeto.';
+                    successMsg.style.backgroundColor = 'var(--color-primary)';
+                    successMsg.style.color = '#ffffff';
+                    successMsg.style.padding = '12px';
+                    successMsg.style.borderRadius = 'var(--radius-sm)';
+                    successMsg.style.marginTop = '10px';
+                    successMsg.style.fontWeight = 'bold';
+                    successMsg.style.textAlign = 'center';
+                    successMsg.style.opacity = '0';
+                    successMsg.style.transition = 'opacity 0.3s ease';
+                    
+                    feedbackForm.appendChild(successMsg);
+                    
+                    setTimeout(function() {
+                        successMsg.style.opacity = '1';
+                    }, 50);
+                    
+                    setTimeout(function() {
                         successMsg.style.opacity = '0';
-                        successMsg.style.transition = 'opacity 0.3s ease';
-                        
-                        feedbackForm.appendChild(successMsg);
-                        
                         setTimeout(function() {
-                            successMsg.style.opacity = '1';
-                        }, 50);
-                        
-                        setTimeout(function() {
-                            successMsg.style.opacity = '0';
-                            setTimeout(function() {
-                                if (successMsg.parentNode) {
-                                    successMsg.parentNode.removeChild(successMsg);
-                                }
-                            }, 300);
-                        }, 4000);
-                    } else {
-                        showCustomAlert("Erro: " + (data.message || "Não foi possível enviar no momento."));
-                    }
-                });
-            })
-            .catch(function(error) {
+                            if (successMsg.parentNode) {
+                                successMsg.parentNode.removeChild(successMsg);
+                            }
+                        }, 300);
+                    }, 4000);
+                } else {
+                    showCustomAlert("Erro: " + (data.message || "Não foi possível enviar no momento."));
+                }
+            };
+            xhr.onerror = function() {
                 showCustomAlert("Algo deu errado. Por favor, tente novamente.");
-            })
-            .finally(function() {
+            };
+            xhr.onloadend = function() {
                 feedbackSubmitBtn.innerHTML = originalText;
                 feedbackSubmitBtn.disabled = false;
-            });
+            };
+            xhr.send(formData);
         });
     }
 }
