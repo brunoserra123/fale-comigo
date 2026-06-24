@@ -1313,8 +1313,7 @@ function renderManageCustomCards() {
 
     listContainer.innerHTML = customCards.map(function(card) {
         var displayVal = card.type === 'emoji' ? card.value : '🖼️';
-        return 
-            '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
+        return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
                 '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
                     '<span style="font-size: 1.2rem; flex-shrink: 0;">' + displayVal + '</span>' +
                     '<span style="font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis;">' + card.text + '</span>' +
@@ -1371,8 +1370,7 @@ function renderProfilesList() {
         }
         var activeBadge = isCurrent ? '<span style="font-size: 0.8rem; background-color: var(--color-primary); color: white; padding: 2px 6px; border-radius: 10px; font-weight: bold;">Ativo</span>' : '';
         
-        return 
-            '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
+        return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
                 '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
                     '<span style="font-weight: 600; font-size: 0.95rem; cursor: pointer;" onclick="switchProfile(\'' + p.id + '\')">' + p.name + '</span>' +
                     activeBadge +
@@ -1767,8 +1765,7 @@ function updateSentenceBuilder() {
         } else {
             visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '">';
         }
-        return 
-            '<div class="sentence-card" data-idx="' + idx + '">' +
+        return '<div class="sentence-card" data-idx="' + idx + '">' +
                 visualContent +
                 '<span>' + getCardText(card) + '</span>' +
             '</div>';
@@ -2379,8 +2376,7 @@ function openSubChoiceModal(actionText, categoryId) {
             apiBadgeHtml = '<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>';
         }
 
-        return 
-            '<div class="aac-card ' + catClass + '" data-text="' + card.text + '">' +
+        return '<div class="aac-card ' + catClass + '" data-text="' + card.text + '">' +
                 apiBadgeHtml +
                 visualContent +
                 '<span>' + card.text + '</span>' +
@@ -3363,8 +3359,7 @@ function setupEventListeners() {
                                 btnHtml = '<button type="button" class="btn-import-cloud-profile" data-name="' + cp.name + '" style="background-color: var(--color-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Importar 📥</button>';
                             }
                             
-                            return 
-                                '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; gap: 8px;">' +
+                            return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; gap: 8px;">' +
                                     '<div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">' +
                                         '<strong style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">' + cp.name + '</strong>' +
                                         '<span style="font-size: 0.75rem; color: var(--text-secondary);">' + dateText + ' • ' + sizeText + '</span>' +
