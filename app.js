@@ -159,6 +159,269 @@ var DEFAULT_CARDS = [
     { text: 'Dor na Perna', category: 'pain', type: 'emoji', value: '🦵' }
 ];
 
+// Translation Dictionaries and Helper Functions (Multi-language i18n support)
+var CARD_TRANSLATIONS = {
+    en: {
+        "Sim": "Yes",
+        "Não": "No",
+        "Por Favor": "Please",
+        "Obrigado": "Thank you",
+        "Oi / Olá": "Hi / Hello",
+        "Tchau": "Goodbye",
+        "Socorro / Ajuda": "Help",
+        "Minha vez": "My turn",
+        "Sua vez": "Your turn",
+        "Mais": "More",
+        "Acabou": "Finished",
+        "Diferente": "Different",
+        "Igual": "Same",
+        "Eu Quero": "I want",
+        "Não quero": "I don't want",
+        "Comer": "Eat",
+        "Beber": "Drink",
+        "Falar com": "Talk to",
+        "Ir": "Go",
+        "Parar": "Stop",
+        "Ver / Olhar": "See / Look",
+        "Gostar": "Like",
+        "Não gostar": "Dislike",
+        "Brincar": "Play",
+        "Dormir": "Sleep",
+        "Ouvir": "Hear",
+        "Água": "Water",
+        "Suco": "Juice",
+        "Fruta": "Fruit",
+        "Pão": "Bread",
+        "Comida": "Food",
+        "Bolo": "Cake",
+        "Fome": "Hungry",
+        "Feliz": "Happy",
+        "Triste": "Sad",
+        "Cansado": "Tired",
+        "Dor": "Pain",
+        "Machucado": "Hurt",
+        "Bravo": "Angry",
+        "Assustado": "Scared",
+        "Banheiro": "Bathroom",
+        "Casa": "Home",
+        "Escola": "School",
+        "Parque / Rua": "Park / Street",
+        "Quarto": "Bedroom",
+        "Eu": "Me",
+        "Você": "You",
+        "Mamãe": "Mom",
+        "Papai": "Dad",
+        "Professor(a)": "Teacher",
+        "Amigo": "Friend",
+        "Dor de Cabeça": "Headache",
+        "Dor de Barriga": "Stomachache",
+        "Dor de Ouvido": "Earache",
+        "Dor na Garganta": "Sore Throat",
+        "Dor nas Costas": "Back Pain",
+        "Dor no Braço": "Arm Pain",
+        "Dor na Perna": "Leg Pain"
+    },
+    es: {
+        "Sim": "Sí",
+        "Não": "No",
+        "Por Favor": "Por favor",
+        "Obrigado": "Gracias",
+        "Oi / Olá": "Hola",
+        "Tchau": "Adiós",
+        "Socorro / Ajuda": "Ayuda",
+        "Minha vez": "Mi turno",
+        "Sua vez": "Tu turno",
+        "Mais": "Más",
+        "Acabou": "Terminado",
+        "Diferente": "Diferente",
+        "Igual": "Igual",
+        "Eu Quero": "Yo quiero",
+        "Não quero": "No quiero",
+        "Comer": "Comer",
+        "Beber": "Beber",
+        "Falar com": "Hablar con",
+        "Ir": "Ir",
+        "Parar": "Parar",
+        "Ver / Olhar": "Ver / Mirar",
+        "Gostar": "Me gusta",
+        "Não gostar": "No me gusta",
+        "Brincar": "Jugar",
+        "Dormir": "Dormir",
+        "Ouvir": "Oír",
+        "Água": "Agua",
+        "Suco": "Jugo",
+        "Fruta": "Fruta",
+        "Pão": "Pan",
+        "Comida": "Comida",
+        "Bolo": "Pastel",
+        "Fome": "Hambre",
+        "Feliz": "Feliz",
+        "Triste": "Triste",
+        "Cansado": "Cansado",
+        "Dor": "Dolor",
+        "Machucado": "Lastimado",
+        "Bravo": "Enojado",
+        "Assustado": "Asustado",
+        "Banheiro": "Baño",
+        "Casa": "Casa",
+        "Escola": "Escuela",
+        "Parque / Rua": "Parque / Calle",
+        "Quarto": "Habitación",
+        "Eu": "Yo",
+        "Você": "Tú",
+        "Mamãe": "Mamá",
+        "Papai": "Papá",
+        "Professor(a)": "Profesor(a)",
+        "Amigo": "Amigo",
+        "Dor de Cabeça": "Dolor de Cabeza",
+        "Dor de Barriga": "Dolor de Barriga",
+        "Dor de Dente": "Dolor de Muelas",
+        "Dor de Ouvido": "Dolor de Oído",
+        "Dor na Garganta": "Dolor de Garganta",
+        "Dor nas Costas": "Dolor de Espalda",
+        "Dor no Braço": "Dolor de Brazo",
+        "Dor na Perna": "Dolor de Pierna"
+    }
+};
+
+var CATEGORY_TRANSLATIONS = {
+    pt: { all: 'Todos', favorites: 'Favoritos', essential: 'Essencial', action: 'Ações', food: 'Alimentação', feeling: 'Sentimentos', place: 'Lugares', person: 'Pessoas', custom: 'Personalizados', pain: 'Dor' },
+    en: { all: 'All', favorites: 'Favorites', essential: 'Essential', action: 'Actions', food: 'Food', feeling: 'Feelings', place: 'Places', person: 'People', custom: 'Custom', pain: 'Pain' },
+    es: { all: 'Todos', favorites: 'Favoritos', essential: 'Esencial', action: 'Acciones', food: 'Alimentación', feeling: 'Sentimientos', place: 'Lugares', person: 'Personas', custom: 'Personalizados', pain: 'Dolor' }
+};
+
+var UI_TRANSLATIONS = {
+    pt: {
+        app_title: "Fale Comigo",
+        sentence_placeholder: "Toque nas figuras para montar a frase...",
+        btn_speak: "FALAR",
+        btn_send: "ENVIAR",
+        btn_clear: "LIMPAR",
+        search_placeholder: "Buscar figura... 🔍",
+        brand_signature: "Desenvolvido por Bruno Serra de Oliveira",
+        brand_purpose: "Criado com carinho para ajudar as pessoas a se comunicarem.",
+        brand_version_label: "Versão",
+        btn_support: "Apoiar Projeto 💖",
+        settings_title: "Configurações do Tutor",
+        label_theme: "Aparência:",
+        label_low_vision: "Baixa Visão:",
+        label_language: "Idioma do Perfil:",
+        label_voice: "Voz do Sistema:",
+        loading_voices: "Carregando vozes...",
+        label_voice_rate: "Velocidade da Voz:",
+        label_voice_pitch: "Tom da Voz:",
+        label_total_accesses: "Total de Acessos:"
+    },
+    en: {
+        app_title: "Talk to Me",
+        sentence_placeholder: "Tap the cards to build a sentence...",
+        btn_speak: "SPEAK",
+        btn_send: "SEND",
+        btn_clear: "CLEAR",
+        search_placeholder: "Search figure... 🔍",
+        brand_signature: "Developed by Bruno Serra de Oliveira",
+        brand_purpose: "Created with love to help people communicate.",
+        brand_version_label: "Version",
+        btn_support: "Support Project 💖",
+        settings_title: "Tutor Settings",
+        label_theme: "Theme:",
+        label_low_vision: "Low Vision:",
+        label_language: "Profile Language:",
+        label_voice: "System Voice:",
+        loading_voices: "Loading voices...",
+        label_voice_rate: "Voice Speed:",
+        label_voice_pitch: "Voice Pitch:",
+        label_total_accesses: "Total Accesses:"
+    },
+    es: {
+        app_title: "Habla Conmigo",
+        sentence_placeholder: "Toca las figuras para armar la frase...",
+        btn_speak: "HABLAR",
+        btn_send: "ENVIAR",
+        btn_clear: "LIMPIAR",
+        search_placeholder: "Buscar figura... 🔍",
+        brand_signature: "Desarrollado por Bruno Serra de Oliveira",
+        brand_purpose: "Creado con cariño para ayudar a las personas a comunicarse.",
+        brand_version_label: "Versión",
+        btn_support: "Apoyar Proyecto 💖",
+        settings_title: "Ajustes del Tutor",
+        label_theme: "Apariencia:",
+        label_low_vision: "Baja Visión:",
+        label_language: "Idioma del Perfil:",
+        label_voice: "Voz del Sistema:",
+        loading_voices: "Cargando voces...",
+        label_voice_rate: "Velocidad de Voz:",
+        label_voice_pitch: "Tono de Voz:",
+        label_total_accesses: "Accesos Totales:"
+    }
+};
+
+function getProfileLanguage() {
+    return localStorage.getItem('caa_lang_' + currentProfileId) || 'pt';
+}
+
+function loadProfileLanguage() {
+    var lang = getProfileLanguage();
+    if (seletorIdioma) {
+        seletorIdioma.value = lang;
+    }
+    translatePage();
+}
+
+function translatePage() {
+    var lang = getProfileLanguage();
+    var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
+    
+    var elements = document.querySelectorAll('[data-i18n]');
+    elements.forEach(function(el) {
+        var key = el.dataset.i18n;
+        var translation = dict[key];
+        if (translation) {
+            var span = el.querySelector('span');
+            if (span) {
+                span.textContent = translation;
+            } else {
+                el.textContent = translation;
+            }
+        }
+    });
+
+    var placeholders = document.querySelectorAll('[data-i18n-placeholder]');
+    placeholders.forEach(function(el) {
+        var key = el.dataset.i18nPlaceholder;
+        var translation = dict[key];
+        if (translation && el.placeholder !== undefined) {
+            el.placeholder = translation;
+        }
+    });
+
+    var dataPlaceholders = document.querySelectorAll('[data-i18n-data-placeholder]');
+    dataPlaceholders.forEach(function(el) {
+        var key = el.dataset.i18nDataPlaceholder;
+        var translation = dict[key];
+        if (translation) {
+            el.setAttribute('data-placeholder', translation);
+        }
+    });
+}
+
+function getCardText(card) {
+    if (!card) return '';
+    var lang = getProfileLanguage();
+    if (lang === 'pt') return card.text;
+    var translations = CARD_TRANSLATIONS[lang];
+    if (translations && translations[card.text]) {
+        return translations[card.text];
+    }
+    return card.text;
+}
+
+function getCategoryName(catId) {
+    var lang = getProfileLanguage();
+    var catObj = CATEGORY_TRANSLATIONS[lang] || CATEGORY_TRANSLATIONS.pt;
+    return catObj[catId] || catId;
+}
+
 // App State
 var cards = [];
 var selectedCards = [];
@@ -175,6 +438,7 @@ var btnClearAll = document.getElementById('btn-clear-all');
 var btnToggleTheme = document.getElementById('btn-toggle-theme');
 var btnToggleLowVision = document.getElementById('btn-toggle-low-vision');
 var seletorVozes = document.getElementById('seletor-vozes');
+var seletorIdioma = document.getElementById('seletor-idioma');
 var vozesDisponiveis = [];
 
 // Settings Modal Elements
@@ -334,7 +598,7 @@ function carregarRecentes() {
                 selectedCards = selectedList.slice();
                 updateSentenceBuilder();
                 
-                var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
+                var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
                 speakText(fullSentence);
             }
         });
@@ -450,22 +714,31 @@ function carregarVozes() {
     }
     seletorVozes.innerHTML = '';
     
-    // Filter PT voices
-    var vozesPT = vozesDisponiveis.filter(function(voz) {
-        return voz.lang && voz.lang.toLowerCase().indexOf('pt') !== -1;
+    // Filter voices based on active language
+    var lang = getProfileLanguage();
+    var langPrefix = 'pt';
+    if (lang === 'en') langPrefix = 'en';
+    else if (lang === 'es') langPrefix = 'es';
+
+    var vozesFiltradas = vozesDisponiveis.filter(function(voz) {
+        return voz.lang && voz.lang.toLowerCase().indexOf(langPrefix) !== -1;
     });
 
-    if (vozesPT.length === 0) {
-        seletorVozes.innerHTML = '<option value="">Nenhuma voz PT encontrada</option>';
+    if (vozesFiltradas.length === 0) {
+        var noVoiceText = 'Nenhuma voz PT encontrada';
+        if (lang === 'en') noVoiceText = 'No EN voice found';
+        else if (lang === 'es') noVoiceText = 'No se encontró voz ES';
+        
+        seletorVozes.innerHTML = '<option value="">' + noVoiceText + '</option>';
         return;
     }
 
     var savedVoiceName = localStorage.getItem('caa_selected_voice_' + currentProfileId) || '';
     
-    vozesPT.forEach(function(voz) {
+    vozesFiltradas.forEach(function(voz) {
         var opcao = document.createElement('option');
         opcao.value = voz.name;
-        opcao.textContent = voz.name + ' (' + (voz.lang.toLowerCase().indexOf('br') !== -1 ? 'Brasil' : 'Portugal') + ')';
+        opcao.textContent = voz.name + ' (' + voz.lang + ')';
         if (voz.name === savedVoiceName) {
             opcao.selected = true;
         }
@@ -1202,6 +1475,9 @@ function switchProfile(profileId) {
         }
         updateLowVisionIcon(lowVision);
 
+        // Load language for this profile
+        loadProfileLanguage();
+        
         // Load voices for this profile
         carregarVozes();
         carregarVozConfig();
@@ -1285,6 +1561,9 @@ function init() {
             document.body.classList.remove('low-vision');
         }
         updateLowVisionIcon(lowVision);
+
+        // Load profile language
+        loadProfileLanguage();
 
         // Load system voices
         carregarVozes();
@@ -1370,16 +1649,23 @@ function toggleFavorite(cardIndex) {
 function renderCards() {
     var searchQuery = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
 
-    // Filter cards based on search query
+    // Filter cards based on search query (matches original and translated text)
     var filtered = cards.filter(function(card) {
-        return card.text.toLowerCase().indexOf(searchQuery) !== -1;
+        var textPT = card.text.toLowerCase();
+        var textTranslated = getCardText(card).toLowerCase();
+        return textPT.indexOf(searchQuery) !== -1 || textTranslated.indexOf(searchQuery) !== -1;
     });
 
     if (filtered.length === 0) {
+        var lang = getProfileLanguage();
+        var noResultsMsg = 'Nenhuma figura encontrada para';
+        if (lang === 'en') noResultsMsg = 'No figure found for';
+        else if (lang === 'es') noResultsMsg = 'No se encontró figura para';
+
         cardsGrid.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary); width: 100%;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block; color: var(--text-secondary);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <p>Nenhuma figura encontrada para "${searchQuery}".</p>
+                <p>${noResultsMsg} "${searchQuery}".</p>
             </div>
         `;
         return;
@@ -1415,7 +1701,7 @@ function renderCards() {
             // Add category section header
             html += `
                 <div class="category-group-header">
-                    <h3><span>${cat.icon}</span> ${cat.name.toUpperCase()}</h3>
+                    <h3><span>${cat.icon}</span> ${getCategoryName(cat.id).toUpperCase()}</h3>
                 </div>
             `;
             
@@ -1423,13 +1709,13 @@ function renderCards() {
             catCards.forEach(function(card) {
                 var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
                 var catClass = catObj ? catObj.class : 'cat-custom';
-                var catName = catObj ? catObj.name : 'Personalizado';
+                var catName = catObj ? getCategoryName(catObj.id) : getCategoryName('custom');
                 
                 var visualContent = '';
                 if (card.type === 'emoji') {
                     visualContent = '<div class="card-emoji">' + card.value + '</div>';
                 } else {
-                    visualContent = '<img src="' + card.value + '" alt="' + card.text + '" onerror="this.src=\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 class=%22lucide lucide-image-off%22><line x1=%222%22 y1=%222%22 x2=%2222%22 y2=%2222%22/><path d=%22M10.41 10.41a2 2 0 1 1-2.83-2.83%22/><path d=%22M21 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.37a2 2 0 0 1 1.04.3l1.18.7a2 2 0 0 0 1.04.3H21a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2z%22/><path d=%22m3 16 4-4a2 2 0 0 1 2.82 0l1.18 1.18%22/><path d=%22M16 16 14.5 14.5%22/></svg>\'">';
+                    visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.src=\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 class=%22lucide lucide-image-off%22><line x1=%222%22 y1=%222%22 x2=%2222%22 y2=%2222%22/><path d=%22M10.41 10.41a2 2 0 1 1-2.83-2.83%22/><path d=%22M21 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.37a2 2 0 0 1 1.04.3l1.18.7a2 2 0 0 0 1.04.3H21a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2z%22/><path d=%22m3 16 4-4a2 2 0 0 1 2.82 0l1.18 1.18%22/><path d=%22M16 16 14.5 14.5%22/></svg>\'">';
                 }
 
                 var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
@@ -1461,7 +1747,7 @@ function renderCards() {
                         <button type="button" class="card-favorite-btn ${favClass}" data-index="${indexInCards}" title="${isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}">${favStarSymbol}</button>
                         <span class="card-category-tag">${catName}</span>
                         ${visualContent}
-                        <span>${card.text}</span>
+                        <span>${getCardText(card)}</span>
                     </div>
                 `;
             });
@@ -1478,12 +1764,12 @@ function updateSentenceBuilder() {
         if (card.type === 'emoji') {
             visualContent = '<div class="card-emoji">' + card.value + '</div>';
         } else {
-            visualContent = '<img src="' + card.value + '" alt="' + card.text + '">';
+            visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '">';
         }
         return `
             <div class="sentence-card" data-idx="${idx}">
                 ${visualContent}
-                <span>${card.text}</span>
+                <span>${getCardText(card)}</span>
             </div>
         `;
     }).join('');
@@ -1501,9 +1787,9 @@ function updateFloatingBar() {
         // Build preview text with emojis
         var textPreview = selectedCards.map(function(c) {
             if (c.type === 'emoji') {
-                return c.value + ' ' + c.text;
+                return c.value + ' ' + getCardText(c);
             }
-            return c.text;
+            return getCardText(c);
         }).join(' + ');
         
         floatingSentencePreview.textContent = textPreview;
@@ -1926,8 +2212,15 @@ function speakText(text) {
         console.warn('Erro ao cancelar fala anterior: ', e);
     }
 
+    var lang = getProfileLanguage();
     var utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'pt-BR';
+    if (lang === 'en') {
+        utterance.lang = 'en-US';
+    } else if (lang === 'es') {
+        utterance.lang = 'es-ES';
+    } else {
+        utterance.lang = 'pt-BR';
+    }
     
     // Configura velocidade (rate) e tom (pitch)
     var savedRate = localStorage.getItem('caa_voice_rate_' + currentProfileId) || '1.0';
@@ -1948,7 +2241,7 @@ function speakText(text) {
     utterance.onend = cleanup;
     utterance.onerror = cleanup;
     
-    // Choose a local PT-BR voice or user selected voice
+    // Choose voice based on language
     var voices = [];
     try {
         voices = synth.getVoices();
@@ -1965,11 +2258,15 @@ function speakText(text) {
     if (selectedVoiceObj) {
         utterance.voice = selectedVoiceObj;
     } else {
-        var ptVoice = voices.find(function(voice) { 
-            return voice.lang && (voice.lang.toLowerCase().indexOf('pt-br') !== -1 || voice.lang.toLowerCase().indexOf('pt_br') !== -1); 
+        var preferredLangPrefix = 'pt-';
+        if (lang === 'en') preferredLangPrefix = 'en-';
+        else if (lang === 'es') preferredLangPrefix = 'es-';
+
+        var preferredVoice = voices.find(function(voice) { 
+            return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1; 
         });
-        if (ptVoice) {
-            utterance.voice = ptVoice;
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
         }
     }
     
@@ -1993,14 +2290,14 @@ function playCardVoice(card) {
             var audio = new Audio(card.audio);
             audio.play().catch(function(err) {
                 console.warn('Falha ao reproduzir áudio gravado, usando síntese:', err);
-                speakText(card.text);
+                speakText(getCardText(card));
             });
         } catch(e) {
             console.error('Erro ao tocar áudio:', e);
-            speakText(card.text);
+            speakText(getCardText(card));
         }
     } else {
-        speakText(card.text);
+        speakText(getCardText(card));
     }
 }
 
@@ -2168,7 +2465,7 @@ function setupEventListeners() {
         if (selectedCards.length === 0) return;
         
         // Combine text of all selected cards
-        var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
+        var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
         speakText(fullSentence);
         adicionarFraseRecente(selectedCards);
     });
@@ -2191,6 +2488,18 @@ function setupEventListeners() {
     if (seletorVozes) {
         seletorVozes.addEventListener('change', function() {
             localStorage.setItem('caa_selected_voice_' + currentProfileId, seletorVozes.value);
+        });
+    }
+
+    // Language selector change
+    if (seletorIdioma) {
+        seletorIdioma.addEventListener('change', function() {
+            var selectedLang = seletorIdioma.value;
+            localStorage.setItem('caa_lang_' + currentProfileId, selectedLang);
+            translatePage();
+            carregarVozes();
+            renderCards();
+            updateSentenceBuilder();
         });
     }
 
@@ -2218,7 +2527,7 @@ function setupEventListeners() {
                 showCustomAlert('Por favor, monte uma frase primeiro tocando nas figuras! 😊');
                 return;
             }
-            var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
+            var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
             showShareOptions(fullSentence);
         });
     }
@@ -2229,7 +2538,7 @@ function setupEventListeners() {
                 showCustomAlert('Por favor, monte uma frase primeiro tocando nas figuras! 😊');
                 return;
             }
-            var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
+            var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
             showShareOptions(fullSentence);
         });
     }
@@ -2856,7 +3165,7 @@ function setupEventListeners() {
     if (btnSpeakFloat) {
         btnSpeakFloat.addEventListener('click', function() {
             if (selectedCards.length === 0) return;
-            var fullSentence = selectedCards.map(function(c) { return c.text; }).join(' ');
+            var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
             speakText(fullSentence);
             adicionarFraseRecente(selectedCards);
         });

@@ -42,7 +42,7 @@
         <header class="app-header">
             <div class="header-logo">
                 <img src="icon.png" alt="Logo Fale Comigo" class="logo-icon" style="width: 42px; height: 42px; object-fit: contain;">
-                <h1>Fale Comigo</h1>
+                <h1 data-i18n="app_title">Fale Comigo</h1>
             </div>
             <div class="header-actions">
                 <!-- Indicador de Status da Nuvem -->
@@ -79,21 +79,21 @@
         <!-- SENTENCE BUILDER BAR -->
         <section class="sentence-section">
             <div class="sentence-container">
-                <div id="sentence-list" class="sentence-list" data-placeholder="Toque nas figuras para montar a frase...">
+                <div id="sentence-list" class="sentence-list" data-placeholder="Toque nas figuras para montar a frase..." data-i18n-data-placeholder="sentence_placeholder">
                     <!-- Cards will be added here dynamically -->
                 </div>
                 <div class="sentence-controls">
                     <button id="btn-speak" class="btn btn-primary btn-speak" title="Falar Frase">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-                        <span>FALAR</span>
+                        <span data-i18n="btn_speak">FALAR</span>
                     </button>
                     <button id="btn-share-whatsapp" class="btn btn-secondary btn-share" title="Enviar / Copiar Frase">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                        <span>ENVIAR</span>
+                        <span data-i18n="btn_send">ENVIAR</span>
                     </button>
                     <button id="btn-clear-all" class="btn btn-danger" title="Limpar tudo">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                        <span>LIMPAR</span>
+                        <span data-i18n="btn_clear">LIMPAR</span>
                     </button>
                 </div>
             </div>
@@ -102,7 +102,7 @@
         <!-- SEARCH BAR -->
         <section class="search-section">
             <div class="search-container">
-                <input type="text" id="search-input" placeholder="Buscar figura... 🔍" aria-label="Buscar figura">
+                <input type="text" id="search-input" placeholder="Buscar figura... 🔍" aria-label="Buscar figura" data-i18n-placeholder="search_placeholder">
                 <button id="btn-clear-search" class="btn-clear-search d-none" title="Limpar busca">&times;</button>
             </div>
         </section>
@@ -129,13 +129,13 @@
             <div class="brand-badge">
                 <span class="brand-icon">✨</span>
                 <div class="brand-text">
-                    <p class="brand-signature">Desenvolvido por <strong>Bruno Serra de Oliveira</strong></p>
-                    <p class="brand-purpose">Criado com carinho para ajudar as pessoas a se comunicarem.</p>
-                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;">Versão 1.7.1 (v43)</p>
+                    <p class="brand-signature" data-i18n="brand_signature">Desenvolvido por <strong>Bruno Serra de Oliveira</strong></p>
+                    <p class="brand-purpose" data-i18n="brand_purpose">Criado com carinho para ajudar as pessoas a se comunicarem.</p>
+                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 1.8.0 (v44)</p>
                 </div>
             </div>
             <button id="btn-support" class="btn btn-secondary btn-support" style="margin-left: auto; gap: 6px; font-weight: 700; font-size: 0.9rem; padding: 10px 18px; border-radius: var(--radius-sm);">
-                <span>Apoiar Projeto 💖</span>
+                <span data-i18n="btn_support">Apoiar Projeto 💖</span>
             </button>
         </footer>
 
@@ -203,33 +203,42 @@
         <div id="modal-settings" class="modal-overlay">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Configurações do Tutor</h2>
+                    <h2 data-i18n="settings_title">Configurações do Tutor</h2>
                     <button id="btn-close-settings" class="btn-close">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="settings-row">
-                        <label>Aparência:</label>
+                        <label data-i18n="label_theme">Aparência:</label>
                         <button id="btn-toggle-theme" class="btn btn-secondary">
                             <!-- Populated dynamically -->
                         </button>
                     </div>
 
                     <div class="settings-row">
-                        <label>Baixa Visão:</label>
+                        <label data-i18n="label_low_vision">Baixa Visão:</label>
                         <button id="btn-toggle-low-vision" type="button" class="btn btn-secondary">
                             <!-- Populated dynamically -->
                         </button>
                     </div>
 
                     <div class="settings-row">
-                        <label>Voz do Sistema:</label>
-                        <select id="seletor-vozes" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 180px; width: 100%;">
-                            <option value="">Carregando vozes...</option>
+                        <label data-i18n="label_language">Idioma do Perfil:</label>
+                        <select id="seletor-idioma" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 180px; width: 100%;">
+                            <option value="pt">Português 🇧🇷</option>
+                            <option value="en">English 🇺🇸</option>
+                            <option value="es">Español 🇪🇸</option>
                         </select>
                     </div>
 
                     <div class="settings-row">
-                        <label>Velocidade da Voz:</label>
+                        <label data-i18n="label_voice">Voz do Sistema:</label>
+                        <select id="seletor-vozes" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 180px; width: 100%;">
+                            <option value="" data-i18n="loading_voices">Carregando vozes...</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-row">
+                        <label data-i18n="label_voice_rate">Velocidade da Voz:</label>
                         <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; max-width: 180px; width: 100%;">
                             <input type="range" id="input-voice-rate" min="0.5" max="2.0" step="0.1" value="1.0" style="flex-grow: 1; cursor: pointer;">
                             <span id="val-voice-rate" style="font-weight: 700; min-width: 25px; text-align: right;">1.0</span>
@@ -237,7 +246,7 @@
                     </div>
 
                     <div class="settings-row">
-                        <label>Tom da Voz:</label>
+                        <label data-i18n="label_voice_pitch">Tom da Voz:</label>
                         <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; max-width: 180px; width: 100%;">
                             <input type="range" id="input-voice-pitch" min="0.5" max="2.0" step="0.1" value="1.0" style="flex-grow: 1; cursor: pointer;">
                             <span id="val-voice-pitch" style="font-weight: 700; min-width: 25px; text-align: right;">1.0</span>
@@ -245,7 +254,7 @@
                     </div>
 
                     <div class="settings-row">
-                        <label>Total de Acessos:</label>
+                        <label data-i18n="label_total_accesses">Total de Acessos:</label>
                         <span id="access-counter-val" style="font-weight: 700; font-size: 1.1rem; color: var(--color-primary);">1</span>
                     </div>
 
