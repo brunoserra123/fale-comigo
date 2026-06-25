@@ -2294,9 +2294,15 @@ function speakText(text) {
         if (lang === 'en') preferredLangPrefix = 'en-';
         else if (lang === 'es') preferredLangPrefix = 'es-';
 
+        // Prioritize Google voice as default on Android/Samsung since it's more reliable
         var preferredVoice = voices.find(function(voice) { 
-            return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1; 
+            return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && voice.name.toLowerCase().indexOf('google') !== -1; 
         });
+        if (!preferredVoice) {
+            preferredVoice = voices.find(function(voice) { 
+                return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1; 
+            });
+        }
         if (preferredVoice) {
             utterance.voice = preferredVoice;
         }
