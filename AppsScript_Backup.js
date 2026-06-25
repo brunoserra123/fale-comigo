@@ -20,12 +20,47 @@
 var MAIN_FOLDER_NAME = "Fale Comigo - Backups";
 var BACKUP_FILE_NAME = "backup.json";
 
+// URL do Webhook do Discord para notificações (insira sua URL aqui)
+var DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1519354513163550801/tmk8MVBor8L7rgLh4Chx_i8BbxBrwoLH2iB1gl74edNlw0_6ivczS79FwLBm_wkxzPYs";
+
+/**
+ * Função para enviar notificações para o Discord via Webhook
+ */
+function sendDiscordNotification(payload) {
+  if (!DISCORD_WEBHOOK_URL) return;
+  try {
+    var options = {
+      "method": "post",
+      "contentType": "application/json",
+      "payload": JSON.stringify(payload),
+      "muteHttpExceptions": true
+    };
+    UrlFetchApp.fetch(DISCORD_WEBHOOK_URL, options);
+  } catch (error) {
+    console.error("Erro ao enviar notificação para o Discord: " + error.toString());
+  }
+}
+
+
 /**
  * Função para processar requisições GET (Sincronização / download do backup do usuário)
  */
 function doGet(e) {
   var action = e.parameter.action;
   var callback = e.parameter.callback; // Suporte a JSONP
+  
+  if (action === "validateCoupon") {
+    var code = (e.parameter.code || "").trim().toUpperCase();
+    var response = validateCouponInSheet(code);
+    var jsonResponse = JSON.stringify(response);
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + jsonResponse + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    } else {
+      return ContentService.createTextOutput(jsonResponse)
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
   
   if (action === "listProfiles") {
     var profilesList = [];
@@ -100,11 +135,11 @@ function doGet(e) {
  * Função para processar requisições POST (Envio de backup / registro de acesso)
  */
 function doPost(e) {
-  var profile = e.parameter.profile || "Padrao";
   var postContent = e.postData.contents;
   
   try {
     var data = JSON.parse(postContent);
+    var profile = e.parameter.profile || (data && data.profile) || "Padrao";
     
     // Verifica se é uma chamada de registro de acesso
     if (data && data.action === "recordAccess") {
@@ -183,6 +218,20 @@ function saveFeedback(name, message) {
     
     // Adiciona o comentário como uma nova linha na planilha
     sheet.appendRow([timestamp, author, message]);
+
+    // Envia notificação para o Discord
+    sendDiscordNotification({
+      "embeds": [{
+        "title": "💬 Novo Feedback / Sugestão Recebida",
+        "color": 3447003, // Azul bonito (Hex #3498db)
+        "fields": [
+          { "name": "👤 Usuário", "value": author, "inline": true },
+          { "name": "📅 Data/Hora", "value": timestamp, "inline": true },
+          { "name": "📝 Mensagem", "value": message }
+        ],
+        "footer": { "text": "Fale Comigo App • Notificações do Google Apps Script" }
+      }]
+    });
     
   } catch (error) {
     console.error("Erro ao salvar feedback na planilha: " + error.toString());
@@ -224,7 +273,97 @@ function logAccess(profile, accesses) {
     } else {
       profileFolder.createFile(logFileName, logLine, "text/plain");
     }
+
+    // Envia notificação para o Discord
+    sendDiscordNotification({
+      "embeds": [{
+        "title": "👤 Registro de Acesso",
+        "color": 1752220, // Esmeralda (Hex #1abc9c)
+        "fields": [
+          { "name": "👤 Perfil", "value": profile, "inline": true },
+          { "name": "📈 Total de Acessos", "value": String(accesses), "inline": true },
+          { "name": "📅 Data/Hora", "value": timestamp, "inline": true }
+        ],
+        "footer": { "text": "Fale Comigo App • Notificações do Google Apps Script" }
+      }]
+    });
   } catch (e) {
     console.error("Erro ao gravar log de acesso: " + e.toString());
+  }
+}
+
+/**
+ * Função para validar o cupom na planilha "Sugestões e Comentários", aba "Cupons"
+ */
+function validateCouponInSheet(code) {
+  if (!code) return { status: "invalid", message: "Código em branco" };
+  try {
+    var mainFolder = getOrCreateFolder(DriveApp.getRootFolder(), MAIN_FOLDER_NAME);
+    var sheetName = "Sugestões e Comentários";
+    var files = mainFolder.getFilesByName(sheetName);
+    var spreadsheet;
+    
+    if (files.hasNext()) {
+      spreadsheet = SpreadsheetApp.open(files.next());
+    } else {
+      spreadsheet = SpreadsheetApp.create(sheetName);
+      var driveFile = DriveApp.getFileById(spreadsheet.getId());
+      driveFile.moveTo(mainFolder);
+      var defaultSheet = spreadsheet.getSheets()[0];
+      defaultSheet.appendRow(["Data e Hora", "Nome do Usuário", "Comentário / Ideia"]);
+      defaultSheet.getRange(1, 1, 1, 3).setFontWeight("bold").setBackground("#e2e8f0");
+    }
+    
+    // Obtém ou cria a aba "Cupons"
+    var couponSheet = spreadsheet.getSheetByName("Cupons");
+    if (!couponSheet) {
+      couponSheet = spreadsheet.insertSheet("Cupons");
+      couponSheet.appendRow(["Cupom", "Ativo", "Limite de Acessos", "Total Acessos"]);
+      couponSheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#e2e8f0");
+      // Insere cupom padrão ativo
+      couponSheet.appendRow(["VIP99", "SIM", "", "0"]);
+    }
+    
+    var data = couponSheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var sheetCode = String(data[i][0]).trim().toUpperCase();
+      if (sheetCode === code) {
+        var active = String(data[i][1]).trim().toUpperCase();
+        if (active !== "SIM") {
+          return { status: "inactive", message: "Cupom inativo" };
+        }
+        var limitStr = String(data[i][2]).trim();
+        var totalAcessos = parseInt(data[i][3]) || 0;
+        if (limitStr !== "") {
+          var limit = parseInt(limitStr) || 0;
+          if (totalAcessos >= limit) {
+            return { status: "exhausted", message: "Limite de uso esgotado" };
+          }
+        }
+        
+        // Incrementa o contador de acessos
+        couponSheet.getRange(i + 1, 4).setValue(totalAcessos + 1);
+        
+        // Envia notificação ao Discord
+        sendDiscordNotification({
+          "embeds": [{
+            "title": "🌟 Cupom Premium Ativado!",
+            "color": 15844367, // Dourado (Hex #f1c40f)
+            "fields": [
+              { "name": "🔑 Cupom", "value": code, "inline": true },
+              { "name": "📈 Acessos Totais", "value": String(totalAcessos + 1), "inline": true }
+            ],
+            "footer": { "text": "Fale Comigo App • Validador de Cupons" }
+          }]
+        });
+        
+        return { status: "success", premium: true };
+      }
+    }
+    
+    return { status: "not_found", message: "Cupom inválido" };
+  } catch (error) {
+    console.error("Erro ao validar cupom: " + error.toString());
+    return { status: "error", message: "Erro no servidor: " + error.toString() };
   }
 }

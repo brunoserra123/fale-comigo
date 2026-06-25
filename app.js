@@ -794,20 +794,54 @@ var isReorderModeActive = false;
 var btnToggleReorder = document.getElementById('btn-toggle-reorder');
 var premiumCodeInput = document.getElementById('premium-code-input');
 var premiumStatusLabel = document.getElementById('premium-status-label');
+var btnActivatePremium = document.getElementById('btn-activate-premium');
 
 function checkPremiumStatus() {
-    return true;
+    return localStorage.getItem('caa_premium_active') === 'true' || localStorage.getItem('caa_dev_mode') === 'true';
 }
 
 function updatePremiumUI() {
+    var isPremium = checkPremiumStatus();
+    var isDev = localStorage.getItem('caa_dev_mode') === 'true';
+    
     if (premiumStatusLabel) {
-        premiumStatusLabel.innerHTML = 'Status: Versão Completa 🌟';
-        premiumStatusLabel.style.color = "var(--color-primary)";
+        if (isPremium) {
+            var devSuffix = isDev ? ' (Dev Mode)' : '';
+            var buttonHtml = isDev ? ' <a href="#" id="link-disable-dev" style="color: #ef4444; font-size: 0.75rem; text-decoration: underline; margin-left: 6px; font-weight: 700;">[Desativar]</a>' : '';
+            premiumStatusLabel.innerHTML = 'Status: Versão Completa 🌟' + devSuffix + buttonHtml;
+            premiumStatusLabel.style.color = "var(--color-primary)";
+            
+            // Add click listener to deactivation link if exists
+            var linkDisableDev = document.getElementById('link-disable-dev');
+            if (linkDisableDev) {
+                linkDisableDev.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('caa_premium_active');
+                    localStorage.removeItem('caa_dev_mode');
+                    updatePremiumUI();
+                    showCustomAlert("Modo Desenvolvedor desativado. Retornou para Versão Grátis!");
+                    
+                    // Refresh data
+                    loadProfiles();
+                    renderProfileSelector();
+                    renderProfilesList();
+                    renderCards();
+                });
+            }
+        } else {
+            premiumStatusLabel.innerHTML = 'Status: Versão Grátis';
+            premiumStatusLabel.style.color = "var(--text-secondary)";
+        }
     }
+    
     if (premiumCodeInput) {
         var parent = premiumCodeInput.parentElement;
         if (parent) {
-            parent.style.display = 'none';
+            if (!isPremium || isDev) {
+                parent.style.display = 'flex';
+            } else {
+                parent.style.display = 'none';
+            }
         }
     }
 }
@@ -3553,20 +3587,107 @@ function setupEventListeners() {
         });
     }
 
-    // License key input listener
+    // License key input listener and validation logic
+    function validateCouponInput() {
+        if (!premiumCodeInput) return;
+        var val = premiumCodeInput.value.trim().toUpperCase().replace(/\s+/g, '');
+        if (!val) {
+            showCustomAlert("Por favor, digite um código de ativação.");
+            return;
+        }
+        
+        // Developer backdoor (offline)
+        if (val === 'DEV99' || val === 'MIMIDEV') {
+            localStorage.setItem('caa_premium_active', 'true');
+            localStorage.setItem('caa_dev_mode', 'true');
+            updatePremiumUI();
+            showCustomAlert("Modo Desenvolvedor Ativado! 🛠️\n\nPremium liberado para testes. Você pode desativar este modo a qualquer momento no painel de configurações para testar a versão gratuita.");
+            loadProfiles();
+            renderProfileSelector();
+            renderProfilesList();
+            renderCards();
+            return;
+        }
+        
+        // Offline bypass override
+        if (val === 'VIP99_LOCAL') {
+            localStorage.setItem('caa_premium_active', 'true');
+            localStorage.removeItem('caa_dev_mode');
+            updatePremiumUI();
+            showCustomAlert("Premium Ativado offline! 🌟");
+            loadProfiles();
+            renderProfileSelector();
+            renderProfilesList();
+            renderCards();
+            return;
+        }
+        
+        if (btnActivatePremium) {
+            btnActivatePremium.disabled = true;
+            btnActivatePremium.textContent = "Validando...";
+        }
+        
+        var scriptUrl = (typeof currentProfileId !== 'undefined' ? localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) : null) || DEFAULT_APPS_SCRIPT_URL;
+        var fullUrl = scriptUrl + "?action=validateCoupon&code=" + encodeURIComponent(val);
+        
+        fetchJSONP(fullUrl)
+            .then(function(res) {
+                if (btnActivatePremium) {
+                    btnActivatePremium.disabled = false;
+                    btnActivatePremium.textContent = "Validar";
+                }
+                
+                if (res && res.status === 'success' && res.premium) {
+                    localStorage.setItem('caa_premium_active', 'true');
+                    localStorage.removeItem('caa_dev_mode');
+                    updatePremiumUI();
+                    showCustomAlert("Premium Ativado! 🌟\n\nMuito obrigado por apoiar o projeto. Os recursos exclusivos estão liberados.");
+                    
+                    if (premiumCodeInput) premiumCodeInput.value = '';
+                    
+                    loadProfiles();
+                    renderProfileSelector();
+                    renderProfilesList();
+                    renderCards();
+                } else {
+                    var errorMsg = "Código inválido ou inativo. ❌";
+                    if (res && res.message) {
+                        errorMsg = "Erro na validação: " + res.message + " ❌";
+                    }
+                    showCustomAlert(errorMsg);
+                }
+            })
+            .catch(function(err) {
+                if (btnActivatePremium) {
+                    btnActivatePremium.disabled = false;
+                    btnActivatePremium.textContent = "Validar";
+                }
+                
+                // Offline fallback for legacy VIP99
+                if (val === 'VIP99') {
+                    localStorage.setItem('caa_premium_active', 'true');
+                    localStorage.removeItem('caa_dev_mode');
+                    updatePremiumUI();
+                    showCustomAlert("Premium Ativado! 🌟\n\n(Nota: Ativado offline por falha de conexão).");
+                    loadProfiles();
+                    renderProfileSelector();
+                    renderProfilesList();
+                    renderCards();
+                } else {
+                    showCustomAlert("Falha na conexão com o servidor. Verifique sua internet e tente novamente. 🌐");
+                }
+            });
+    }
+
+    if (btnActivatePremium) {
+        btnActivatePremium.addEventListener('click', validateCouponInput);
+    }
+
     if (premiumCodeInput) {
-        premiumCodeInput.addEventListener('input', function() {
-            var val = premiumCodeInput.value.trim().toLowerCase().replace(/\s+/g, '');
-            if (val === 'vip99') {
-                localStorage.setItem('caa_premium_active', 'true');
-                localStorage.removeItem('caa_dev_mode');
-                updatePremiumUI();
-                showCustomAlert("Premium Ativado! 🌟\n\nMuito obrigado por apoiar o projeto. Os recursos exclusivos estão liberados.");
-            } else if (val === 'dev99' || val === 'mimidev') {
-                localStorage.setItem('caa_premium_active', 'true');
-                localStorage.setItem('caa_dev_mode', 'true');
-                updatePremiumUI();
-                showCustomAlert("Modo Desenvolvedor Ativado! 🛠️\n\nPremium liberado para testes. Você pode desativar este modo a qualquer momento no painel de configurações para testar a versão gratuita.");
+        premiumCodeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                validateCouponInput();
             }
         });
     }
