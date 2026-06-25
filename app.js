@@ -728,7 +728,7 @@ function carregarVozes() {
     else if (lang === 'es') langPrefix = 'es';
 
     var vozesFiltradas = vozesDisponiveis.filter(function(voz) {
-        return voz.lang && voz.lang.toLowerCase().indexOf(langPrefix) !== -1;
+        return voz && voz.lang && typeof voz.lang === 'string' && voz.lang.toLowerCase().indexOf(langPrefix) !== -1;
     });
 
     if (vozesFiltradas.length === 0) {
@@ -743,10 +743,12 @@ function carregarVozes() {
     var savedVoiceName = localStorage.getItem('caa_selected_voice_' + currentProfileId) || '';
     
     vozesFiltradas.forEach(function(voz) {
+        var vozName = voz.name || '';
+        var vozLang = voz.lang || '';
         var opcao = document.createElement('option');
-        opcao.value = voz.name;
-        opcao.textContent = voz.name + ' (' + voz.lang + ')';
-        if (voz.name === savedVoiceName) {
+        opcao.value = vozName;
+        opcao.textContent = vozName + ' (' + vozLang + ')';
+        if (vozName === savedVoiceName) {
             opcao.selected = true;
         }
         seletorVozes.appendChild(opcao);
@@ -2324,7 +2326,7 @@ function speakText(text) {
     var savedVoiceName = localStorage.getItem('caa_selected_voice_' + currentProfileId) || '';
     var selectedVoiceObj = null;
     if (savedVoiceName && voices.length > 0) {
-        selectedVoiceObj = voices.find(function(v) { return v.name === savedVoiceName; });
+        selectedVoiceObj = voices.find(function(v) { return v && v.name === savedVoiceName; });
     }
     
     if (selectedVoiceObj) {
@@ -2336,28 +2338,34 @@ function speakText(text) {
 
         // 1. Prioritize a local voice with preferred language and "google" in its name
         var preferredVoice = voices.find(function(voice) { 
-            return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+            return voice && voice.lang && voice.name && 
+                   typeof voice.lang === 'string' && typeof voice.name === 'string' &&
+                   voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
                    voice.name.toLowerCase().indexOf('google') !== -1 && 
                    voice.localService === true;
         });
         // 2. If not found, try to find any local voice with preferred language ( Samsung TTS / Offline )
         if (!preferredVoice) {
             preferredVoice = voices.find(function(voice) { 
-                return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+                return voice && voice.lang && typeof voice.lang === 'string' &&
+                       voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
                        voice.localService === true;
             });
         }
         // 3. If not found, try any voice with "google" in its name (online network voice)
         if (!preferredVoice) {
             preferredVoice = voices.find(function(voice) { 
-                return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+                return voice && voice.lang && voice.name && 
+                       typeof voice.lang === 'string' && typeof voice.name === 'string' &&
+                       voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
                        voice.name.toLowerCase().indexOf('google') !== -1; 
             });
         }
         // 4. Finally, fallback to any voice with matching language prefix
         if (!preferredVoice) {
             preferredVoice = voices.find(function(voice) { 
-                return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1; 
+                return voice && voice.lang && typeof voice.lang === 'string' &&
+                       voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1; 
             });
         }
         if (preferredVoice) {
