@@ -1678,7 +1678,11 @@ function checkInAppBrowser() {
     var isInstagram = /Instagram/i.test(ua);
     var isFB = /FBAN|FBAV/i.test(ua);
     
-    if (isInstagram || isFB) {
+    // Check if it is a general WebView on Android or iOS
+    var isAndroidWebView = /wv\)/.test(ua) || (/Android/i.test(ua) && /Version\/[0-9.]+/i.test(ua));
+    var isIOSWebView = /iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua);
+    
+    if (isInstagram || isFB || isAndroidWebView || isIOSWebView) {
         var lang = getProfileLanguage();
         var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
         var msg = dict.in_app_warning || '⚠️ Para o áudio funcionar, toque nos 3 pontinhos e escolha "Abrir no Navegador".';
@@ -3975,7 +3979,7 @@ function setupEventListeners() {
                 "PWA Instalado: " + (window.matchMedia('(display-mode: standalone)').matches ? "Sim" : "Não") + "\n" +
                 "Tamanho de Tela: " + window.screen.width + "x" + window.screen.height + " (dpr: " + window.devicePixelRatio + ")\n" +
                 "Idioma do Perfil: " + getProfileLanguage() + "\n" +
-                "Versão no Rodapé: 1.8.3 (v56)";
+                "Versão no Rodapé: 1.8.3 (v57)";
             formData.set("message", msg + deviceDetails);
 
             var originalText = feedbackSubmitBtn.innerHTML;
