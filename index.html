@@ -78,20 +78,24 @@
 
         <!-- SENTENCE BUILDER BAR -->
         <section class="sentence-section">
+            <div class="sentence-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 6px; padding: 0 4px; user-select: none;">
+                <span id="sentence-title" data-i18n="sentence_title" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Últimas Usadas</span>
+                <span id="sentence-counter" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); background-color: var(--border-color); padding: 2px 8px; border-radius: 12px; opacity: 0.8;">0 / 7</span>
+            </div>
             <div class="sentence-container">
                 <div id="sentence-list" class="sentence-list" data-placeholder="Toque nas figuras para montar a frase..." data-i18n-data-placeholder="sentence_placeholder">
                     <!-- Cards will be added here dynamically -->
                 </div>
                 <div class="sentence-controls">
-                    <button id="btn-speak" class="btn btn-primary btn-speak" title="Falar Frase">
+                    <button id="btn-speak" class="btn btn-primary btn-speak" title="Falar Frase" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
                         <span data-i18n="btn_speak">FALAR</span>
                     </button>
-                    <button id="btn-share-whatsapp" class="btn btn-secondary btn-share" title="Enviar / Copiar Frase">
+                    <button id="btn-share-whatsapp" class="btn btn-secondary btn-share" title="Enviar / Copiar Frase" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                         <span data-i18n="btn_send">ENVIAR</span>
                     </button>
-                    <button id="btn-clear-all" class="btn btn-danger" title="Limpar tudo">
+                    <button id="btn-clear-all" class="btn btn-danger" title="Limpar tudo" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                         <span data-i18n="btn_clear">LIMPAR</span>
                     </button>
@@ -131,7 +135,7 @@
                 <div class="brand-text">
                     <p class="brand-signature" data-i18n="brand_signature">Desenvolvido por <strong>Bruno Serra de Oliveira</strong></p>
                     <p class="brand-purpose" data-i18n="brand_purpose">Criado com carinho para ajudar as pessoas a se comunicarem.</p>
-                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 1.8.3 (v52) <strong>(BETA)</strong></p>
+                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 1.8.3 (v54) <strong>(BETA)</strong></p>
                 </div>
             </div>
             <button id="btn-support" class="btn btn-secondary btn-support" style="margin-left: auto; gap: 6px; font-weight: 700; font-size: 0.9rem; padding: 10px 18px; border-radius: var(--radius-sm);">

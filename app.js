@@ -295,6 +295,7 @@ var UI_TRANSLATIONS = {
     pt: {
         app_title: "Fale Comigo",
         sentence_placeholder: "Toque nas figuras para montar a frase...",
+        sentence_title: "Últimas Usadas",
         btn_speak: "FALAR",
         btn_send: "ENVIAR",
         btn_clear: "LIMPAR",
@@ -316,6 +317,7 @@ var UI_TRANSLATIONS = {
     en: {
         app_title: "Talk to Me",
         sentence_placeholder: "Tap the cards to build a sentence...",
+        sentence_title: "Last Used",
         btn_speak: "SPEAK",
         btn_send: "SEND",
         btn_clear: "CLEAR",
@@ -337,6 +339,7 @@ var UI_TRANSLATIONS = {
     es: {
         app_title: "Habla Conmigo",
         sentence_placeholder: "Toca las figuras para armar la frase...",
+        sentence_title: "Últimas Usadas",
         btn_speak: "HABLAR",
         btn_send: "ENVIAR",
         btn_clear: "LIMPIAR",
@@ -1791,6 +1794,17 @@ function renderCards() {
     cardsGrid.innerHTML = html;
 }
 
+// Add a card to the sentence with a maximum limit of 7 (rolling off the oldest card)
+function addCardToSentence(card) {
+    if (selectedCards.length >= 7) {
+        selectedCards.shift(); // Remove the oldest card
+    }
+    selectedCards.push(card);
+    updateSentenceBuilder();
+    playCardVoice(card);
+    registrarUsoFigura(card.text);
+}
+
 // Update Sentence Builder Output
 function updateSentenceBuilder() {
     sentenceList.innerHTML = selectedCards.map(function(card, idx) {
@@ -1805,6 +1819,18 @@ function updateSentenceBuilder() {
                 '<span>' + getCardText(card) + '</span>' +
             '</div>';
     }).join('');
+
+    // Update disabled state of control buttons
+    var isEmpty = selectedCards.length === 0;
+    if (btnSpeak) btnSpeak.disabled = isEmpty;
+    if (btnShareWhatsapp) btnShareWhatsapp.disabled = isEmpty;
+    if (btnClearAll) btnClearAll.disabled = isEmpty;
+
+    // Update sentence counter
+    var counterEl = document.getElementById('sentence-counter');
+    if (counterEl) {
+        counterEl.textContent = selectedCards.length + ' / 7';
+    }
 
     updateFloatingBar();
 }
@@ -2214,7 +2240,7 @@ var speechUnlocked = false;
 function unlockSpeech() {
     if (speechUnlocked) return;
     try {
-        var u = new SpeechSynthesisUtterance('');
+        var u = new SpeechSynthesisUtterance('Olá');
         u.volume = 0;
         window.activeUtterances.push(u);
         u.onend = function() {
@@ -2237,11 +2263,17 @@ document.addEventListener('touchstart', unlockSpeech, { once: true });
 function speakText(text) {
     if (!text) return;
     
-    try {
-        // Cancel any current speaking or pending speech to clear the queue
-        synth.cancel();
-    } catch (e) {
-        console.warn('Erro ao cancelar fala anterior: ', e);
+    if (synth) {
+        try {
+            if (synth.paused) {
+                synth.resume();
+            }
+            if (synth.speaking || synth.pending) {
+                synth.cancel();
+            }
+        } catch (e) {
+            console.warn('Erro ao limpar fila de voz: ', e);
+        }
     }
 
     var lang = getProfileLanguage();
@@ -2254,11 +2286,19 @@ function speakText(text) {
         utterance.lang = 'pt-BR';
     }
     
-    // Configura velocidade (rate) e tom (pitch)
+    // Configura velocidade (rate) e tom (pitch) com validações de limites
     var savedRate = localStorage.getItem('caa_voice_rate_' + currentProfileId) || '1.0';
     var savedPitch = localStorage.getItem('caa_voice_pitch_' + currentProfileId) || '1.0';
-    utterance.rate = parseFloat(savedRate);
-    utterance.pitch = parseFloat(savedPitch);
+    
+    var rateVal = parseFloat(savedRate);
+    if (isNaN(rateVal) || rateVal < 0.1 || rateVal > 10) rateVal = 1.0;
+    utterance.rate = rateVal;
+    
+    var pitchVal = parseFloat(savedPitch);
+    if (isNaN(pitchVal) || pitchVal < 0.0 || pitchVal > 2.0) pitchVal = 1.0;
+    utterance.pitch = pitchVal;
+    
+    utterance.volume = 1.0;
     
     // Save reference to prevent garbage collection
     window.activeUtterances.push(utterance);
@@ -2294,10 +2334,27 @@ function speakText(text) {
         if (lang === 'en') preferredLangPrefix = 'en-';
         else if (lang === 'es') preferredLangPrefix = 'es-';
 
-        // Prioritize Google voice as default on Android/Samsung since it's more reliable
+        // 1. Prioritize a local voice with preferred language and "google" in its name
         var preferredVoice = voices.find(function(voice) { 
-            return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && voice.name.toLowerCase().indexOf('google') !== -1; 
+            return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+                   voice.name.toLowerCase().indexOf('google') !== -1 && 
+                   voice.localService === true;
         });
+        // 2. If not found, try to find any local voice with preferred language ( Samsung TTS / Offline )
+        if (!preferredVoice) {
+            preferredVoice = voices.find(function(voice) { 
+                return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+                       voice.localService === true;
+            });
+        }
+        // 3. If not found, try any voice with "google" in its name (online network voice)
+        if (!preferredVoice) {
+            preferredVoice = voices.find(function(voice) { 
+                return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+                       voice.name.toLowerCase().indexOf('google') !== -1; 
+            });
+        }
+        // 4. Finally, fallback to any voice with matching language prefix
         if (!preferredVoice) {
             preferredVoice = voices.find(function(voice) { 
                 return voice.lang && voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1; 
@@ -2308,15 +2365,24 @@ function speakText(text) {
         }
     }
     
-    // We use a small delay (150ms) to allow Safari's speech queue to clear after synth.cancel()
-    // A delay of 150ms is short enough to preserve user gesture authorization on iOS.
-    setTimeout(function() {
+    // Prioritize user gesture transient activation on Android/Chrome by calling speak synchronously.
+    // We only use setTimeout (150ms) on iOS/Safari where it's needed to clear the queue without breaking speech.
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+        setTimeout(function() {
+            try {
+                synth.speak(utterance);
+            } catch(e) {
+                console.error('Erro ao chamar speak(): ', e);
+            }
+        }, 150);
+    } else {
         try {
             synth.speak(utterance);
         } catch(e) {
             console.error('Erro ao chamar speak(): ', e);
         }
-    }, 150);
+    }
 }
 
 // Play recorded card voice or fall back to system speech synthesis
@@ -2474,10 +2540,7 @@ function setupEventListeners() {
         
         if (index !== -1) {
             var clickedCard = cards[index];
-            selectedCards.push(clickedCard);
-            updateSentenceBuilder();
-            playCardVoice(clickedCard);
-            registrarUsoFigura(clickedCard.text);
+            addCardToSentence(clickedCard);
 
             // Automatic sub-choice modal if card has goToCategory defined (abrir por cima)
             if (clickedCard.goToCategory) {
@@ -3173,10 +3236,7 @@ function setupEventListeners() {
         
         if (index !== -1) {
             var clickedCard = cards[index];
-            selectedCards.push(clickedCard);
-            updateSentenceBuilder();
-            playCardVoice(clickedCard);
-            registrarUsoFigura(clickedCard.text);
+            addCardToSentence(clickedCard);
             modalSubChoice.classList.remove('open');
         }
     });
@@ -3846,9 +3906,7 @@ function setupEventListeners() {
             var favoriteCards = cards.filter(function(c) { return c.favorite === true; });
             if (favoriteCards.length >= shortcutNum) {
                 var card = favoriteCards[shortcutNum - 1];
-                selectedCards.push(card);
-                updateSentenceBuilder();
-                playCardVoice(card);
+                addCardToSentence(card);
                 
                 if (card.goToCategory) {
                     openSubChoiceModal(card.text, card.goToCategory);
