@@ -70,6 +70,7 @@ var isDevMode = window.location.hostname === 'localhost' || window.location.host
 var MAX_FREE_PROFILES = 2;
 var DRINK_KEYWORDS = ['agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'bebida', 'beber', 'toddy', 'achocolatado', 'iogurte', 'coca', 'mate', 'chimarrao', 'suquinh'];
 var PAIN_KEYWORDS = ['dor de', 'dor na', 'dor no', 'dor nas', 'dor nos', 'doi a', 'doi o', 'doi as', 'doi os', 'machucado'];
+var FALLBACK_IMAGE_SVG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzljYTNhZiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxsaW5lIHgxPSIyIiB5MT0iMiIgeDI9IjIyIiB5Mj0iMjIiLz48cGF0aCBkPSJNMTAuNDEgMTAuNDFhMiAyIDAgMSAxLTIuODMtMi44MyIvPjxwYXRoIGQ9Ik0yMSAyMUgzYTIgMiAwIDAgMS0yLTJWNWEyIDIgMCAwIDEgMi0yaDUuMzdhMiAyIDAgMCAxIDEuMDQuM2wxLjE4LjdhMiAyIDAgMCAwIDEuMDQuM2gyMWEyIDIgMCAwIDEgMiAydjEyYTIgMiAwIDAgMS0yIDJ6Ii8+PHBhdGggZD0ibTMgMTYgNC00YTIgMiAwIDAgMSAyLjgyIDBsMS4xOCAxLjE4Ii8+PHBhdGggZD0iTTE2IDE2IDE0LjUgMTQuNSIvPjwvc3ZnPgo=';
 
 // Define pre-configured categories with emojis
 var CATEGORIES = [
@@ -1749,7 +1750,7 @@ function renderCards() {
                 if (card.type === 'emoji') {
                     visualContent = '<div class="card-emoji">' + card.value + '</div>';
                 } else {
-                    visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.src=\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 class=%22lucide lucide-image-off%22><line x1=%222%22 y1=%222%22 x2=%2222%22 y2=%2222%22/><path d=%22M10.41 10.41a2 2 0 1 1-2.83-2.83%22/><path d=%22M21 21H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.37a2 2 0 0 1 1.04.3l1.18.7a2 2 0 0 0 1.04.3H21a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2z%22/><path d=%22m3 16 4-4a2 2 0 0 1 2.82 0l1.18 1.18%22/><path d=%22M16 16 14.5 14.5%22/></svg>\'">';
+                    visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
                 }
 
                 var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
@@ -1797,7 +1798,7 @@ function updateSentenceBuilder() {
         if (card.type === 'emoji') {
             visualContent = '<div class="card-emoji">' + card.value + '</div>';
         } else {
-            visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '">';
+            visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
         }
         return '<div class="sentence-card" data-idx="' + idx + '">' +
                 visualContent +
@@ -2399,7 +2400,7 @@ function openSubChoiceModal(actionText, categoryId) {
         if (card.type === 'emoji') {
             visualContent = '<div class="card-emoji">' + card.value + '</div>';
         } else {
-            visualContent = '<img src="' + card.value + '" alt="' + card.text + '">';
+            visualContent = '<img src="' + card.value + '" alt="' + card.text + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
         }
 
         var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
