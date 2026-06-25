@@ -3929,10 +3929,7 @@ function setupEventListeners() {
     }
 }
 
-// Ensure voice synth is ready on page load
-if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = function() {};
-}
+
 
 // Launch application
 window.addEventListener('DOMContentLoaded', init);
