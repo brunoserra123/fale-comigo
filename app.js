@@ -1860,8 +1860,17 @@ function updateSentenceBuilder() {
             '</div>';
     }).join('');
 
-    // Update disabled state of control buttons
+    // Update disabled state and visibility of control buttons
     var isEmpty = selectedCards.length === 0;
+    var controlsEl = document.querySelector('.sentence-controls');
+    if (controlsEl) {
+        if (isEmpty) {
+            controlsEl.classList.add('d-none');
+        } else {
+            controlsEl.classList.remove('d-none');
+        }
+    }
+
     if (btnSpeak) btnSpeak.disabled = isEmpty;
     if (btnShareWhatsapp) btnShareWhatsapp.disabled = isEmpty;
     if (btnClearAll) btnClearAll.disabled = isEmpty;
@@ -3979,7 +3988,7 @@ function setupEventListeners() {
                 "PWA Instalado: " + (window.matchMedia('(display-mode: standalone)').matches ? "Sim" : "Não") + "\n" +
                 "Tamanho de Tela: " + window.screen.width + "x" + window.screen.height + " (dpr: " + window.devicePixelRatio + ")\n" +
                 "Idioma do Perfil: " + getProfileLanguage() + "\n" +
-                "Versão no Rodapé: 1.8.3 (v57)";
+                "Versão no Rodapé: 1.8.3 (v58)";
             formData.set("message", msg + deviceDetails);
 
             var originalText = feedbackSubmitBtn.innerHTML;
