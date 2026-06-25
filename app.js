@@ -312,7 +312,8 @@ var UI_TRANSLATIONS = {
         loading_voices: "Carregando vozes...",
         label_voice_rate: "Velocidade da Voz:",
         label_voice_pitch: "Tom da Voz:",
-        label_total_accesses: "Total de Acessos:"
+        label_total_accesses: "Total de Acessos:",
+        in_app_warning: "⚠️ Você abriu pelo Instagram. Para o áudio funcionar e salvar seus dados, toque nos 3 pontinhos no topo direito e selecione 'Abrir no Navegador' (ou 'Abrir no Chrome/Safari')."
     },
     en: {
         app_title: "Talk to Me",
@@ -334,7 +335,8 @@ var UI_TRANSLATIONS = {
         loading_voices: "Loading voices...",
         label_voice_rate: "Voice Speed:",
         label_voice_pitch: "Voice Pitch:",
-        label_total_accesses: "Total Accesses:"
+        label_total_accesses: "Total Accesses:",
+        in_app_warning: "⚠️ Opened via Instagram. For audio to work and to save your settings, tap the 3 dots in the top right and choose 'Open in Browser'."
     },
     es: {
         app_title: "Habla Conmigo",
@@ -356,7 +358,8 @@ var UI_TRANSLATIONS = {
         loading_voices: "Cargando voces...",
         label_voice_rate: "Velocidad de Voz:",
         label_voice_pitch: "Tono de Voz:",
-        label_total_accesses: "Accesos Totales:"
+        label_total_accesses: "Accesos Totales:",
+        in_app_warning: "⚠️ Abierto por Instagram. Para que funcione el audio y guardar sus ajustes, toque los 3 puntos arriba a la derecha y elija 'Abrir en Navegador'."
     }
 };
 
@@ -1664,7 +1667,38 @@ function init() {
             syncStatusText.className = 'sync-status-text success';
             syncStatusText.textContent = 'Offline (Usando figuras salvas em cache) 💾';
         }
+        
+        checkInAppBrowser();
     });
+}
+
+// Check if app is open inside Instagram or Facebook WebViews to warn the user
+function checkInAppBrowser() {
+    var ua = navigator.userAgent || navigator.vendor || window.opera;
+    var isInstagram = /Instagram/i.test(ua);
+    var isFB = /FBAN|FBAV/i.test(ua);
+    
+    if (isInstagram || isFB) {
+        var lang = getProfileLanguage();
+        var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
+        var msg = dict.in_app_warning || '⚠️ Para o áudio funcionar, toque nos 3 pontinhos e escolha "Abrir no Navegador".';
+        
+        var banner = document.createElement('div');
+        banner.id = 'in-app-browser-banner';
+        banner.style.cssText = 'background-color: #f59e0b; color: #ffffff; padding: 12px 16px; text-align: center; font-family: var(--font-primary); font-size: 0.95rem; font-weight: 700; position: sticky; top: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-bottom: 2px solid #d97706; line-height: 1.4;';
+        
+        banner.innerHTML = '<span style="flex-grow: 1; text-align: left;">' + msg + '</span>' +
+                           '<button id="btn-close-inapp-banner" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem; font-weight: bold; padding: 0 10px; display: flex; align-items: center; line-height: 1;">&times;</button>';
+        
+        document.body.insertBefore(banner, document.body.firstChild);
+        
+        var closeBtn = document.getElementById('btn-close-inapp-banner');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                banner.style.display = 'none';
+            });
+        }
+    }
 }
 
 function saveCardsToStorage(triggerCloudUpload) {
@@ -3932,6 +3966,17 @@ function setupEventListeners() {
 
             var formData = new FormData(feedbackForm);
             formData.append("access_key", "4f2eccbe-593a-4c25-871b-103e3931b8ff");
+
+            // Anexa automaticamente detalhes técnicos do dispositivo do usuário ao final da mensagem
+            var msg = formData.get("message") || "";
+            var deviceDetails = "\n\n--- DETALHES TÉCNICOS DO APARELHO ---\n" +
+                "Plataforma: " + navigator.platform + "\n" +
+                "User Agent: " + navigator.userAgent + "\n" +
+                "PWA Instalado: " + (window.matchMedia('(display-mode: standalone)').matches ? "Sim" : "Não") + "\n" +
+                "Tamanho de Tela: " + window.screen.width + "x" + window.screen.height + " (dpr: " + window.devicePixelRatio + ")\n" +
+                "Idioma do Perfil: " + getProfileLanguage() + "\n" +
+                "Versão no Rodapé: 1.8.3 (v56)";
+            formData.set("message", msg + deviceDetails);
 
             var originalText = feedbackSubmitBtn.innerHTML;
             feedbackSubmitBtn.innerHTML = "<span>Carregando... ⏳</span>";
