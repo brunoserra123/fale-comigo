@@ -1,4 +1,4 @@
-const CACHE_NAME = 'caa-comunicador-v48';
+const CACHE_NAME = 'caa-comunicador-v49';
 const ASSETS = [
   './',
   './index.html',

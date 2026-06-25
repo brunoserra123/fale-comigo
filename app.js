@@ -1320,15 +1320,15 @@ function setAndCleanCards(newCards) {
         cleaned = cleaned.filter(function(card) {
             return DEFAULT_CARDS.some(function(defaultCard) { return defaultCard.text === card.text; });
         });
-    } else {
-        // Ensure all default cards are present
-        DEFAULT_CARDS.forEach(function(defaultCard) {
-            var exists = cleaned.some(function(c) { return c.text === defaultCard.text; });
-            if (!exists) {
-                cleaned.push(defaultCard);
-            }
-        });
     }
+    
+    // Ensure all default cards are present
+    DEFAULT_CARDS.forEach(function(defaultCard) {
+        var exists = cleaned.some(function(c) { return c.text === defaultCard.text; });
+        if (!exists) {
+            cleaned.push(defaultCard);
+        }
+    });
 
     cards = cleaned;
 }
