@@ -24,6 +24,9 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
     <script>
         if ('serviceWorker' in navigator) {
+            // Armazena se já havia um Service Worker controlando a página
+            const hadController = !!navigator.serviceWorker.controller;
+
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('sw.js')
                     .then(function(reg) { 
@@ -32,6 +35,34 @@
                         reg.update();
                     })
                     .catch(function(err) { console.error('Falha ao registrar Service Worker:', err); });
+            });
+
+            // Recarrega a página automaticamente quando um novo service worker assume o controle (atualização)
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function() {
+                if (hadController && !refreshing) {
+                    refreshing = true;
+                    const sentenceList = document.getElementById('sentence-list');
+                    const hasActiveSentence = sentenceList && sentenceList.children.length > 0;
+                    
+                    if (!hasActiveSentence) {
+                        window.location.reload();
+                    } else {
+                        // Se houver uma frase ativa, aguarda até que ela seja limpa para atualizar
+                        window.pendingUpdateReload = true;
+                        console.log('Nova versão ativada! Aguardando o usuário limpar a frase para atualizar.');
+                        
+                        if (sentenceList) {
+                            const observer = new MutationObserver(function() {
+                                if (sentenceList.children.length === 0) {
+                                    observer.disconnect();
+                                    window.location.reload();
+                                }
+                            });
+                            observer.observe(sentenceList, { childList: true });
+                        }
+                    }
+                }
             });
         }
     </script>

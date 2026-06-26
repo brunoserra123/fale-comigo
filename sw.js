@@ -14,7 +14,9 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('Instalando Service Worker: Fazendo cache dos recursos essenciais...');
-      return cache.addAll(ASSETS);
+      // Mapeia os assets para requests com cache: 'reload' para contornar o cache HTTP do navegador
+      const cacheRequests = ASSETS.map(url => new Request(url, { cache: 'reload' }));
+      return cache.addAll(cacheRequests);
     })
   );
   self.skipWaiting();
