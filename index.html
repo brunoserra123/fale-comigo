@@ -106,6 +106,11 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
 
+                <!-- Botão de Alternar Layout (Grade / Pastas) -->
+                <button id="btn-toggle-layout" class="btn btn-icon" title="Alternar Modo de Exibição" style="color: var(--text-secondary); border-color: var(--border-color);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+
                 <button id="btn-settings" class="btn btn-icon" title="Configurações (Tutor)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
@@ -271,14 +276,6 @@
                             <option value="pt">Português 🇧🇷</option>
                             <option value="en">English 🇺🇸</option>
                             <option value="es">Español 🇪🇸</option>
-                        </select>
-                    </div>
-
-                    <div class="settings-row">
-                        <label data-i18n="label_layout_mode">Modo de Visualização:</label>
-                        <select id="seletor-layout-mode" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 180px; width: 100%;">
-                            <option value="folder" data-i18n="layout_mode_folder">Pastas (Categorias)</option>
-                            <option value="grid" data-i18n="layout_mode_grid">Grade (Tudo na Tela)</option>
                         </select>
                     </div>
 

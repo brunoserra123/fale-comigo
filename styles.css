@@ -1165,7 +1165,8 @@ body {
 /* Lock App Mode styling */
 body.is-locked #btn-settings,
 body.is-locked .profile-header-container,
-body.is-locked #btn-toggle-telepatix-header {
+body.is-locked #btn-toggle-telepatix-header,
+body.is-locked #btn-toggle-layout {
     display: none !important;
 }
 

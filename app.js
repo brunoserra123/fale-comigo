@@ -419,6 +419,7 @@ function translatePage() {
             el.setAttribute('data-placeholder', translation);
         }
     });
+    updateLayoutButtonUI();
 }
 
 function getCardText(card) {
@@ -476,7 +477,7 @@ var btnToggleTheme = document.getElementById('btn-toggle-theme');
 var btnToggleLowVision = document.getElementById('btn-toggle-low-vision');
 var seletorVozes = document.getElementById('seletor-vozes');
 var seletorIdioma = document.getElementById('seletor-idioma');
-var seletorLayoutMode = document.getElementById('seletor-layout-mode');
+var btnToggleLayout = document.getElementById('btn-toggle-layout');
 var vozesDisponiveis = [];
 
 // Settings Modal Elements
@@ -591,8 +592,24 @@ function carregarVozConfig() {
 
 function carregarLayoutModeConfig() {
     currentLayoutMode = localStorage.getItem('caa_layout_mode_' + currentProfileId) || 'folder';
-    if (seletorLayoutMode) {
-        seletorLayoutMode.value = currentLayoutMode;
+    updateLayoutButtonUI();
+}
+
+function updateLayoutButtonUI() {
+    if (!btnToggleLayout) return;
+    
+    var lang = getProfileLanguage();
+    var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
+    
+    var folderSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+    var gridSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';
+
+    if (currentLayoutMode === 'folder') {
+        btnToggleLayout.innerHTML = gridSvg;
+        btnToggleLayout.title = (dict.layout_mode_grid ? ("Mudar para " + dict.layout_mode_grid) : "Mudar para Modo Grade");
+    } else {
+        btnToggleLayout.innerHTML = folderSvg;
+        btnToggleLayout.title = (dict.layout_mode_folder ? ("Mudar para " + dict.layout_mode_folder) : "Mudar para Modo Pastas");
     }
 }
 
@@ -3299,15 +3316,16 @@ function setupEventListeners() {
         });
     }
 
-    // Layout mode selector change
-    if (seletorLayoutMode) {
-        seletorLayoutMode.addEventListener('change', function() {
-            var selectedMode = seletorLayoutMode.value;
-            localStorage.setItem('caa_layout_mode_' + currentProfileId, selectedMode);
-            currentLayoutMode = selectedMode;
+    // Layout mode button toggle
+    if (btnToggleLayout) {
+        btnToggleLayout.addEventListener('click', function() {
+            var targetMode = (currentLayoutMode === 'folder') ? 'grid' : 'folder';
+            localStorage.setItem('caa_layout_mode_' + currentProfileId, targetMode);
+            currentLayoutMode = targetMode;
             if (currentLayoutMode === 'grid') {
                 currentFolder = 'root';
             }
+            updateLayoutButtonUI();
             renderCards();
         });
     }
