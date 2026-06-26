@@ -313,6 +313,9 @@ var UI_TRANSLATIONS = {
         label_voice_rate: "Velocidade da Voz:",
         label_voice_pitch: "Tom da Voz:",
         label_total_accesses: "Total de Acessos:",
+        label_layout_mode: "Modo de Visualização:",
+        layout_mode_folder: "Pastas (Categorias)",
+        layout_mode_grid: "Grade (Tudo na Tela)",
         in_app_warning: "⚠️ Você abriu pelo Instagram. Para o áudio funcionar e salvar seus dados, toque nos 3 pontinhos no topo direito e selecione 'Abrir no Navegador' (ou 'Abrir no Chrome/Safari')."
     },
     en: {
@@ -336,6 +339,9 @@ var UI_TRANSLATIONS = {
         label_voice_rate: "Voice Speed:",
         label_voice_pitch: "Voice Pitch:",
         label_total_accesses: "Total Accesses:",
+        label_layout_mode: "Display Mode:",
+        layout_mode_folder: "Folders (Categories)",
+        layout_mode_grid: "Grid (Show All)",
         in_app_warning: "⚠️ Opened via Instagram. For audio to work and to save your settings, tap the 3 dots in the top right and choose 'Open in Browser'."
     },
     es: {
@@ -349,7 +355,7 @@ var UI_TRANSLATIONS = {
         brand_signature: "Desarrollado por Bruno Serra de Oliveira",
         brand_purpose: "Creado con cariño para ayudar a las personas a comunicarse.",
         brand_version_label: "Versión",
-        btn_support: "Apoyar Proyecto 💖",
+        btn_support: "Apoyar Projeto 💖",
         settings_title: "Ajustes del Tutor",
         label_theme: "Apariencia:",
         label_low_vision: "Baja Visión:",
@@ -359,6 +365,9 @@ var UI_TRANSLATIONS = {
         label_voice_rate: "Velocidad de Voz:",
         label_voice_pitch: "Tono de Voz:",
         label_total_accesses: "Accesos Totales:",
+        label_layout_mode: "Modo de Visualización:",
+        layout_mode_folder: "Carpetas (Categorías)",
+        layout_mode_grid: "Cuadrícula (Mostrar Todo)",
         in_app_warning: "⚠️ Abierto por Instagram. Para que funcione el audio y guardar sus ajustes, toque los 3 puntos arriba a la derecha y elija 'Abrir en Navegador'."
     }
 };
@@ -433,6 +442,7 @@ function getCategoryName(catId) {
 var cards = [];
 var selectedCards = [];
 var currentFolder = 'root';
+var currentLayoutMode = 'folder'; // 'folder' or 'grid'
 
 // TelepatiX Accessibility Scanning State
 var isTelepatixActive = false;
@@ -466,6 +476,7 @@ var btnToggleTheme = document.getElementById('btn-toggle-theme');
 var btnToggleLowVision = document.getElementById('btn-toggle-low-vision');
 var seletorVozes = document.getElementById('seletor-vozes');
 var seletorIdioma = document.getElementById('seletor-idioma');
+var seletorLayoutMode = document.getElementById('seletor-layout-mode');
 var vozesDisponiveis = [];
 
 // Settings Modal Elements
@@ -576,6 +587,13 @@ function carregarVozConfig() {
     if (valVoiceRate) valVoiceRate.textContent = parseFloat(voiceRate).toFixed(1);
     if (inputVoicePitch) inputVoicePitch.value = voicePitch;
     if (valVoicePitch) valVoicePitch.textContent = parseFloat(voicePitch).toFixed(1);
+}
+
+function carregarLayoutModeConfig() {
+    currentLayoutMode = localStorage.getItem('caa_layout_mode_' + currentProfileId) || 'folder';
+    if (seletorLayoutMode) {
+        seletorLayoutMode.value = currentLayoutMode;
+    }
 }
 
 function carregarRecentes() {
@@ -1539,6 +1557,7 @@ function switchProfile(profileId) {
         // Load voices for this profile
         carregarVozes();
         carregarVozConfig();
+        carregarLayoutModeConfig();
         carregarRecentes();
         carregarEstatisticas();
         
@@ -1631,6 +1650,7 @@ function init() {
         // Load system voices
         carregarVozes();
         carregarVozConfig();
+        carregarLayoutModeConfig();
         carregarRecentes();
         carregarEstatisticas();
 
@@ -1752,6 +1772,7 @@ function toggleFavorite(cardIndex) {
 }
 
 function switchFolder(folderId) {
+    if (currentLayoutMode === 'grid') return;
     currentFolder = folderId;
     renderCards();
 }
@@ -1761,6 +1782,11 @@ function updateBreadcrumbs() {
     var container = document.getElementById('breadcrumb-container');
     var pathEl = document.getElementById('breadcrumb-path');
     if (!container || !pathEl) return;
+
+    if (currentLayoutMode === 'grid') {
+        container.style.display = 'none';
+        return;
+    }
 
     var lang = getProfileLanguage();
     var homeText = 'Página Inicial';
@@ -1876,6 +1902,86 @@ function renderCards() {
     updateBreadcrumbs();
 
     var html = '';
+
+    if (currentLayoutMode === 'grid') {
+        var cardsByCategory = {};
+        var favoriteCards = cards.filter(function(card) { return card.favorite === true; });
+        if (favoriteCards.length > 0) {
+            cardsByCategory['favorites'] = favoriteCards;
+        }
+
+        cards.forEach(function(card) {
+            var cat = card.category || 'custom';
+            if (cat === 'drink') cat = 'food';
+            if (!cardsByCategory[cat]) {
+                cardsByCategory[cat] = [];
+            }
+            cardsByCategory[cat].push(card);
+        });
+
+        var categoriesOrder = CATEGORIES.filter(function(c) { return c.id !== 'all'; }).concat([{ id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }]);
+
+        categoriesOrder.forEach(function(cat) {
+            var catCards = cardsByCategory[cat.id];
+            if (catCards && catCards.length > 0) {
+                html += 
+                    '<div class="category-group-header">' +
+                        '<h3><span>' + cat.icon + '</span> ' + getCategoryName(cat.id).toUpperCase() + '</h3>' +
+                    '</div>';
+                
+                catCards.forEach(function(card) {
+                    var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
+                    var catClass = catObj ? catObj.class : 'cat-custom';
+                    var catName = catObj ? getCategoryName(catObj.id) : getCategoryName('custom');
+                    
+                    var visualContent = '';
+                    if (card.type === 'emoji') {
+                        visualContent = '<div class="card-emoji">' + card.value + '</div>';
+                    } else {
+                        visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+                    }
+
+                    var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
+                    var isFav = card.favorite === true;
+                    var favClass = isFav ? 'active' : '';
+                    var favStarSymbol = isFav ? '★' : '☆';
+
+                    var draggableAttr = isReorderModeActive ? 'draggable="true"' : '';
+                    
+                    var shortcutBadgeHtml = '';
+                    if (cat.id === 'favorites') {
+                        var favIndex = favoriteCards.findIndex(function(c) { return c.text === card.text; });
+                        if (favIndex >= 0 && favIndex < 9) {
+                            shortcutBadgeHtml = '<div class="card-shortcut-badge">' + (favIndex + 1) + '</div>';
+                        }
+                    }
+
+                    var apiBadgeHtml = '';
+                    if (card.fromApi) {
+                        apiBadgeHtml = '<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>';
+                    }
+
+                    html += 
+                        '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                            shortcutBadgeHtml +
+                            apiBadgeHtml +
+                            '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                            '<span class="card-category-tag">' + catName + '</span>' +
+                            visualContent +
+                            '<span>' + getCardText(card) + '</span>' +
+                        '</div>';
+                });
+            }
+        });
+
+        cardsGrid.innerHTML = html;
+        if (isTelepatixActive) {
+            scanIndex = 0;
+            updateScanList();
+            highlightCurrentScanElement();
+        }
+        return;
+    }
 
     if (currentFolder === 'root') {
         // Renderizar pastas de categorias
@@ -3193,6 +3299,19 @@ function setupEventListeners() {
         });
     }
 
+    // Layout mode selector change
+    if (seletorLayoutMode) {
+        seletorLayoutMode.addEventListener('change', function() {
+            var selectedMode = seletorLayoutMode.value;
+            localStorage.setItem('caa_layout_mode_' + currentProfileId, selectedMode);
+            currentLayoutMode = selectedMode;
+            if (currentLayoutMode === 'grid') {
+                currentFolder = 'root';
+            }
+            renderCards();
+        });
+    }
+
     // Controle de velocidade e tom da voz
     if (inputVoiceRate) {
         inputVoiceRate.addEventListener('input', function() {
@@ -4354,7 +4473,7 @@ function setupEventListeners() {
     var dragStartIndex = null;
 
     cardsGrid.addEventListener('dragstart', function(e) {
-        if (!isReorderModeActive || currentFolder === 'root') return;
+        if (!isReorderModeActive || (currentFolder === 'root' && currentLayoutMode !== 'grid')) return;
         var card = e.target.closest('.aac-card');
         if (!card || card.classList.contains('back-card') || card.classList.contains('folder-card')) return;
         
@@ -4365,7 +4484,7 @@ function setupEventListeners() {
     });
 
     cardsGrid.addEventListener('dragover', function(e) {
-        if (!isReorderModeActive || currentFolder === 'root') return;
+        if (!isReorderModeActive || (currentFolder === 'root' && currentLayoutMode !== 'grid')) return;
         e.preventDefault();
         var card = e.target.closest('.aac-card');
         if (card && !card.classList.contains('back-card') && !card.classList.contains('folder-card')) {
@@ -4382,7 +4501,7 @@ function setupEventListeners() {
     });
 
     cardsGrid.addEventListener('drop', function(e) {
-        if (!isReorderModeActive || currentFolder === 'root') return;
+        if (!isReorderModeActive || (currentFolder === 'root' && currentLayoutMode !== 'grid')) return;
         e.preventDefault();
         
         var targetCard = e.target.closest('.aac-card');
@@ -4420,7 +4539,7 @@ function setupEventListeners() {
     var currentTouchTarget = null;
 
     cardsGrid.addEventListener('touchstart', function(e) {
-        if (!isReorderModeActive || currentFolder === 'root') return;
+        if (!isReorderModeActive || (currentFolder === 'root' && currentLayoutMode !== 'grid')) return;
         
         var card = e.target.closest('.aac-card');
         if (!card || card.classList.contains('back-card') || card.classList.contains('folder-card')) return;
@@ -4431,7 +4550,7 @@ function setupEventListeners() {
     }, { passive: true });
 
     cardsGrid.addEventListener('touchmove', function(e) {
-        if (!isReorderModeActive || currentFolder === 'root') return;
+        if (!isReorderModeActive || (currentFolder === 'root' && currentLayoutMode !== 'grid')) return;
         if (touchStartIndex === null) return;
         
         // Prevent scrolling while dragging
@@ -4453,7 +4572,7 @@ function setupEventListeners() {
     }, { passive: false });
 
     cardsGrid.addEventListener('touchend', function(e) {
-        if (!isReorderModeActive || currentFolder === 'root') return;
+        if (!isReorderModeActive || (currentFolder === 'root' && currentLayoutMode !== 'grid')) return;
         if (touchStartIndex === null) return;
         
         var previousOvers = cardsGrid.querySelectorAll('.drag-over');
