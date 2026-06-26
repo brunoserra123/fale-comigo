@@ -432,6 +432,26 @@ function getCategoryName(catId) {
 // App State
 var cards = [];
 var selectedCards = [];
+var currentFolder = 'root';
+
+// TelepatiX Accessibility Scanning State
+var isTelepatixActive = false;
+var telepatixSpeed = 2.0; // seconds
+var telepatixMode = 'switch'; // 'switch' or 'camera'
+var scanIndex = -1;
+var scanTimer = null;
+var scanElements = []; // DOM elements to scan
+var telepatixTriggerOverlay = null;
+
+// TelepatiX Camera Eye Blink State
+var telepatixStream = null;
+var isBlinkDetectorRunning = false;
+var lastLuminance = null;
+var baselineLuminance = null;
+var blinkAnimationId = null;
+var telepatixSensitivity = 15;
+var blinkCooldown = false;
+
 
 // DOM Elements
 var cardsGrid = document.getElementById('cards-grid');
@@ -1493,6 +1513,7 @@ function switchProfile(profileId) {
     
     // Clear selection
     selectedCards = [];
+    currentFolder = 'root';
     
     // Load and clean cards for this profile
     loadProfileCards(currentProfileId).then(function(loadedCards) {
@@ -1543,6 +1564,8 @@ function switchProfile(profileId) {
         updateSentenceBuilder();
         renderProfileSelector();
         renderProfilesList();
+        
+        loadTelepatixConfig();
         
         if (modalProfiles) modalProfiles.classList.remove('open');
     });
@@ -1625,6 +1648,9 @@ function init() {
 
         // Setup event listeners
         setupEventListeners();
+
+        // Load TelepatiX configurations
+        loadTelepatixConfig();
 
         // Check Google Drive & Apps Script Sync on Startup
         var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
@@ -1725,113 +1751,234 @@ function toggleFavorite(cardIndex) {
     }
 }
 
+function switchFolder(folderId) {
+    currentFolder = folderId;
+    renderCards();
+}
+window.switchFolder = switchFolder;
+
+function updateBreadcrumbs() {
+    var container = document.getElementById('breadcrumb-container');
+    var pathEl = document.getElementById('breadcrumb-path');
+    if (!container || !pathEl) return;
+
+    var lang = getProfileLanguage();
+    var homeText = 'Página Inicial';
+    if (lang === 'en') homeText = 'Home';
+    else if (lang === 'es') homeText = 'Página Inicial';
+
+    if (currentFolder === 'root') {
+        container.style.display = 'flex';
+        pathEl.innerHTML = '<span>🏠 ' + homeText + '</span>';
+    } else {
+        container.style.display = 'flex';
+        var catName = getCategoryName(currentFolder);
+        if (currentFolder === 'custom') {
+            catName = getCategoryName('custom');
+        } else if (currentFolder === 'pain') {
+            catName = getCategoryName('pain');
+        }
+        pathEl.innerHTML = '<span style="cursor: pointer;" onclick="switchFolder(\'root\')">🏠 ' + homeText + '</span> <span style="margin: 0 4px; opacity: 0.5;">&gt;</span> <span style="color: var(--color-primary);">' + catName + '</span>';
+    }
+}
+
 // Render Main AAC Cards Grid
 function renderCards() {
     var searchQuery = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
 
-    // Filter cards based on search query (matches original and translated text)
-    var filtered = cards.filter(function(card) {
-        var textPT = card.text.toLowerCase();
-        var textTranslated = getCardText(card).toLowerCase();
-        return textPT.indexOf(searchQuery) !== -1 || textTranslated.indexOf(searchQuery) !== -1;
-    });
+    // Se houver busca ativa, mostra todas as figuras correspondentes sem estrutura de pasta
+    if (searchQuery !== '') {
+        var breadcrumbContainer = document.getElementById('breadcrumb-container');
+        if (breadcrumbContainer) {
+            breadcrumbContainer.style.display = 'none';
+        }
 
-    if (filtered.length === 0) {
-        var lang = getProfileLanguage();
-        var noResultsMsg = 'Nenhuma figura encontrada para';
-        if (lang === 'en') noResultsMsg = 'No figure found for';
-        else if (lang === 'es') noResultsMsg = 'No se encontró figura para';
+        var filtered = cards.filter(function(card) {
+            var textPT = card.text.toLowerCase();
+            var textTranslated = getCardText(card).toLowerCase();
+            return textPT.indexOf(searchQuery) !== -1 || textTranslated.indexOf(searchQuery) !== -1;
+        });
 
-        cardsGrid.innerHTML = 
-            '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary); width: 100%;">' +
-                '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block; color: var(--text-secondary);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' +
-                '<p>' + noResultsMsg + ' "' + searchQuery + '".</p>' +
-            '</div>';
+        if (filtered.length === 0) {
+            var lang = getProfileLanguage();
+            var noResultsMsg = 'Nenhuma figura encontrada para';
+            if (lang === 'en') noResultsMsg = 'No figure found for';
+            else if (lang === 'es') noResultsMsg = 'No se encontró figura para';
+
+            cardsGrid.innerHTML = 
+                '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary); width: 100%;">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block; color: var(--text-secondary);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' +
+                    '<p>' + noResultsMsg + ' "' + searchQuery + '".</p>' +
+                '</div>';
+            return;
+        }
+
+        // Group cards by category
+        var cardsByCategory = {};
+        var favoriteCards = filtered.filter(function(card) { return card.favorite === true; });
+        if (favoriteCards.length > 0) {
+            cardsByCategory['favorites'] = favoriteCards;
+        }
+
+        filtered.forEach(function(card) {
+            var cat = card.category || 'custom';
+            if (cat === 'drink') cat = 'food';
+            if (!cardsByCategory[cat]) {
+                cardsByCategory[cat] = [];
+            }
+            cardsByCategory[cat].push(card);
+        });
+
+        var html = '';
+        var categoriesOrder = CATEGORIES.filter(function(c) { return c.id !== 'all'; }).concat([{ id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }]);
+
+        categoriesOrder.forEach(function(cat) {
+            var catCards = cardsByCategory[cat.id];
+            if (catCards && catCards.length > 0) {
+                html += 
+                    '<div class="category-group-header">' +
+                        '<h3><span>' + cat.icon + '</span> ' + getCategoryName(cat.id).toUpperCase() + '</h3>' +
+                    '</div>';
+                
+                catCards.forEach(function(card) {
+                    var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
+                    var catClass = catObj ? catObj.class : 'cat-custom';
+                    var catName = catObj ? getCategoryName(catObj.id) : getCategoryName('custom');
+                    
+                    var visualContent = '';
+                    if (card.type === 'emoji') {
+                        visualContent = '<div class="card-emoji">' + card.value + '</div>';
+                    } else {
+                        visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+                    }
+
+                    var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
+                    var isFav = card.favorite === true;
+                    var favClass = isFav ? 'active' : '';
+                    var favStarSymbol = isFav ? '★' : '☆';
+
+                    html += 
+                        '<div class="aac-card ' + catClass + '" data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                            '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                            '<span class="card-category-tag">' + catName + '</span>' +
+                            visualContent +
+                            '<span>' + getCardText(card) + '</span>' +
+                        '</div>';
+                });
+            }
+        });
+
+        cardsGrid.innerHTML = html;
         return;
     }
 
-    // Group cards by category
-    var cardsByCategory = {};
-    
-    // Add dynamically the favorites if any card is marked as favorite
-    var favoriteCards = filtered.filter(function(card) { return card.favorite === true; });
-    if (favoriteCards.length > 0) {
-        cardsByCategory['favorites'] = favoriteCards;
+    // Se NÃO houver busca ativa, renderiza pastas ou conteúdo da pasta ativa
+    updateBreadcrumbs();
+
+    var html = '';
+
+    if (currentFolder === 'root') {
+        // Renderizar pastas de categorias
+        var categoriesOrder = CATEGORIES.filter(function(c) { return c.id !== 'all'; })
+            .concat([{ id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }]);
+
+        categoriesOrder.forEach(function(cat) {
+            var folderName = getCategoryName(cat.id);
+            html += 
+                '<div class="aac-card folder-card ' + cat.class + '" data-folder-id="' + cat.id + '">' +
+                    '<span class="card-category-tag">' + folderName + '</span>' +
+                    '<div class="card-emoji">' + cat.icon + '</div>' +
+                    '<span>' + folderName + '</span>' +
+                '</div>';
+        });
+
+        cardsGrid.innerHTML = html;
+        return;
     }
 
-    filtered.forEach(function(card) {
-        var cat = card.category || 'custom';
-        if (cat === 'drink') cat = 'food';
-        if (!cardsByCategory[cat]) {
-            cardsByCategory[cat] = [];
-        }
-        cardsByCategory[cat].push(card);
-    });
+    // Renderizar conteúdo de uma pasta específica
+    var backText = 'Voltar';
+    var lang = getProfileLanguage();
+    if (lang === 'en') backText = 'Back';
+    else if (lang === 'es') backText = 'Volver';
 
-    // Generate HTML
-    var html = '';
-    
-    // We want to preserve the order of CATEGORIES
-    var categoriesOrder = CATEGORIES.filter(function(c) { return c.id !== 'all'; }).concat([{ id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }]);
-    
-    categoriesOrder.forEach(function(cat) {
-        var catCards = cardsByCategory[cat.id];
-        if (catCards && catCards.length > 0) {
-            // Add category section header
-            html += 
-                '<div class="category-group-header">' +
-                    '<h3><span>' + cat.icon + '</span> ' + getCategoryName(cat.id).toUpperCase() + '</h3>' +
-                '</div>';
+    // Primeiro item: Cartão de Voltar
+    html += 
+        '<div class="aac-card back-card" data-action="back">' +
+            '<div class="card-emoji">⬅️</div>' +
+            '<span>' + backText + '</span>' +
+        '</div>';
+
+    // Filtrar cartões da pasta atual
+    var folderCards = [];
+    if (currentFolder === 'favorites') {
+        folderCards = cards.filter(function(card) { return card.favorite === true; });
+    } else if (currentFolder === 'food') {
+        folderCards = cards.filter(function(card) { return card.category === 'food' || card.category === 'drink'; });
+    } else {
+        folderCards = cards.filter(function(card) { return (card.category || 'custom') === currentFolder; });
+    }
+
+    if (folderCards.length === 0) {
+        var emptyMsg = 'Esta pasta está vazia.';
+        if (lang === 'en') emptyMsg = 'This folder is empty.';
+        else if (lang === 'es') emptyMsg = 'Esta carpeta está vacía.';
+
+        html += 
+            '<div style="text-align: center; padding: 40px; color: var(--text-secondary); width: 100%; grid-column: 2 / -1;">' +
+                '<p>' + emptyMsg + '</p>' +
+            '</div>';
+    } else {
+        folderCards.forEach(function(card) {
+            var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
+            var catClass = catObj ? catObj.class : 'cat-custom';
+            var catName = catObj ? getCategoryName(catObj.id) : getCategoryName('custom');
             
-            // Add cards
-            catCards.forEach(function(card) {
-                var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
-                var catClass = catObj ? catObj.class : 'cat-custom';
-                var catName = catObj ? getCategoryName(catObj.id) : getCategoryName('custom');
-                
-                var visualContent = '';
-                if (card.type === 'emoji') {
-                    visualContent = '<div class="card-emoji">' + card.value + '</div>';
-                } else {
-                    visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+            var visualContent = '';
+            if (card.type === 'emoji') {
+                visualContent = '<div class="card-emoji">' + card.value + '</div>';
+            } else {
+                visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+            }
+
+            var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
+            var isFav = card.favorite === true;
+            var favClass = isFav ? 'active' : '';
+            var favStarSymbol = isFav ? '★' : '☆';
+
+            var shortcutBadgeHtml = '';
+            if (currentFolder === 'favorites') {
+                var favIndex = folderCards.findIndex(function(c) { return c.text === card.text; });
+                if (favIndex >= 0 && favIndex < 9) {
+                    shortcutBadgeHtml = '<div class="card-shortcut-badge">' + (favIndex + 1) + '</div>';
                 }
+            }
 
-                var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
-                
-                // Favorite properties
-                var isFav = card.favorite === true;
-                var favClass = isFav ? 'active' : '';
-                var favStarSymbol = isFav ? '★' : '☆';
+            var draggableAttr = (isReorderModeActive && currentFolder !== 'root') ? 'draggable="true"' : '';
+            var apiBadgeHtml = '';
+            if (card.fromApi) {
+                apiBadgeHtml = '<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>';
+            }
 
-                // Keyboard shortcut indicators for first 9 favorites
-                var shortcutBadgeHtml = '';
-                if (cat.id === 'favorites') {
-                    var favIndex = favoriteCards.findIndex(function(c) { return c.text === card.text; });
-                    if (favIndex >= 0 && favIndex < 9) {
-                        shortcutBadgeHtml = '<div class="card-shortcut-badge">' + (favIndex + 1) + '</div>';
-                    }
-                }
-
-                var draggableAttr = isReorderModeActive ? 'draggable="true"' : '';
-                var apiBadgeHtml = '';
-                if (card.fromApi) {
-                    apiBadgeHtml = '<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>';
-                }
-
-                html += 
-                    '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + card.text + '">' +
-                        shortcutBadgeHtml +
-                        apiBadgeHtml +
-                        '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
-                        '<span class="card-category-tag">' + catName + '</span>' +
-                        visualContent +
-                        '<span>' + getCardText(card) + '</span>' +
-                    '</div>';
-            });
-        }
-    });
+            html += 
+                '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                    shortcutBadgeHtml +
+                    apiBadgeHtml +
+                    '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                    '<span class="card-category-tag">' + catName + '</span>' +
+                    visualContent +
+                    '<span>' + getCardText(card) + '</span>' +
+                '</div>';
+        });
+    }
 
     cardsGrid.innerHTML = html;
+
+    if (isTelepatixActive) {
+        scanIndex = 0;
+        updateScanList();
+        highlightCurrentScanElement();
+    }
 }
 
 // Add a card to the sentence with a maximum limit of 7 (rolling off the oldest card)
@@ -1882,6 +2029,11 @@ function updateSentenceBuilder() {
     }
 
     updateFloatingBar();
+
+    if (isTelepatixActive) {
+        updateScanList();
+        highlightCurrentScanElement();
+    }
 }
 
 // Update Floating Bottom Bar visibility & preview
@@ -2548,6 +2700,371 @@ function openSubChoiceModal(actionText, categoryId) {
     modalSubChoice.classList.add('open');
 }
 
+// ==========================================
+// TELEPATIX ACCESSIBILITY SYSTEM FUNCTIONS
+// ==========================================
+
+function updateScanList() {
+    if (scanElements && scanElements.length > 0 && scanIndex >= 0 && scanIndex < scanElements.length) {
+        var currentEl = scanElements[scanIndex];
+        if (currentEl) currentEl.classList.remove('telepatix-highlight');
+    }
+
+    scanElements = [];
+    
+    // 1. Grid Cards (visible ones)
+    var cardsList = Array.prototype.slice.call(cardsGrid.querySelectorAll('.aac-card'));
+    cardsList.forEach(function(el) {
+        if (el && el.offsetParent !== null) {
+            scanElements.push(el);
+        }
+    });
+
+    // 2. Main sentence builder buttons (FALAR, LIMPAR)
+    var controls = document.querySelector('.sentence-controls');
+    if (controls && !controls.classList.contains('d-none')) {
+        var speakBtn = document.getElementById('btn-speak');
+        var clearBtn = document.getElementById('btn-clear-all');
+        if (speakBtn && speakBtn.offsetParent !== null) scanElements.push(speakBtn);
+        if (clearBtn && clearBtn.offsetParent !== null) scanElements.push(clearBtn);
+    }
+
+    // Reset index if it goes out of bounds
+    if (scanIndex >= scanElements.length) {
+        scanIndex = 0;
+    }
+}
+
+function highlightCurrentScanElement() {
+    scanElements.forEach(function(el) {
+        if (el) el.classList.remove('telepatix-highlight');
+    });
+
+    if (scanElements.length === 0) return;
+    
+    if (scanIndex < 0 || scanIndex >= scanElements.length) {
+        scanIndex = 0;
+    }
+
+    var el = scanElements[scanIndex];
+    if (el) {
+        el.classList.add('telepatix-highlight');
+        try {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } catch(e) {}
+    }
+}
+
+function moveToNextScanElement() {
+    if (scanElements.length === 0) {
+        updateScanList();
+    }
+    if (scanElements.length === 0) return;
+
+    scanIndex = (scanIndex + 1) % scanElements.length;
+    highlightCurrentScanElement();
+}
+
+function triggerSelection() {
+    if (!isTelepatixActive || scanElements.length === 0 || scanIndex < 0 || scanIndex >= scanElements.length) return;
+    
+    var el = scanElements[scanIndex];
+    if (el) {
+        // Visual feedback
+        el.style.transform = 'scale(0.95)';
+        setTimeout(function() {
+            el.style.transform = '';
+        }, 100);
+
+        // Click element
+        el.click();
+
+        // Refresh scan list to adapt to dynamic changes (like folders or controls display)
+        setTimeout(function() {
+            updateScanList();
+            scanIndex = 0;
+            highlightCurrentScanElement();
+        }, 250);
+    }
+}
+
+function createTriggerOverlay() {
+    if (telepatixTriggerOverlay) return;
+    
+    telepatixTriggerOverlay = document.createElement('div');
+    telepatixTriggerOverlay.className = 'telepatix-trigger-overlay';
+    
+    var handleTrigger = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerSelection();
+    };
+    
+    telepatixTriggerOverlay.addEventListener('click', handleTrigger);
+    telepatixTriggerOverlay.addEventListener('touchstart', handleTrigger);
+    document.body.appendChild(telepatixTriggerOverlay);
+}
+
+function removeTriggerOverlay() {
+    if (telepatixTriggerOverlay) {
+        if (telepatixTriggerOverlay.parentNode) {
+            telepatixTriggerOverlay.parentNode.removeChild(telepatixTriggerOverlay);
+        }
+        telepatixTriggerOverlay = null;
+    }
+}
+
+function startScanning() {
+    stopScanning(); // Clean up existing state
+    
+    isTelepatixActive = true;
+    localStorage.setItem('caa_telepatix_active_' + currentProfileId, 'true');
+    
+    var btnHeader = document.getElementById('btn-toggle-telepatix-header');
+    if (btnHeader) btnHeader.classList.add('active');
+    
+    var chkSettings = document.getElementById('check-telepatix-active');
+    if (chkSettings) chkSettings.checked = true;
+
+    if (telepatixMode === 'switch') {
+        createTriggerOverlay();
+    } else {
+        removeTriggerOverlay();
+        startCameraBlinkDetector();
+    }
+
+    updateScanList();
+    scanIndex = 0;
+    highlightCurrentScanElement();
+
+    scanTimer = setInterval(function() {
+        moveToNextScanElement();
+    }, telepatixSpeed * 1000);
+}
+
+function stopScanning() {
+    isTelepatixActive = false;
+    localStorage.setItem('caa_telepatix_active_' + currentProfileId, 'false');
+    
+    var btnHeader = document.getElementById('btn-toggle-telepatix-header');
+    if (btnHeader) btnHeader.classList.remove('active');
+    
+    var chkSettings = document.getElementById('check-telepatix-active');
+    if (chkSettings) chkSettings.checked = false;
+
+    if (scanElements) {
+        scanElements.forEach(function(el) {
+            if (el) el.classList.remove('telepatix-highlight');
+        });
+    }
+
+    if (scanTimer) {
+        clearInterval(scanTimer);
+        scanTimer = null;
+    }
+
+    removeTriggerOverlay();
+    stopCameraBlinkDetector();
+}
+
+function startCameraBlinkDetector() {
+    if (isBlinkDetectorRunning) return;
+    
+    var video = document.getElementById('telepatix-video');
+    if (!video) return;
+
+    navigator.mediaDevices.getUserMedia({ video: { width: 160, height: 120 } })
+        .then(function(stream) {
+            telepatixStream = stream;
+            video.srcObject = stream;
+            video.play();
+            isBlinkDetectorRunning = true;
+            
+            telepatixCanvas = document.createElement('canvas');
+            telepatixCanvas.width = 40;
+            telepatixCanvas.height = 40;
+            telepatixCtx = telepatixCanvas.getContext('2d');
+            
+            lastLuminance = null;
+            baselineLuminance = null;
+            
+            blinkAnimationId = requestAnimationFrame(processCameraFrame);
+        })
+        .catch(function(err) {
+            console.error('Erro ao acessar webcam para TelepatiX:', err);
+            showCustomAlert('Não foi possível acessar a câmera para detecção de piscadas. Verifique as permissões de privacidade.');
+            
+            // Fallback to switch mode
+            var selectMode = document.getElementById('select-telepatix-mode');
+            if (selectMode) selectMode.value = 'switch';
+            telepatixMode = 'switch';
+            var camPanel = document.getElementById('telepatix-camera-panel');
+            if (camPanel) camPanel.classList.add('d-none');
+            
+            createTriggerOverlay();
+        });
+}
+
+function stopCameraBlinkDetector() {
+    isBlinkDetectorRunning = false;
+    if (blinkAnimationId) {
+        cancelAnimationFrame(blinkAnimationId);
+        blinkAnimationId = null;
+    }
+    if (telepatixStream) {
+        telepatixStream.getTracks().forEach(function(track) {
+            track.stop();
+        });
+        telepatixStream = null;
+    }
+    var video = document.getElementById('telepatix-video');
+    if (video) {
+        video.srcObject = null;
+    }
+}
+
+function processCameraFrame() {
+    if (!isBlinkDetectorRunning) return;
+
+    var video = document.getElementById('telepatix-video');
+    if (video && video.readyState === video.HAVE_ENOUGH_DATA) {
+        try {
+            // Desenha a região do olho no canvas auxiliar
+            telepatixCtx.drawImage(video, 60, 40, 40, 40, 0, 0, 40, 40);
+            
+            var imgData = telepatixCtx.getImageData(0, 0, 40, 40);
+            var pixels = imgData.data;
+            
+            var totalLuminance = 0;
+            for (var i = 0; i < pixels.length; i += 4) {
+                var r = pixels[i];
+                var g = pixels[i+1];
+                var b = pixels[i+2];
+                var y = 0.299 * r + 0.587 * g + 0.114 * b;
+                totalLuminance += y;
+            }
+            var avgLuminance = totalLuminance / (40 * 40);
+
+            if (baselineLuminance === null) {
+                baselineLuminance = avgLuminance;
+            } else {
+                // Adaptação lenta às mudanças de iluminação
+                baselineLuminance = 0.99 * baselineLuminance + 0.01 * avgLuminance;
+            }
+
+            var dev = Math.abs(avgLuminance - baselineLuminance);
+            
+            var signalBar = document.getElementById('telepatix-signal-bar');
+            if (signalBar) {
+                var maxExpectedDev = telepatixSensitivity * 2.5;
+                var pct = Math.min((dev / maxExpectedDev) * 100, 100);
+                signalBar.style.width = pct + '%';
+                
+                if (dev > telepatixSensitivity) {
+                    signalBar.style.backgroundColor = '#ef4444'; // Vermelho se ativou
+                } else {
+                    signalBar.style.backgroundColor = 'var(--color-primary)';
+                }
+            }
+
+            if (dev > telepatixSensitivity && !blinkCooldown) {
+                blinkCooldown = true;
+                triggerSelection();
+                
+                var indicator = document.getElementById('telepatix-blink-indicator');
+                if (indicator) {
+                    indicator.style.boxShadow = '0 0 10px #ef4444';
+                    setTimeout(function() {
+                        indicator.style.boxShadow = 'none';
+                    }, 200);
+                }
+
+                setTimeout(function() {
+                    blinkCooldown = false;
+                }, 800);
+            }
+
+            lastLuminance = avgLuminance;
+        } catch (e) {
+            console.warn('Erro ao processar frame no detector de piscada:', e);
+        }
+    }
+
+    if (isBlinkDetectorRunning) {
+        blinkAnimationId = requestAnimationFrame(processCameraFrame);
+    }
+}
+
+function calibrateTelepatixEye() {
+    baselineLuminance = null;
+    var signalBar = document.getElementById('telepatix-signal-bar');
+    if (signalBar) {
+        signalBar.style.width = '0%';
+    }
+    showCustomAlert('Calibrado! O brilho de referência do olho foi ajustado com base na iluminação do momento.');
+}
+
+function loadTelepatixConfig() {
+    stopScanning();
+
+    var savedActive = localStorage.getItem('caa_telepatix_active_' + currentProfileId) === 'true';
+    
+    var savedSpeed = localStorage.getItem('caa_telepatix_speed_' + currentProfileId);
+    if (savedSpeed) {
+        telepatixSpeed = parseFloat(savedSpeed);
+    } else {
+        telepatixSpeed = 2.0;
+    }
+
+    var savedMode = localStorage.getItem('caa_telepatix_mode_' + currentProfileId);
+    if (savedMode) {
+        telepatixMode = savedMode;
+    } else {
+        telepatixMode = 'switch';
+    }
+
+    var savedSensitivity = localStorage.getItem('caa_telepatix_sensitivity_' + currentProfileId);
+    if (savedSensitivity) {
+        telepatixSensitivity = parseInt(savedSensitivity, 10);
+    } else {
+        telepatixSensitivity = 15;
+    }
+
+    var inputSpeed = document.getElementById('input-telepatix-speed');
+    var valSpeed = document.getElementById('val-telepatix-speed');
+    if (inputSpeed) {
+        inputSpeed.value = telepatixSpeed;
+        if (valSpeed) valSpeed.textContent = telepatixSpeed.toFixed(1) + 's';
+    }
+    
+    var selectMode = document.getElementById('select-telepatix-mode');
+    var camPanel = document.getElementById('telepatix-camera-panel');
+    if (selectMode) {
+        selectMode.value = telepatixMode;
+        if (camPanel) {
+            if (telepatixMode === 'camera') {
+                camPanel.classList.remove('d-none');
+            } else {
+                camPanel.classList.add('d-none');
+            }
+        }
+    }
+    
+    var inputSens = document.getElementById('input-telepatix-sensitivity');
+    if (inputSens) {
+        inputSens.value = telepatixSensitivity;
+    }
+
+    var chkSettings = document.getElementById('check-telepatix-active');
+    if (chkSettings) {
+        chkSettings.checked = savedActive;
+    }
+
+    if (savedActive) {
+        startScanning();
+    }
+}
+
 // Event Listeners Setup
 function setupEventListeners() {
 
@@ -2568,6 +3085,7 @@ function setupEventListeners() {
         btnClearSearch.addEventListener('click', function() {
             searchInput.value = '';
             btnClearSearch.classList.add('d-none');
+            currentFolder = 'root';
             renderCards();
             searchInput.focus();
         });
@@ -2578,6 +3096,24 @@ function setupEventListeners() {
         if (isReorderModeActive) {
             return; // Bloqueia clicks se estiver organizando figuras
         }
+
+        // Clicou no botão de Voltar
+        var backCard = e.target.closest('.back-card');
+        if (backCard) {
+            e.stopPropagation();
+            switchFolder('root');
+            return;
+        }
+
+        // Clicou em uma Pasta
+        var folderCard = e.target.closest('.folder-card');
+        if (folderCard) {
+            e.stopPropagation();
+            var folderId = folderCard.dataset.folderId;
+            switchFolder(folderId);
+            return;
+        }
+
         // Toggle favorite if star button clicked
         var favBtn = e.target.closest('.card-favorite-btn');
         if (favBtn) {
@@ -2597,9 +3133,9 @@ function setupEventListeners() {
             var clickedCard = cards[index];
             addCardToSentence(clickedCard);
 
-            // Automatic sub-choice modal if card has goToCategory defined (abrir por cima)
+            // Automatic folder navigation if card has goToCategory defined
             if (clickedCard.goToCategory) {
-                openSubChoiceModal(clickedCard.text, clickedCard.goToCategory);
+                switchFolder(clickedCard.goToCategory);
             }
         }
     });
@@ -3818,9 +4354,9 @@ function setupEventListeners() {
     var dragStartIndex = null;
 
     cardsGrid.addEventListener('dragstart', function(e) {
-        if (!isReorderModeActive) return;
+        if (!isReorderModeActive || currentFolder === 'root') return;
         var card = e.target.closest('.aac-card');
-        if (!card) return;
+        if (!card || card.classList.contains('back-card') || card.classList.contains('folder-card')) return;
         
         dragStartIndex = parseInt(card.dataset.index, 10);
         card.classList.add('is-dragging');
@@ -3829,10 +4365,10 @@ function setupEventListeners() {
     });
 
     cardsGrid.addEventListener('dragover', function(e) {
-        if (!isReorderModeActive) return;
+        if (!isReorderModeActive || currentFolder === 'root') return;
         e.preventDefault();
         var card = e.target.closest('.aac-card');
-        if (card) {
+        if (card && !card.classList.contains('back-card') && !card.classList.contains('folder-card')) {
             card.classList.add('drag-over');
         }
     });
@@ -3846,11 +4382,11 @@ function setupEventListeners() {
     });
 
     cardsGrid.addEventListener('drop', function(e) {
-        if (!isReorderModeActive) return;
+        if (!isReorderModeActive || currentFolder === 'root') return;
         e.preventDefault();
         
         var targetCard = e.target.closest('.aac-card');
-        if (targetCard) {
+        if (targetCard && !targetCard.classList.contains('back-card') && !targetCard.classList.contains('folder-card')) {
             targetCard.classList.remove('drag-over');
             var dragEndIndex = parseInt(targetCard.dataset.index, 10);
             
@@ -3884,10 +4420,10 @@ function setupEventListeners() {
     var currentTouchTarget = null;
 
     cardsGrid.addEventListener('touchstart', function(e) {
-        if (!isReorderModeActive) return;
+        if (!isReorderModeActive || currentFolder === 'root') return;
         
         var card = e.target.closest('.aac-card');
-        if (!card) return;
+        if (!card || card.classList.contains('back-card') || card.classList.contains('folder-card')) return;
         
         touchStartIndex = parseInt(card.dataset.index, 10);
         card.classList.add('is-dragging');
@@ -3895,7 +4431,7 @@ function setupEventListeners() {
     }, { passive: true });
 
     cardsGrid.addEventListener('touchmove', function(e) {
-        if (!isReorderModeActive) return;
+        if (!isReorderModeActive || currentFolder === 'root') return;
         if (touchStartIndex === null) return;
         
         // Prevent scrolling while dragging
@@ -3911,13 +4447,13 @@ function setupEventListeners() {
             if (o !== targetCard) o.classList.remove('drag-over'); 
         });
         
-        if (targetCard && targetCard !== currentTouchTarget) {
+        if (targetCard && targetCard !== currentTouchTarget && !targetCard.classList.contains('back-card') && !targetCard.classList.contains('folder-card')) {
             targetCard.classList.add('drag-over');
         }
     }, { passive: false });
 
     cardsGrid.addEventListener('touchend', function(e) {
-        if (!isReorderModeActive) return;
+        if (!isReorderModeActive || currentFolder === 'root') return;
         if (touchStartIndex === null) return;
         
         var previousOvers = cardsGrid.querySelectorAll('.drag-over');
@@ -3932,7 +4468,7 @@ function setupEventListeners() {
         var element = document.elementFromPoint(touch.clientX, touch.clientY);
         var targetCard = element ? element.closest('.aac-card') : null;
         
-        if (targetCard) {
+        if (targetCard && !targetCard.classList.contains('back-card') && !targetCard.classList.contains('folder-card')) {
             var touchEndIndex = parseInt(targetCard.dataset.index, 10);
             if (touchStartIndex !== touchEndIndex) {
                 // Swap
@@ -3964,7 +4500,7 @@ function setupEventListeners() {
                 addCardToSentence(card);
                 
                 if (card.goToCategory) {
-                    openSubChoiceModal(card.text, card.goToCategory);
+                    switchFolder(card.goToCategory);
                 }
             }
         }
@@ -4051,6 +4587,107 @@ function setupEventListeners() {
             xhr.send(formData);
         });
     }
+
+    // --- TELEPATIX EVENT LISTENERS ---
+    
+    // Quick toggle button in header
+    var btnToggleTelepatixHeader = document.getElementById('btn-toggle-telepatix-header');
+    if (btnToggleTelepatixHeader) {
+        btnToggleTelepatixHeader.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (isTelepatixActive) {
+                stopScanning();
+            } else {
+                startScanning();
+            }
+        });
+    }
+
+    // Toggle in Settings Modal
+    var checkTelepatixActive = document.getElementById('check-telepatix-active');
+    if (checkTelepatixActive) {
+        checkTelepatixActive.addEventListener('change', function() {
+            if (checkTelepatixActive.checked) {
+                startScanning();
+            } else {
+                stopScanning();
+            }
+        });
+    }
+
+    // Speed slider inside settings
+    var inputTelepatixSpeed = document.getElementById('input-telepatix-speed');
+    var valTelepatixSpeed = document.getElementById('val-telepatix-speed');
+    if (inputTelepatixSpeed) {
+        inputTelepatixSpeed.addEventListener('input', function() {
+            var val = parseFloat(inputTelepatixSpeed.value).toFixed(1);
+            if (valTelepatixSpeed) valTelepatixSpeed.textContent = val + 's';
+            telepatixSpeed = parseFloat(val);
+            localStorage.setItem('caa_telepatix_speed_' + currentProfileId, val);
+            
+            // If active, restart scan interval with the new speed
+            if (isTelepatixActive) {
+                startScanning();
+            }
+        });
+    }
+
+    // Trigger Mode selection dropdown
+    var selectTelepatixMode = document.getElementById('select-telepatix-mode');
+    var telepatixCameraPanel = document.getElementById('telepatix-camera-panel');
+    if (selectTelepatixMode) {
+        selectTelepatixMode.addEventListener('change', function() {
+            telepatixMode = selectTelepatixMode.value;
+            localStorage.setItem('caa_telepatix_mode_' + currentProfileId, telepatixMode);
+            
+            if (telepatixMode === 'camera') {
+                if (telepatixCameraPanel) telepatixCameraPanel.classList.remove('d-none');
+                if (isTelepatixActive) {
+                    removeTriggerOverlay();
+                    startCameraBlinkDetector();
+                }
+            } else {
+                if (telepatixCameraPanel) telepatixCameraPanel.classList.add('d-none');
+                stopCameraBlinkDetector();
+                if (isTelepatixActive) {
+                    createTriggerOverlay();
+                }
+            }
+        });
+    }
+
+    // Sensitivity slider for camera mode
+    var inputTelepatixSensitivity = document.getElementById('input-telepatix-sensitivity');
+    if (inputTelepatixSensitivity) {
+        inputTelepatixSensitivity.addEventListener('input', function() {
+            var val = parseInt(inputTelepatixSensitivity.value, 10);
+            telepatixSensitivity = val;
+            localStorage.setItem('caa_telepatix_sensitivity_' + currentProfileId, val.toString());
+        });
+    }
+
+    // Calibrate button click
+    var btnTelepatixCalibrate = document.getElementById('btn-telepatix-calibrate');
+    if (btnTelepatixCalibrate) {
+        btnTelepatixCalibrate.addEventListener('click', function(e) {
+            e.stopPropagation();
+            calibrateTelepatixEye();
+        });
+    }
+
+    // Global keyboard and switch trigger capture
+    document.addEventListener('keydown', function(e) {
+        if (!isTelepatixActive) return;
+        var activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag === 'input' || activeTag === 'textarea') {
+            return; // Ignore inside input fields
+        }
+        if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            triggerSelection();
+        }
+    });
 }
 
 

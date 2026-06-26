@@ -70,6 +70,11 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="m22 17-5 5-5-5"/><path d="M6 22V4"/><path d="m10 8-4-4-4 4"/><path d="M18 2V16"/></svg>
                 </button>
 
+                <!-- Botão Rápido TelepatiX (Acessibilidade) -->
+                <button id="btn-toggle-telepatix-header" class="btn btn-icon" title="Ligar TelepatiX (Acessibilidade por Varredura)" style="color: var(--text-secondary); border-color: var(--border-color);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+
                 <button id="btn-settings" class="btn btn-icon" title="Configurações (Tutor)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
@@ -123,6 +128,9 @@
 
         <!-- CARDS GRID -->
         <main class="main-content">
+            <div id="breadcrumb-container" class="breadcrumb-container" style="display: none; margin-bottom: 12px;">
+                <span id="breadcrumb-path" style="font-weight: 700;">Página Inicial</span>
+            </div>
             <div id="cards-grid" class="cards-grid">
                 <!-- Cards will be generated dynamically -->
             </div>
@@ -261,6 +269,55 @@
                     <div class="settings-row">
                         <label data-i18n="label_total_accesses">Total de Acessos:</label>
                         <span id="access-counter-val" style="font-weight: 700; font-size: 1.1rem; color: var(--color-primary);">1</span>
+                    </div>
+
+                    <!-- TelepatiX & Scanning Settings Panel -->
+                    <div class="form-group" style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-sm); margin-top: 10px; flex-direction: column; display: flex; width: 100%;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 1rem; display: flex; align-items: center; gap: 6px; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">👁️ TelepatiX & Varredura</h3>
+                        
+                        <!-- Toggle switch active -->
+                        <div class="settings-row" style="margin-top: 4px;">
+                            <label for="check-telepatix-active" style="cursor: pointer; font-size: 0.9rem;">Ativar TelepatiX:</label>
+                            <input type="checkbox" id="check-telepatix-active" style="width: 20px; height: 20px; cursor: pointer;">
+                        </div>
+                        
+                        <!-- Scanning speed slider -->
+                        <div class="settings-row">
+                            <label for="input-telepatix-speed" style="font-size: 0.9rem;">Velocidade da Varredura:</label>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; max-width: 140px; width: 100%;">
+                                <input type="range" id="input-telepatix-speed" min="1.0" max="5.0" step="0.5" value="2.0" style="flex-grow: 1; cursor: pointer;">
+                                <span id="val-telepatix-speed" style="font-weight: 700; min-width: 30px; text-align: right;">2.0s</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Trigger input type -->
+                        <div class="settings-row">
+                            <label for="select-telepatix-mode" style="font-size: 0.9rem;">Método de Acionamento:</label>
+                            <select id="select-telepatix-mode" style="padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.85rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 140px; width: 100%;">
+                                <option value="switch">Toque/Teclado (Switch)</option>
+                                <option value="camera">Webcam (Piscar de Olho)</option>
+                            </select>
+                        </div>
+
+                        <!-- Video Preview for webcam eye blink -->
+                        <div id="telepatix-camera-panel" class="d-none" style="display: flex; flex-direction: column; gap: 8px; align-items: center; margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px; width: 100%;">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; line-height: 1.3;">Posicione a câmera para enquadrar o olho do usuário dentro do quadrado verde:</span>
+                            <div style="position: relative; width: 160px; height: 120px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background-color: #000; box-shadow: var(--shadow-sm);">
+                                <video id="telepatix-video" width="160" height="120" autoplay playsinline muted style="transform: scaleX(-1); object-fit: cover; width: 100%; height: 100%;"></video>
+                                <div id="telepatix-eye-box" style="position: absolute; top: 40px; left: 60px; width: 40px; height: 40px; border: 2px solid #10b981; border-radius: 4px; box-shadow: 0 0 0 999px rgba(0,0,0,0.3); pointer-events: none;"></div>
+                            </div>
+                            <div style="display: flex; gap: 8px; width: 100%; align-items: center; justify-content: space-between;">
+                                <button id="btn-telepatix-calibrate" type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; font-weight: 700;">Calibrar Olho</button>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; color: var(--text-secondary);">Sensibilidade:</span>
+                                    <input type="range" id="input-telepatix-sensitivity" min="5" max="35" step="1" value="15" style="width: 50px; cursor: pointer;">
+                                </div>
+                            </div>
+                            <!-- Blink signal bar -->
+                            <div id="telepatix-blink-indicator" style="width: 100%; height: 10px; background-color: var(--border-color); border-radius: 5px; overflow: hidden; position: relative;" title="Intensidade do sinal de piscada">
+                                <div id="telepatix-signal-bar" style="width: 0%; height: 100%; background-color: var(--color-primary); transition: width 0.05s ease;"></div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group" style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-sm); margin-top: 10px; flex-direction: column; display: flex; width: 100%;">
