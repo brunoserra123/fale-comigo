@@ -2046,7 +2046,9 @@ function renderCards() {
     if (currentFolder === 'favorites') {
         folderCards = cards.filter(function(card) { return card.favorite === true; });
     } else if (currentFolder === 'food') {
-        folderCards = cards.filter(function(card) { return card.category === 'food' || card.category === 'drink'; });
+        folderCards = cards.filter(function(card) { return (card.category === 'food' || card.category === 'drink') && !isDrinkCard(card); });
+    } else if (currentFolder === 'drink') {
+        folderCards = cards.filter(function(card) { return (card.category === 'food' || card.category === 'drink') && isDrinkCard(card); });
     } else {
         folderCards = cards.filter(function(card) { return (card.category || 'custom') === currentFolder; });
     }
