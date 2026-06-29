@@ -908,6 +908,15 @@ function updatePremiumUI() {
             }
         }
     }
+    
+    // Mostra o botão de reordenar apenas para VIP
+    if (btnToggleReorder) {
+        if (isPremium) {
+            btnToggleReorder.style.display = ''; // Volta ao padrão do CSS
+        } else {
+            btnToggleReorder.style.display = 'none';
+        }
+    }
 }
 
 
