@@ -749,6 +749,14 @@ body {
 @media (max-width: 768px) {
     .app-header {
         padding: 10px 16px;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .header-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
     }
     
     .logo-icon {
