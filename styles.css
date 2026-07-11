@@ -1444,3 +1444,27 @@ select option {
     border-color: rgba(245, 158, 11, 0.3) !important;
     background-color: rgba(245, 158, 11, 0.08);
 }
+
+/* Fullscreen Mode */
+body.fullscreen-mode .app-header, body.fullscreen-mode .app-footer, body.fullscreen-mode .search-section, body.fullscreen-mode .recent-sentences-section {
+    display: none !important;
+}
+body.fullscreen-mode .app-container {
+    padding-top: 20px;
+    justify-content: center;
+}
+body.fullscreen-mode #btn-exit-fullscreen-float {
+    display: flex !important;
+}
+
+/* Suggested Card */
+.aac-card.suggested-card {
+    box-shadow: 0 0 15px 4px var(--color-warning);
+    animation: pulse-glow 2s infinite;
+}
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 10px 2px var(--color-warning); }
+    50% { box-shadow: 0 0 20px 6px var(--color-warning); }
+    100% { box-shadow: 0 0 10px 2px var(--color-warning); }
+}
+

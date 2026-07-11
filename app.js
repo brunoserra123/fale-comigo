@@ -4842,3 +4842,204 @@ function setupEventListeners() {
 
 // Launch application
 window.addEventListener('DOMContentLoaded', init);
+// ==========================================
+// ?? 1. MODO TELA CHEIA IMERSIVO
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+    var btnFullscreen = document.getElementById('btn-fullscreen');
+    var btnExitFullscreen = document.getElementById('btn-exit-fullscreen-float');
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().then(() => {
+                document.body.classList.add('fullscreen-mode');
+            }).catch(err => {
+                console.warn("Fullscreen não suportado: " + err.message);
+                document.body.classList.add('fullscreen-mode');
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+            document.body.classList.remove('fullscreen-mode');
+        }
+    }
+
+    if (btnFullscreen) {
+        btnFullscreen.addEventListener('click', toggleFullscreen);
+    }
+
+    if (btnExitFullscreen) {
+        btnExitFullscreen.addEventListener('click', toggleFullscreen);
+    }
+
+    document.addEventListener('fullscreenchange', function() {
+        if (!document.fullscreenElement) {
+            document.body.classList.remove('fullscreen-mode');
+        }
+    });
+});
+
+// ==========================================
+// ?? 2. GERAÇÃO DE IMAGENS COM IA (POLLINATIONS)
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+    var imageTypeRadios = document.getElementsByName('image-type');
+    var groupEmoji = document.getElementById('group-emoji');
+    var groupArasaac = document.getElementById('group-arasaac');
+    var groupUpload = document.getElementById('group-upload');
+    var groupAi = document.getElementById('group-ai');
+    var btnAiGenerate = document.getElementById('btn-ai-generate');
+    var aiPromptInput = document.getElementById('ai-prompt-input');
+    var aiImageResult = document.getElementById('ai-image-result');
+    var aiStatusText = document.getElementById('ai-status-text');
+
+    function updateImageUI() {
+        var selected = document.querySelector('input[name="image-type"]:checked').value;
+        if (groupEmoji) groupEmoji.classList.add('d-none');
+        if (groupArasaac) groupArasaac.classList.add('d-none');
+        if (groupUpload) groupUpload.classList.add('d-none');
+        if (groupAi) groupAi.classList.add('d-none');
+
+        if (selected === 'emoji' && groupEmoji) groupEmoji.classList.remove('d-none');
+        if (selected === 'arasaac' && groupArasaac) groupArasaac.classList.remove('d-none');
+        if (selected === 'upload' && groupUpload) groupUpload.classList.remove('d-none');
+        if (selected === 'ai' && groupAi) groupAi.classList.remove('d-none');
+    }
+
+    if (imageTypeRadios) {
+        imageTypeRadios.forEach(function(radio) {
+            radio.addEventListener('change', updateImageUI);
+        });
+    }
+
+    if (btnAiGenerate) {
+        btnAiGenerate.addEventListener('click', function() {
+            var prompt = aiPromptInput.value.trim();
+            if (!prompt) {
+                alert("Digite uma descrição para a imagem!");
+                return;
+            }
+            aiStatusText.textContent = "Gerando imagem... aguarde ?";
+            aiStatusText.style.display = "block";
+            aiImageResult.classList.add('d-none');
+            
+            var encodedPrompt = encodeURIComponent(prompt + " simple colorful 2d flat vector illustration icon style white background child friendly");
+            var imgUrl = "https://image.pollinations.ai/prompt/" + encodedPrompt + "?width=256&height=256&nologo=true&seed=" + Math.floor(Math.random()*10000);
+            
+            var tempImg = new Image();
+            tempImg.crossOrigin = "Anonymous";
+            tempImg.onload = function() {
+                aiImageResult.src = imgUrl;
+                aiImageResult.classList.remove('d-none');
+                aiStatusText.style.display = "none";
+                
+                var canvas = document.createElement('canvas');
+                canvas.width = tempImg.width;
+                canvas.height = tempImg.height;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(tempImg, 0, 0);
+                window.uploadedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            };
+            tempImg.onerror = function() {
+                aiStatusText.textContent = "Erro ao gerar imagem. Tente novamente.";
+            };
+            tempImg.src = imgUrl;
+        });
+    }
+});
+
+// ==========================================
+// ?? 3. SUGESTÃO INTELIGENTE DE PRÓXIMA PALAVRA
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+    var sentenceList = document.getElementById('sentence-list');
+    var cardsGrid = document.getElementById('cards-grid');
+    
+    function getTransitions() {
+        try {
+            return JSON.parse(localStorage.getItem('caa_word_transitions_' + window.currentProfileId)) || {};
+        } catch(e) {
+            return {};
+        }
+    }
+    
+    function saveTransitions(data) {
+        localStorage.setItem('caa_word_transitions_' + window.currentProfileId, JSON.stringify(data));
+    }
+    
+    function recordTransition(wordA, wordB) {
+        if(!wordA || !wordB) return;
+        var data = getTransitions();
+        if(!data[wordA]) data[wordA] = {};
+        data[wordA][wordB] = (data[wordA][wordB] || 0) + 1;
+        saveTransitions(data);
+    }
+    
+    function getSuggestion(wordA) {
+        if(!wordA) return null;
+        var data = getTransitions();
+        var nextWords = data[wordA];
+        if(!nextWords) return null;
+        
+        var bestWord = null;
+        var maxCount = 0;
+        for(var word in nextWords) {
+            if(nextWords[word] > maxCount) {
+                maxCount = nextWords[word];
+                bestWord = word;
+            }
+        }
+        return bestWord;
+    }
+    
+    function highlightSuggestedCard(word) {
+        var allCards = cardsGrid.querySelectorAll('.aac-card');
+        allCards.forEach(c => c.classList.remove('suggested-card'));
+        
+        if(!word) return;
+        
+        allCards.forEach(card => {
+            var span = card.querySelector('span');
+            if(span && span.textContent === word) {
+                card.classList.add('suggested-card');
+            }
+        });
+    }
+
+    var lastWord = null;
+    
+    var observer = new MutationObserver(function(mutations) {
+        if(!window.selectedCards || window.selectedCards.length === 0) {
+            lastWord = null;
+            highlightSuggestedCard(null);
+            return;
+        }
+        
+        var currentWordObj = window.selectedCards[window.selectedCards.length - 1];
+        var currentWord = currentWordObj ? currentWordObj.text : null;
+        
+        if(currentWord) {
+            if(lastWord && lastWord !== currentWord) {
+                recordTransition(lastWord, currentWord);
+            }
+            
+            var suggestion = getSuggestion(currentWord);
+            highlightSuggestedCard(suggestion);
+            
+            lastWord = currentWord;
+        }
+    });
+    
+    if(sentenceList) {
+        observer.observe(sentenceList, { childList: true });
+    }
+    
+    var btnClearAll = document.getElementById('btn-clear-all');
+    if(btnClearAll) {
+        btnClearAll.addEventListener('click', function() {
+            highlightSuggestedCard(null);
+            lastWord = null;
+        });
+    }
+});
