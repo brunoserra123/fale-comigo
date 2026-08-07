@@ -2233,7 +2233,9 @@ function syncWithGoogleDrive(fileId, showFeedback) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Sincronizando figuras... 🔄';
     }
-    showSkeletonLoading();
+    if (showFeedback) {
+        showSkeletonLoading();
+    }
 
     var url;
     if (fileId.indexOf('http://') === 0 || fileId.indexOf('https://') === 0) {
@@ -2322,13 +2324,19 @@ function fetchJSONP(url, callbackName) {
     }
     return new Promise(function(resolve, reject) {
         var script = document.createElement('script');
-        
+        var timer = setTimeout(function() {
+            cleanup();
+            reject(new Error('Tempo limite excedido na resposta da nuvem.'));
+        }, 5000);
+
         window[callbackName] = function(data) {
+            clearTimeout(timer);
             resolve(data);
             cleanup();
         };
 
         script.onerror = function() {
+            clearTimeout(timer);
             reject(new Error('Falha ao se conectar com o servidor do Google (CORS/Redirecionamento).'));
             cleanup();
         };
@@ -2339,6 +2347,7 @@ function fetchJSONP(url, callbackName) {
         document.body.appendChild(script);
 
         function cleanup() {
+            clearTimeout(timer);
             if (script.parentNode) {
                 script.parentNode.removeChild(script);
             }
@@ -2358,7 +2367,9 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
         syncStatusText.className = 'sync-status-text loading';
         syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
     }
-    showSkeletonLoading();
+    if (showFeedback) {
+        showSkeletonLoading();
+    }
 
     var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
     var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
