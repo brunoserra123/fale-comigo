@@ -1371,6 +1371,9 @@ function showCustomConfirm(message) {
 }
 
 function setAndCleanCards(newCards) {
+    if (!newCards || !Array.isArray(newCards)) {
+        newCards = [];
+    }
     var cleaned = newCards.slice();
     // Remove obsolete cards
     cleaned = cleaned.filter(function(c) { return c.text !== 'Dor / Machucado'; });
