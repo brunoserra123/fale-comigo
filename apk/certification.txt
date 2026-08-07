@@ -1,0 +1,24 @@
+---------------------------------------------------
+Here are the ownership and the certification details
+of the cominicao por figura 1.0
+---------------------------------------------------
+
+app_name - 						cominicao por figura
+app_alias - 					cominicaoporfigura
+app_author_name - 				My Company
+app_author_organizational - 	My Company
+app_author_organization - 		My Company
+app_author_locality - 			My Company
+app_author_state - 				Sao Paulo
+app_author_country - 			Brazil
+app_password - 					qvfsbU9tCFgR
+app_versionName - 				versionName "1.0"
+app_versionCode - 				100
+
+---------------------------------------------------
+The certification was created by WebIntoApp.com at
+the Monday 15th of June 2026 07:10:12 PM
+
+https://webintoapp.com
+---------------------------------------------------
+

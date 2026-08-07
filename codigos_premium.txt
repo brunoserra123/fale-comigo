@@ -1,0 +1,14 @@
+==================================================
+CÓDIGOS DE ATIVAÇÃO PREMIUM - FALE COMIGO APP
+==================================================
+
+1. CÓDIGO DO CHEFE / USUÁRIO NORMAL:
+   Código: vip 99
+   Efeito: Ativa o Premium permanente no celular/navegador. Desabilita o campo de entrada e mostra o status de Premium Ativado.
+
+2. CÓDIGO DO DESENVOLVEDOR (BRUNO) PARA TESTES:
+   Código: dev 99   (ou: mimi dev)
+   Efeito: Ativa o Modo Desenvolvedor. Libera os recursos premium temporariamente e adiciona um botão vermelho "[Desativar]" ao lado do status para você poder desativar e testar a versão gratuita de novo facilmente.
+
+==================================================
+Criado em: 22/06/2026

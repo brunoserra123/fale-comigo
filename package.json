@@ -1,0 +1,23 @@
+{
+  "name": "fale-comigo-caa",
+  "version": "1.0.0",
+  "description": "Aplicativo de Comunicação Alternativa e Ampliada (CAA) por figuras",
+  "main": "app.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "pwa",
+    "caa",
+    "comunicacao-alternativa",
+    "autismo",
+    "acessibilidade"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

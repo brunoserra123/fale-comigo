@@ -1,0 +1,26 @@
+# Dependências
+node_modules/
+.pnpm-store/
+
+# Arquivos de Build e Atalhos do Google Drive
+dist/
+build/
+*.gdoc
+*.gsheet
+*.gslides
+Copia de Seguranca/
+
+# Logs e arquivos de sistema
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# Chaves de certificação e backups pesados
+*.jks
+*.keystore
+apk/*.apk
+apk/*.aab
+

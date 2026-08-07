@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunicador CAA - Comunicação por Figuras</title>
+    <meta name="description" content="Aplicativo offline, moderno e simplificado de Comunicação Alternativa e Ampliada (CAA).">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="styles.css?v=62">
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#10b981">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="icon.png?v=2">
+    
+    <!-- iOS / iPadOS PWA Settings -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+    <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon.png?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
+    <script>
+        if ('serviceWorker' in navigator) {
+            // Armazena se já havia um Service Worker controlando a página
+            const hadController = !!navigator.serviceWorker.controller;
+
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js')
+                    .then(function(reg) { 
+                        console.log('Service Worker registrado com sucesso! Scope:', reg.scope); 
+                        // Força a checagem de atualizações a cada carregamento de página
+                        reg.update();
+                    })
+                    .catch(function(err) { console.error('Falha ao registrar Service Worker:', err); });
+            });
+
+            // Recarrega a página automaticamente quando um novo service worker assume o controle (atualização)
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function() {
+                if (hadController && !refreshing) {
+                    refreshing = true;
+                    const sentenceList = document.getElementById('sentence-list');
+                    const hasActiveSentence = sentenceList && sentenceList.children.length > 0;
+                    
+                    if (!hasActiveSentence) {
+                        window.location.reload();
+                    } else {
+                        // Se houver uma frase ativa, aguarda até que ela seja limpa para atualizar
+                        window.pendingUpdateReload = true;
+                        console.log('Nova versão ativada! Aguardando o usuário limpar a frase para atualizar.');
+                        
+                        if (sentenceList) {
+                            const observer = new MutationObserver(function() {
+                                if (sentenceList.children.length === 0) {
+                                    observer.disconnect();
+                                    window.location.reload();
+                                }
+                            });
+                            observer.observe(sentenceList, { childList: true });
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-logo">
+                <img src="icon.png" alt="Logo Fale Comigo" class="logo-icon" style="width: 42px; height: 42px; object-fit: contain;">
+                <h1 data-i18n="app_title">Fale Comigo</h1>
+            </div>
+            <div class="header-actions">
+                <!-- Indicador de Status da Nuvem -->
+                <div id="cloud-status-indicator" class="cloud-status-indicator success" title="Status de Backup: Sincronizado">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.42-1.01-1.39-2.5-3.5-2.5a5.5 5.5 0 0 0-5.5 5.5c0 1.25.5 2.5 1.5 3.25"/><path d="M3 19h14"/></svg>
+                </div>
+
+                <!-- Seletor de Perfil -->
+                <div class="profile-header-container" style="display: flex; align-items: center; gap: 6px; background-color: var(--bg-app); padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <span style="font-size: 1.1rem; cursor: default; display: flex; align-items: center;">👤</span>
+                    <select id="select-profile" class="select-profile">
+                        <!-- Opções preenchidas dinamicamente pelo JS -->
+                    </select>
+                    <button id="btn-manage-profiles" class="btn-profile-manage" style="background: none; border: none; cursor: pointer; font-size: 1rem; padding: 2px; display: flex; align-items: center;" title="Gerenciar Perfis">⚙️</button>
+                </div>
+
+                <!-- Botão de Bloqueio Infantil -->
+                <button id="btn-lock-app" class="btn btn-icon" title="Bloquear Configurações" style="color: var(--color-primary); border-color: rgba(16, 185, 129, 0.3);">
+                    <!-- Ícone cadeado aberto por padrão -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
+                </button>
+
+                <!-- Botão de Reordenar Figuras -->
+                <button id="btn-toggle-reorder" class="btn btn-icon" title="Organizar Figuras" style="color: var(--text-secondary); border-color: var(--border-color);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="m22 17-5 5-5-5"/><path d="M6 22V4"/><path d="m10 8-4-4-4 4"/><path d="M18 2V16"/></svg>
+                </button>
+
+                <!-- Botão Rápido TelepatiX (Acessibilidade) -->
+                <button id="btn-toggle-telepatix-header" class="btn btn-icon" title="Ligar TelepatiX (Acessibilidade por Varredura)" style="color: var(--text-secondary); border-color: var(--border-color);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+
+                <!-- Botão de Alternar Tema (Claro / Escuro / Alto Contraste) -->
+                <button id="btn-toggle-theme" class="btn btn-icon" title="Alternar Tema (Claro / Escuro / Alto Contraste)" style="color: var(--text-secondary); border-color: var(--border-color);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                </button>
+
+                <!-- Botão de Alternar Layout (Grade / Pastas) -->
+                <button id="btn-toggle-layout" class="btn btn-icon" title="Alternar Modo de Exibição" style="color: var(--text-secondary); border-color: var(--border-color);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+
+                <button id="btn-fullscreen" class="btn btn-icon" title="Tela Cheia" style="color: var(--text-secondary); border-color: var(--border-color);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                </button>
+                <button id="btn-settings" class="btn btn-icon" title="Configurações (Tutor)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- SENTENCE BUILDER BAR -->
+        <section class="sentence-section">
+            <div class="sentence-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 6px; padding: 0 4px; user-select: none;">
+                <span id="sentence-title" data-i18n="sentence_title" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Últimas Usadas</span>
+                <span id="sentence-counter" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); background-color: var(--border-color); padding: 2px 8px; border-radius: 12px; opacity: 0.8;">0 / 7</span>
+            </div>
+            <div class="sentence-container">
+                <div id="sentence-list" class="sentence-list" data-placeholder="Toque nas figuras para montar a frase..." data-i18n-data-placeholder="sentence_placeholder">
+                    <!-- Cards will be added here dynamically -->
+                </div>
+                <div class="sentence-controls d-none">
+                    <button id="btn-speak" class="btn btn-primary btn-speak" title="Falar Frase" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                        <span data-i18n="btn_speak">FALAR</span>
+                    </button>
+                    <button id="btn-share-whatsapp" class="btn btn-secondary btn-share" title="Enviar / Copiar Frase" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        <span data-i18n="btn_send">ENVIAR</span>
+                    </button>
+                    <button id="btn-clear-all" class="btn btn-danger" title="Limpar tudo" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                        <span data-i18n="btn_clear">LIMPAR</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEARCH BAR -->
+        <section class="search-section">
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Buscar figura... 🔍" aria-label="Buscar figura" data-i18n-placeholder="search_placeholder">
+                <button id="btn-clear-search" class="btn-clear-search d-none" title="Limpar busca">&times;</button>
+            </div>
+        </section>
+
+        <!-- RECENT SENTENCES BAR -->
+        <section class="recent-sentences-section d-none" id="recent-sentences-section" style="width: 100%; margin-top: 10px; margin-bottom: 5px;">
+            <div class="recent-sentences-container" style="display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 10px 14px; background-color: var(--bg-card); border: 2px solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); scrollbar-width: none;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap; display: flex; align-items: center; gap: 4px; user-select: none;">⏱️ Recentes:</span>
+                <div id="recent-sentences-list" style="display: flex; gap: 8px; overflow-x: auto; flex-grow: 1; padding: 2px 0; scrollbar-width: none;">
+                    <!-- Recent phrase chips will be generated here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- CARDS GRID -->
+        <main class="main-content">
+            <div id="breadcrumb-container" class="breadcrumb-container" style="display: none; margin-bottom: 12px;">
+                <span id="breadcrumb-path" style="font-weight: 700;">Página Inicial</span>
+            </div>
+            <div id="cards-grid" class="cards-grid">
+                <!-- Cards will be generated dynamically -->
+            </div>
+        </main>
+
+        <!-- FOOTER / BRAND SIGNATURE -->
+        <footer class="app-footer">
+            <div class="brand-badge">
+                <span class="brand-icon">✨</span>
+                <div class="brand-text">
+                    <p class="brand-signature" data-i18n="brand_signature">Desenvolvido por <strong>Bruno Serra de Oliveira</strong></p>
+                    <p class="brand-purpose" data-i18n="brand_purpose">Criado com carinho para ajudar as pessoas a se comunicarem.</p>
+                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 2.0.0 (v62) <strong>(BETA)</strong></p>
+                </div>
+            </div>
+            <button id="btn-support" class="btn btn-secondary btn-support" style="margin-left: auto; gap: 6px; font-weight: 700; font-size: 0.9rem; padding: 10px 18px; border-radius: var(--radius-sm);">
+                <span data-i18n="btn_support">Apoiar Projeto 💖</span>
+            </button>
+        </footer>
+
+        <!-- MODAL: SUPPORT (APOIAR) -->
+        <div id="modal-support" class="modal-overlay">
+            <div class="modal-content" style="max-width: 450px;">
+                <div class="modal-header">
+                    <h2>Apoiar o Projeto 💖</h2>
+                    <button id="btn-close-support" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body" style="text-align: center; gap: 20px; padding: 20px;">
+                    <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                        Este é um projeto gratuito criado para ajudar na comunicação. Se você gosta do projeto e quer ajudar a mantê-lo ativo, você pode contribuir através do Pix:
+                    </p>
+                    
+                    <!-- Pix Option -->
+                    <div style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                        <span style="font-size: 1.5rem;">💸</span>
+                        <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Contribuição Única (Pix)</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Qualquer valor de contribuição nos ajuda muito</p>
+                        <div style="display: flex; width: 100%; gap: 8px;">
+                            <input type="text" id="pix-key-input" value="falecomigoapricativo@gmail.com" data-payload="00020126520014br.gov.bcb.pix0130falecomigoapricativo@gmail.com5204000053039865802BR5901N6001C62070503***6304E5AE" readonly style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center; font-weight: 700; font-size: 0.85rem; background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                            <button id="btn-copy-pix" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85rem; font-weight: 700;">Copiar</button>
+                        </div>
+                        <!-- QR Code Pix -->
+                        <div style="margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary);">Ou escaneie o QR Code abaixo:</span>
+                            <img src="pix_qr.png" alt="QR Code Pix" style="width: 160px; height: 160px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: white; padding: 8px; box-shadow: var(--shadow-sm);">
+                        </div>
+                    </div>
+
+                    <hr class="modal-divider" style="margin: 10px 0; border: none; border-top: 1px solid var(--border-color); width: 100%;">
+                    
+                    <!-- Feedback / Web3Forms -->
+                    <div style="display: flex; flex-direction: column; gap: 10px; text-align: left; width: 100%;">
+                        <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                            <span>💬</span> Sugestões e Ideias
+                        </h4>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0; margin-bottom: 4px; line-height: 1.4;">
+                            Compartilhe sua opinião ou sugira novas funções! <br>
+                            <strong>Aviso (BETA):</strong> Se o áudio não funcionar, por favor envie uma mensagem informando o <strong>modelo do celular/tablet</strong> e a <strong>versão do sistema (Android/iOS)</strong>.
+                        </p>
+                        <form id="form" style="background-color: var(--bg-card); border: 1px solid var(--border-color); padding: 20px; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="feedback-name" style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Seu Nome (opcional):</label>
+                                <input type="text" id="feedback-name" name="name" placeholder="Ex: João Silva" style="width: 100%;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="feedback-email" style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Seu E-mail (opcional):</label>
+                                <input type="email" id="feedback-email" name="email" placeholder="Ex: joao@email.com" style="width: 100%;">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="feedback-message" style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Sua Mensagem / Sugestão:</label>
+                                <textarea id="feedback-message" name="message" required placeholder="Digite sua mensagem, sugestão ou elogio aqui..." style="width: 100%; min-height: 100px; resize: vertical;"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; font-weight: 700; gap: 8px; margin-top: 6px;">
+                                <span>Enviar Mensagem 🚀</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: SETTINGS (TUTOR MODE) -->
+        <div id="modal-settings" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 data-i18n="settings_title">Configurações do Tutor</h2>
+                    <button id="btn-close-settings" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-row">
+                        <label data-i18n="label_theme">Aparência / Tema:</label>
+                        <button id="btn-toggle-theme-modal" class="btn btn-secondary">
+                            ☀️ Claro / 🌙 Escuro / 👁️ Alto Contraste
+                        </button>
+                    </div>
+
+                    <div class="settings-row">
+                        <label>Tamanho da Grade (Colunas):</label>
+                        <select id="select-grid-cols" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 180px; width: 100%;">
+                            <option value="auto">Automático (Padrão)</option>
+                            <option value="2">2 Colunas (Iniciante / Grande)</option>
+                            <option value="3">3 Colunas</option>
+                            <option value="4">4 Colunas (Médio)</option>
+                            <option value="5">5 Colunas</option>
+                            <option value="6">6 Colunas (Tablet / Compacto)</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-row">
+                        <label>Cores Fitzgerald (CAA):</label>
+                        <button id="btn-toggle-fitzgerald" type="button" class="btn btn-secondary">
+                            🎨 Destacar Cores CAA
+                        </button>
+                    </div>
+
+                    <div class="settings-row">
+                        <label data-i18n="label_low_vision">Baixa Visão:</label>
+                        <button id="btn-toggle-low-vision" type="button" class="btn btn-secondary">
+                            <!-- Populated dynamically -->
+                        </button>
+                    </div>
+
+                    <div class="settings-row">
+                        <label data-i18n="label_language">Idioma do Perfil:</label>
+                        <select id="seletor-idioma" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 180px; width: 100%;">
+                            <option value="pt">Português 🇧🇷</option>
+                            <option value="en">English 🇺🇸</option>
+                            <option value="es">Español 🇪🇸</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-row">
+                        <label data-i18n="label_voice">Voz do Sistema:</label>
+                        <select id="seletor-vozes" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 180px; width: 100%;">
+                            <option value="" data-i18n="loading_voices">Carregando vozes...</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-row">
+                        <label data-i18n="label_voice_rate">Velocidade da Voz:</label>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; max-width: 180px; width: 100%;">
+                            <input type="range" id="input-voice-rate" min="0.5" max="2.0" step="0.1" value="1.0" style="flex-grow: 1; cursor: pointer;">
+                            <span id="val-voice-rate" style="font-weight: 700; min-width: 25px; text-align: right;">1.0</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-row">
+                        <label data-i18n="label_voice_pitch">Tom da Voz:</label>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; max-width: 180px; width: 100%;">
+                            <input type="range" id="input-voice-pitch" min="0.5" max="2.0" step="0.1" value="1.0" style="flex-grow: 1; cursor: pointer;">
+                            <span id="val-voice-pitch" style="font-weight: 700; min-width: 25px; text-align: right;">1.0</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-row">
+                        <label data-i18n="label_total_accesses">Total de Acessos:</label>
+                        <span id="access-counter-val" style="font-weight: 700; font-size: 1.1rem; color: var(--color-primary);">1</span>
+                    </div>
+
+                    <!-- TelepatiX & Scanning Settings Panel -->
+                    <div class="form-group" style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-sm); margin-top: 10px; flex-direction: column; display: flex; width: 100%;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 1rem; display: flex; align-items: center; gap: 6px; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">👁️ TelepatiX & Varredura</h3>
+                        
+                        <!-- Toggle switch active -->
+                        <div class="settings-row" style="margin-top: 4px;">
+                            <label for="check-telepatix-active" style="cursor: pointer; font-size: 0.9rem;">Ativar TelepatiX:</label>
+                            <input type="checkbox" id="check-telepatix-active" style="width: 20px; height: 20px; cursor: pointer;">
+                        </div>
+                        
+                        <!-- Scanning speed slider -->
+                        <div class="settings-row">
+                            <label for="input-telepatix-speed" style="font-size: 0.9rem;">Velocidade da Varredura:</label>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-grow: 1; max-width: 140px; width: 100%;">
+                                <input type="range" id="input-telepatix-speed" min="1.0" max="5.0" step="0.5" value="2.0" style="flex-grow: 1; cursor: pointer;">
+                                <span id="val-telepatix-speed" style="font-weight: 700; min-width: 30px; text-align: right;">2.0s</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Trigger input type -->
+                        <div class="settings-row">
+                            <label for="select-telepatix-mode" style="font-size: 0.9rem;">Método de Acionamento:</label>
+                            <select id="select-telepatix-mode" style="padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.85rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 140px; width: 100%;">
+                                <option value="switch">Toque/Teclado (Switch)</option>
+                                <option value="camera">Webcam (Piscar de Olho)</option>
+                            </select>
+                        </div>
+
+                        <!-- Video Preview for webcam eye blink -->
+                        <div id="telepatix-camera-panel" class="d-none" style="display: flex; flex-direction: column; gap: 8px; align-items: center; margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px; width: 100%;">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; line-height: 1.3;">Posicione a câmera para enquadrar o olho do usuário dentro do quadrado verde:</span>
+                            <div style="position: relative; width: 160px; height: 120px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; background-color: #000; box-shadow: var(--shadow-sm);">
+                                <video id="telepatix-video" width="160" height="120" autoplay playsinline muted style="transform: scaleX(-1); object-fit: cover; width: 100%; height: 100%;"></video>
+                                <div id="telepatix-eye-box" style="position: absolute; top: 40px; left: 60px; width: 40px; height: 40px; border: 2px solid #10b981; border-radius: 4px; box-shadow: 0 0 0 999px rgba(0,0,0,0.3); pointer-events: none;"></div>
+                            </div>
+                            <div style="display: flex; gap: 8px; width: 100%; align-items: center; justify-content: space-between;">
+                                <button id="btn-telepatix-calibrate" type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem; font-weight: 700;">Calibrar Olho</button>
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 0.75rem; font-weight: bold; color: var(--text-secondary);">Sensibilidade:</span>
+                                    <input type="range" id="input-telepatix-sensitivity" min="5" max="35" step="1" value="15" style="width: 50px; cursor: pointer;">
+                                </div>
+                            </div>
+                            <!-- Blink signal bar -->
+                            <div id="telepatix-blink-indicator" style="width: 100%; height: 10px; background-color: var(--border-color); border-radius: 5px; overflow: hidden; position: relative;" title="Intensidade do sinal de piscada">
+                                <div id="telepatix-signal-bar" style="width: 0%; height: 100%; background-color: var(--color-primary); transition: width 0.05s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-sm); margin-top: 10px; flex-direction: column; display: flex; width: 100%;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 1rem; display: flex; align-items: center; gap: 6px; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">📊 Figuras Mais Usadas</h3>
+                        <div id="stats-usage-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding-right: 4px;">
+                            <span style="font-size: 0.85rem; color: var(--text-secondary); text-align: center; display: block; padding: 10px 0;">Nenhum uso registrado ainda.</span>
+                        </div>
+                        <button type="button" id="btn-clear-stats" class="btn btn-secondary" style="width: 100%; margin-top: 10px; padding: 8px; font-size: 0.85rem; font-weight: 700; justify-content: center; gap: 6px;">
+                            <span>🗑️</span> Limpar Estatísticas
+                        </button>
+                    </div>
+
+                    <hr class="modal-divider">
+                    
+                    <!-- Form to add new card -->
+                    <form id="form-add-card">
+                        <h3>Adicionar Novo Cartão</h3>
+                        <div class="form-group">
+                            <label for="card-text">Texto do Cartão (o que será falado):</label>
+                            <input type="text" id="card-text" required placeholder="Ex: Quero comer, Banheiro">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tipo de Imagem:</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="image-type" value="emoji" checked> Emoji
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="image-type" value="arasaac"> Desenho CAA (ARASAAC)
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="image-type" value="upload"> Enviar Imagem
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="image-type" value="ai"> Gerar com IA ✨
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group" id="group-emoji">
+                            <label for="card-emoji">Emoji:</label>
+                            <input type="text" id="card-emoji" value="✨" placeholder="Insira um emoji">
+                        </div>
+                        <div class="form-group d-none" id="group-arasaac">
+                            <label for="arasaac-search-input">Buscar Desenho CAA:</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="arasaac-search-input" placeholder="Ex: maçã, brincar, dor..." style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                                <button type="button" id="btn-arasaac-search" class="btn btn-secondary" style="padding: 10px 14px; font-weight: 700;">Buscar</button>
+                            </div>
+                            <div id="arasaac-results-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background-color: var(--bg-app); min-height: 50px;">
+                                <span style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center; display: block; margin: auto;">Digite um termo e clique em Buscar para ver os desenhos...</span>
+                            </div>
+                            <input type="hidden" id="selected-arasaac-id" value="">
+                        </div>
+                        <div class="form-group d-none" id="group-upload">
+                            <label for="card-image-file">Selecionar Foto/Imagem:</label>
+                            <input type="file" id="card-image-file" accept="image/*">
+                            <div id="image-preview" class="image-preview-box">
+                                <span>Nenhuma imagem selecionada</span>
+                            </div>
+                        </div>
+                        <div class="form-group d-none" id="group-ai">
+                            <label for="ai-prompt-input">Descreva a imagem para a IA:</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="ai-prompt-input" placeholder="Ex: menino bebendo agua..." style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                                <button type="button" id="btn-ai-generate" class="btn btn-secondary" style="padding: 10px 14px; font-weight: 700;">Gerar ✨</button>
+                            </div>
+                            <div id="ai-preview" class="image-preview-box" style="margin-top: 10px; position: relative;">
+                                <span id="ai-status-text">Digite a descrição e clique em Gerar</span>
+                                <img id="ai-image-result" src="" class="d-none" style="width: 100%; height: 100%; object-fit: contain;">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Áudio (Voz):</label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="audio-type" value="synth" checked> Voz do Sistema
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="audio-type" value="record"> Gravar minha Voz 🎙️
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group d-none" id="group-audio-record">
+                            <label>Gravação de Voz:</label>
+                            <button type="button" id="btn-record-audio" class="btn btn-secondary" style="justify-content: center; gap: 8px;">
+                                🎤 Iniciar Gravação
+                            </button>
+                            <span id="record-status" style="font-size: 0.85rem; font-weight: 600; text-align: center; color: var(--text-secondary);"></span>
+                            <audio id="audio-preview" controls class="d-none" style="width: 100%; margin-top: 8px;"></audio>
+                        </div>
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button type="submit" class="btn btn-primary" style="flex-grow: 1;">Salvar Novo Cartão</button>
+                        </div>
+                    </form>
+
+                    <hr class="modal-divider">
+
+                    <!-- Manage Custom Cards Section -->
+                    <div class="form-group">
+                        <h3>Gerenciar Cartões Criados</h3>
+                        <div id="custom-cards-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; margin-top: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background-color: var(--bg-app);">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <details class="advanced-settings-details">
+                        <summary style="font-weight: 700; cursor: pointer; color: var(--text-secondary); margin: 15px 0 5px; display: flex; align-items: center; gap: 6px; user-select: none;">
+                            ⚙️ Opções Avançadas (Nuvem e Backup)
+                        </summary>
+
+                        <div class="advanced-settings-content" style="padding-top: 10px; display: flex; flex-direction: column; gap: 16px;">
+                            <!-- Cloud Sync & Automation Section -->
+                            <div id="section-sync" class="form-group">
+                                <h3>Sincronização Remota (Nuvem)</h3>
+                                <div class="form-group">
+                                    <label for="sync-drive-id">ID do Google Drive ou URL do JSON:</label>
+                                    <input type="text" id="sync-drive-id" placeholder="Ex: ID do Drive ou https://site.com/figuras.json">
+                                </div>
+                                <div class="form-group">
+                                    <label for="sync-apps-script-url">URL do Google Apps Script (Backup Automático):</label>
+                                    <input type="text" id="sync-apps-script-url" placeholder="Ex: https://script.google.com/macros/s/.../exec">
+                                </div>
+                                <div class="form-group" style="flex-direction: row; align-items: center; gap: 8px; margin-top: 4px;">
+                                    <input type="checkbox" id="check-auto-backup" style="width: 20px; height: 20px; cursor: pointer;">
+                                    <label for="check-auto-backup" style="cursor: pointer; font-weight: 600; margin-bottom: 0; user-select: none;">Backup automático ao alterar figuras</label>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+                                    <button id="btn-sync-now" type="button" class="btn btn-secondary" style="width: 100%; justify-content: center; gap: 8px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                        Sincronizar Agora
+                                    </button>
+                                    <button id="btn-test-discord" type="button" class="btn" style="width: 100%; justify-content: center; gap: 8px; background-color: #5865F2; color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; padding: 10px 16px; border-radius: var(--radius-sm); font-weight: 600; font-family: inherit; font-size: 0.95rem; transition: background-color 0.2s;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                        Testar Notificação do Discord
+                                    </button>
+                                </div>
+                                <span id="sync-status" class="sync-status-text">Não configurado</span>
+                            </div>
+
+                            <!-- Premium License Section -->
+                            <div class="form-group" style="background-color: rgba(16, 185, 129, 0.05); border: 1px dashed var(--color-primary); padding: 12px; border-radius: var(--radius-sm);">
+                                <label style="color: var(--color-primary); font-weight: 700;">Ativação Premium 🌟</label>
+                                <span id="premium-status-label" style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px;">Status: Versão Grátis</span>
+                                <div style="display: flex; gap: 8px; width: 100%;">
+                                    <input type="text" id="premium-code-input" placeholder="Insira o código de ativação" style="flex-grow: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                                    <button id="btn-activate-premium" type="button" class="btn btn-secondary" style="padding: 8px 14px; font-weight: 700; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; height: 38px; display: flex; align-items: center; justify-content: center;">Validar</button>
+                                </div>
+                            </div>
+
+                            <hr class="modal-divider" style="margin: 0;">
+                            
+                            <div class="settings-row" style="flex-direction: column; gap: 10px; align-items: stretch;">
+                                <button id="btn-export-cards" class="btn btn-secondary" style="width: 100%; justify-content: center; gap: 8px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="17"/></svg>
+                                    Copiar Figuras (Área de Transferência)
+                                </button>
+                                <button id="btn-download-backup" type="button" class="btn btn-secondary" style="width: 100%; justify-content: center; gap: 8px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Baixar Backup (.json)
+                                </button>
+                                <button id="btn-import-backup-trigger" type="button" class="btn btn-secondary" style="width: 100%; justify-content: center; gap: 8px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="17"/></svg>
+                                    Importar Backup (.json)
+                                </button>
+                                <input type="file" id="input-import-backup" accept=".json" class="d-none">
+                                <button id="btn-reset-cards" class="btn btn-danger" style="width: 100%; justify-content: center; gap: 8px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                    Resetar tudo para o Padrão Original
+                                </button>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: SUB CHOICE OVERLAY (ABRE POR CIMA) -->
+        <div id="modal-sub-choice" class="modal-overlay">
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">
+                    <h2 id="sub-choice-title">Escolha uma opção</h2>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="btn-add-sub-choice" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem; font-weight: 600; border-radius: var(--radius-sm);" title="Adicionar Novo Item">
+                            + Novo
+                        </button>
+                        <button id="btn-close-sub-choice" class="btn-close">&times;</button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div id="sub-choice-grid" class="cards-grid" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: CHANGELOG OVERLAY (NOVIDADES DA ATUALIZAÇÃO) -->
+        <div id="modal-changelog" class="modal-overlay">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2>🎉 Novidades da Sincronização</h2>
+                    <button id="btn-close-changelog" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body" style="gap: 20px;">
+                    <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5;">
+                        Novas figuras foram sincronizadas da nuvem com sucesso! Veja o que mudou:
+                    </p>
+                    
+                    <div id="changelog-added-section" class="form-group d-none">
+                        <h4 style="color: var(--color-primary); display: flex; align-items: center; gap: 6px; font-size: 1rem;">
+                            ➕ Adicionados:
+                        </h4>
+                        <ul id="changelog-added-list" style="margin-left: 20px; font-size: 0.95rem; line-height: 1.6; font-weight: 600;">
+                            <!-- Dynamically populated -->
+                        </ul>
+                    </div>
+
+                    <div id="changelog-removed-section" class="form-group d-none">
+                        <h4 style="color: var(--color-danger); display: flex; align-items: center; gap: 6px; font-size: 1rem;">
+                            ❌ Removidos:
+                        </h4>
+                        <ul id="changelog-removed-list" style="margin-left: 20px; font-size: 0.95rem; line-height: 1.6; font-weight: 600; color: var(--text-secondary);">
+                            <!-- Dynamically populated -->
+                        </ul>
+                    </div>
+
+                    <div style="margin-top: 10px; display: flex;">
+                        <button id="btn-ok-changelog" class="btn btn-primary" style="flex-grow: 1; justify-content: center; font-size: 1.1rem; padding: 14px;">
+                            Entendido! 👍
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLOATING BOTTOM BAR -->
+    <div id="floating-bottom-bar" class="floating-bottom-bar d-none">
+        <div class="floating-sentence-preview" id="floating-sentence-preview"></div>
+        <div class="floating-actions">
+            <button id="btn-speak-float" class="btn btn-primary" title="Falar Frase">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                <span>FALAR</span>
+            </button>
+            <button id="btn-share-float" class="btn btn-secondary btn-share-float" title="Enviar / Copiar Frase" style="background-color: var(--color-share); color: white; border: none; padding: 10px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); cursor: pointer;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            <button id="btn-clear-float" class="btn btn-danger" title="Limpar tudo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: PROFILES (GERENCIAR PERFIS) -->
+    <div id="modal-profiles" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Gerenciar Perfis 👥</h2>
+                <button id="btn-close-profiles" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body" style="gap: 16px;">
+                <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">
+                    Crie e gerencie perfis para que cada pessoa tenha suas próprias figuras e configurações personalizadas.
+                </p>
+                
+                <!-- Criar perfil -->
+                <div style="background-color: var(--bg-app); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700;">Criar Novo Perfil</h4>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="input-new-profile-name" placeholder="Nome da pessoa (ex: João)" style="flex-grow: 1; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                        <button id="btn-create-profile" class="btn btn-primary" style="padding: 8px 14px; font-size: 0.9rem; font-weight: 700;">Criar</button>
+                    </div>
+                </div>
+
+                <!-- Puxar perfis da Nuvem -->
+                <div style="background-color: var(--bg-app); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px;">
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700;">Nuvem (Google Drive)</h4>
+                    <button id="btn-sync-profiles-cloud" class="btn btn-secondary" style="width: 100%; justify-content: center; font-size: 0.9rem; font-weight: 700; padding: 8px; gap: 6px;">
+                        <span>🔄</span> Importar Perfis Existentes
+                    </button>
+                    <div id="cloud-profiles-list" class="d-none" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background-color: var(--bg-card); margin-top: 6px;">
+                        <!-- Preenchido dinamicamente pelo JS -->
+                    </div>
+                </div>
+                
+                <!-- Lista de perfis -->
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+                    <h4 style="font-size: 0.95rem; font-weight: 700; margin: 0;">Perfis Existentes</h4>
+                    <div id="profiles-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background-color: var(--bg-app);">
+                        <!-- Preenchido dinamicamente pelo JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CUSTOM DIALOG (ALERT / CONFIRM) -->
+    <div id="modal-custom-dialog" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="justify-content: center; padding: 12px; border-bottom: 1px solid var(--border-color);">
+                <h2 id="custom-dialog-title" style="font-size: 1.2rem;">Aviso</h2>
+            </div>
+            <div class="modal-body" style="gap: 16px; padding: 20px; align-items: center;">
+                <p id="custom-dialog-message" style="font-size: 1rem; color: var(--text-secondary); line-height: 1.5; text-align: center; margin-bottom: 10px;"></p>
+                <div id="custom-dialog-buttons" style="display: flex; gap: 10px; width: 100%; justify-content: center;">
+                    <!-- Buttons generated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- MODAL: LOCK SCREEN (DESBLOQUEIO) -->
+    <div id="modal-lock-challenge" class="modal-overlay">
+        <div class="modal-content" style="max-width: 360px; text-align: center;">
+            <div class="modal-header" style="justify-content: center; border-bottom: 1px solid var(--border-color); padding: 12px;">
+                <h2 style="font-size: 1.25rem; font-weight: 700;">🔒 Controle do Tutor</h2>
+            </div>
+            <div class="modal-body" style="gap: 16px; padding: 20px; align-items: center;">
+                <p style="font-size: 0.95rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+                    Para liberar as configurações, resolva a conta matemática abaixo:
+                </p>
+                <div style="font-size: 2rem; font-weight: 800; color: var(--color-primary); padding: 12px 24px; margin: 10px 0; background-color: var(--bg-app); border-radius: var(--radius-sm); border: 1px solid var(--border-color); letter-spacing: 2px; width: 100%;" id="lock-math-question">
+                    3 + 5 = ?
+                </div>
+                <input type="number" id="lock-math-answer" placeholder="Digite o resultado..." style="width: 100%; padding: 12px; font-size: 1.25rem; text-align: center; border-radius: var(--radius-sm); border: 2px solid var(--border-color); background-color: var(--bg-card); color: var(--text-primary); outline: none;">
+                <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
+                    <button id="btn-lock-cancel" type="button" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; padding: 12px;">Cancelar</button>
+                    <button id="btn-lock-submit" type="button" class="btn btn-primary" style="flex-grow: 1; justify-content: center; padding: 12px;">Desbloquear</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Exit Fullscreen Button -->
+    <button id="btn-exit-fullscreen-float" class="btn btn-primary d-none" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; border-radius: 50px; box-shadow: var(--shadow-lg); font-weight: 700;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+        Sair da Tela Cheia
+    </button>
+
+    <!-- App Logic -->
+    <script src="app.js?v=62"></script>
+</body>
+</html>

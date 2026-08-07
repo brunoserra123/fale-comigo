@@ -1,0 +1,2868 @@
+// Polyfills for older browsers (like iOS 9.3.5 Safari)
+if (!Array.prototype.find) {
+    Array.prototype.find = function(predicate) {
+        if (this == null) throw new TypeError('Array.prototype.find called on null or undefined');
+        if (typeof predicate !== 'function') throw new TypeError('predicate must be a function');
+        var list = Object(this);
+        var length = list.length >>> 0;
+        var thisArg = arguments[1];
+        var value;
+        for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list)) {
+                return value;
+            }
+        }
+        return undefined;
+    };
+}
+if (!Array.prototype.findIndex) {
+    Array.prototype.findIndex = function(predicate) {
+        if (this == null) throw new TypeError('Array.prototype.findIndex called on null or undefined');
+        if (typeof predicate !== 'function') throw new TypeError('predicate must be a function');
+        var list = Object(this);
+        var length = list.length >>> 0;
+        var thisArg = arguments[1];
+        var value;
+        for (var i = 0; i < length; i++) {
+            value = list[i];
+            if (predicate.call(thisArg, value, i, list)) {
+                return i;
+            }
+        }
+        return -1;
+    };
+}
+
+// Polyfill for NodeList.prototype.forEach (missing in older browsers like iOS 9 Safari)
+if (window.NodeList && !NodeList.prototype.forEach) {
+    NodeList.prototype.forEach = Array.prototype.forEach;
+}
+
+// Simple AJAX helper returning Promise (supported in iOS 9)
+function ajaxRequest(url, method, data) {
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open(method || 'GET', url, true);
+        if (method === 'POST') {
+            xhr.setRequestHeader('Content-Type', 'text/plain');
+        }
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch(e) {
+                    resolve(xhr.responseText);
+                }
+            } else {
+                reject(new Error('HTTP ' + xhr.status));
+            }
+        };
+        xhr.onerror = function() {
+            reject(new Error('Erro de rede'));
+        };
+        xhr.send(data ? JSON.stringify(data) : null);
+    });
+}
+
+var DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx5P5dKHLf_vKImUzZIEqQwVTlaprf9Sen5_fLHcJJUWSGzWZL48Rtybstf1ScIBMlN8g/exec';
+var isDevMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' || (window.URLSearchParams ? new URLSearchParams(window.location.search).has('dev') : /[?&]dev\b/.test(window.location.search));
+var MAX_FREE_PROFILES = 2;
+var DRINK_KEYWORDS = ['agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'bebida', 'beber', 'toddy', 'achocolatado', 'iogurte', 'coca', 'mate', 'chimarrao', 'suquinh'];
+var PAIN_KEYWORDS = ['dor de', 'dor na', 'dor no', 'dor nas', 'dor nos', 'doi a', 'doi o', 'doi as', 'doi os', 'machucado'];
+var FALLBACK_IMAGE_SVG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzljYTNhZiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxsaW5lIHgxPSIyIiB5MT0iMiIgeDI9IjIyIiB5Mj0iMjIiLz48cGF0aCBkPSJNMTAuNDEgMTAuNDFhMiAyIDAgMSAxLTIuODMtMi44MyIvPjxwYXRoIGQ9Ik0yMSAyMUgzYTIgMiAwIDAgMS0yLTJWNWEyIDIgMCAwIDEgMi0yaDUuMzdhMiAyIDAgMCAxIDEuMDQuM2wxLjE4LjdhMiAyIDAgMCAwIDEuMDQuM2gyMWEyIDIgMCAwIDEgMiAydjEyYTIgMiAwIDAgMS0yIDJ6Ii8+PHBhdGggZD0ibTMgMTYgNC00YTIgMiAwIDAgMSAyLjgyIDBsMS4xOCAxLjE4Ii8+PHBhdGggZD0iTTE2IDE2IDE0LjUgMTQuNSIvPjwvc3ZnPgo=';
+
+// Define pre-configured categories with emojis
+var CATEGORIES = [
+    { id: 'all', name: 'Todos', icon: '📁', class: '' },
+    { id: 'favorites', name: 'Favoritos', icon: '⭐', class: 'cat-favorites' },
+    { id: 'essential', name: 'Essencial', icon: '⭐', class: 'cat-essential' },
+    { id: 'action', name: 'Ações', icon: '🟢', class: 'cat-action' },
+    { id: 'food', name: 'Alimentação', icon: '🍏', class: 'cat-food' },
+    { id: 'feeling', name: 'Sentimentos', icon: '❤️', class: 'cat-feeling' },
+    { id: 'place', name: 'Lugares', icon: '🏠', class: 'cat-place' },
+    { id: 'person', name: 'Pessoas', icon: '👥', class: 'cat-person' }
+];
+
+// Initial default cards
+var DEFAULT_CARDS = [
+    // Essential
+    { text: 'Sim', category: 'essential', type: 'emoji', value: '👍' },
+    { text: 'Não', category: 'essential', type: 'emoji', value: '👎' },
+    { text: 'Por Favor', category: 'essential', type: 'emoji', value: '🙏' },
+    { text: 'Obrigado', category: 'essential', type: 'emoji', value: '💖' },
+    { text: 'Oi / Olá', category: 'essential', type: 'emoji', value: '👋' },
+    { text: 'Tchau', category: 'essential', type: 'emoji', value: '👋' },
+    { text: 'Socorro / Ajuda', category: 'essential', type: 'emoji', value: '🆘' },
+    { text: 'Minha vez', category: 'essential', type: 'emoji', value: '🙋‍♂️' },
+    { text: 'Sua vez', category: 'essential', type: 'emoji', value: '🫵' },
+    { text: 'Mais', category: 'essential', type: 'emoji', value: '➕' },
+    { text: 'Acabou', category: 'essential', type: 'emoji', value: '🛑' },
+    { text: 'Diferente', category: 'essential', type: 'emoji', value: '🔀' },
+    { text: 'Igual', category: 'essential', type: 'emoji', value: '👥' },
+    
+    // Actions
+    { text: 'Eu Quero', category: 'action', type: 'emoji', value: '👉' },
+    { text: 'Não quero', category: 'action', type: 'emoji', value: '🙅‍♂️' },
+    { text: 'Comer', category: 'action', type: 'emoji', value: '😋', goToCategory: 'food' },
+    { text: 'Beber', category: 'action', type: 'emoji', value: '🥛', goToCategory: 'drink' },
+    { text: 'Falar com', category: 'action', type: 'emoji', value: '🗣️', goToCategory: 'person' },
+    { text: 'Ir', category: 'action', type: 'emoji', value: '🚶', goToCategory: 'place' },
+    { text: 'Parar', category: 'action', type: 'emoji', value: '🛑' },
+    { text: 'Ver / Olhar', category: 'action', type: 'emoji', value: '👀' },
+    { text: 'Gostar', category: 'action', type: 'emoji', value: '❤️' },
+    { text: 'Não gostar', category: 'action', type: 'emoji', value: '💔' },
+    { text: 'Brincar', category: 'action', type: 'emoji', value: '🧸' },
+    { text: 'Dormir', category: 'action', type: 'emoji', value: '😴' },
+    { text: 'Ouvir', category: 'action', type: 'emoji', value: '👂' },
+
+    // Food
+    { text: 'Água', category: 'food', type: 'emoji', value: '💧' },
+    { text: 'Suco', category: 'food', type: 'emoji', value: '🧃' },
+    { text: 'Fruta', category: 'food', type: 'emoji', value: '🍎' },
+    { text: 'Pão', category: 'food', type: 'emoji', value: '🍞' },
+    { text: 'Comida', category: 'food', type: 'emoji', value: '🍽️' },
+    { text: 'Bolo', category: 'food', type: 'emoji', value: '🍰' },
+    { text: 'Fome', category: 'food', type: 'emoji', value: '😋' },
+
+    // Feelings
+    { text: 'Feliz', category: 'feeling', type: 'emoji', value: '😊' },
+    { text: 'Triste', category: 'feeling', type: 'emoji', value: '😢' },
+    { text: 'Cansado', category: 'feeling', type: 'emoji', value: '🥱' },
+    { text: 'Dor', category: 'feeling', type: 'emoji', value: '🤕', goToCategory: 'pain' },
+    { text: 'Machucado', category: 'feeling', type: 'emoji', value: '🩹' },
+    { text: 'Bravo', category: 'feeling', type: 'emoji', value: '😡' },
+    { text: 'Assustado', category: 'feeling', type: 'emoji', value: '😨' },
+
+    // Places
+    { text: 'Banheiro', category: 'place', type: 'emoji', value: '🚾' },
+    { text: 'Casa', category: 'place', type: 'emoji', value: '🏠' },
+    { text: 'Escola', category: 'place', type: 'emoji', value: '🏫' },
+    { text: 'Parque / Rua', category: 'place', type: 'emoji', value: '🌳' },
+    { text: 'Quarto', category: 'place', type: 'emoji', value: '🛏️' },
+
+    // People
+    { text: 'Eu', category: 'person', type: 'emoji', value: '🙋' },
+    { text: 'Você', category: 'person', type: 'emoji', value: '🫵' },
+    { text: 'Mamãe', category: 'person', type: 'emoji', value: '👩' },
+    { text: 'Papai', category: 'person', type: 'emoji', value: '👨' },
+    { text: 'Professor(a)', category: 'person', type: 'emoji', value: '👩‍🏫' },
+    { text: 'Amigo', category: 'person', type: 'emoji', value: '👦' },
+
+    // Pain sub-choices
+    { text: 'Dor de Cabeça', category: 'pain', type: 'emoji', value: '🤕' },
+    { text: 'Dor de Barriga', category: 'pain', type: 'emoji', value: '🤢' },
+    { text: 'Dor de Dente', category: 'pain', type: 'emoji', value: '🦷' },
+    { text: 'Dor de Ouvido', category: 'pain', type: 'emoji', value: '👂' },
+    { text: 'Dor na Garganta', category: 'pain', type: 'emoji', value: '🗣️' },
+    { text: 'Dor nas Costas', category: 'pain', type: 'emoji', value: '🧍' },
+    { text: 'Dor no Braço', category: 'pain', type: 'emoji', value: '💪' },
+    { text: 'Dor na Perna', category: 'pain', type: 'emoji', value: '🦵' }
+];
+
+// Translation Dictionaries and Helper Functions (Multi-language i18n support)
+var CARD_TRANSLATIONS = {
+    en: {
+        "Sim": "Yes",
+        "Não": "No",
+        "Por Favor": "Please",
+        "Obrigado": "Thank you",
+        "Oi / Olá": "Hi / Hello",
+        "Tchau": "Goodbye",
+        "Socorro / Ajuda": "Help",
+        "Minha vez": "My turn",
+        "Sua vez": "Your turn",
+        "Mais": "More",
+        "Acabou": "Finished",
+        "Diferente": "Different",
+        "Igual": "Same",
+        "Eu Quero": "I want",
+        "Não quero": "I don't want",
+        "Comer": "Eat",
+        "Beber": "Drink",
+        "Falar com": "Talk to",
+        "Ir": "Go",
+        "Parar": "Stop",
+        "Ver / Olhar": "See / Look",
+        "Gostar": "Like",
+        "Não gostar": "Dislike",
+        "Brincar": "Play",
+        "Dormir": "Sleep",
+        "Ouvir": "Hear",
+        "Água": "Water",
+        "Suco": "Juice",
+        "Fruta": "Fruit",
+        "Pão": "Bread",
+        "Comida": "Food",
+        "Bolo": "Cake",
+        "Fome": "Hungry",
+        "Feliz": "Happy",
+        "Triste": "Sad",
+        "Cansado": "Tired",
+        "Dor": "Pain",
+        "Machucado": "Hurt",
+        "Bravo": "Angry",
+        "Assustado": "Scared",
+        "Banheiro": "Bathroom",
+        "Casa": "Home",
+        "Escola": "School",
+        "Parque / Rua": "Park / Street",
+        "Quarto": "Bedroom",
+        "Eu": "Me",
+        "Você": "You",
+        "Mamãe": "Mom",
+        "Papai": "Dad",
+        "Professor(a)": "Teacher",
+        "Amigo": "Friend",
+        "Dor de Cabeça": "Headache",
+        "Dor de Barriga": "Stomachache",
+        "Dor de Ouvido": "Earache",
+        "Dor na Garganta": "Sore Throat",
+        "Dor nas Costas": "Back Pain",
+        "Dor no Braço": "Arm Pain",
+        "Dor na Perna": "Leg Pain"
+    },
+    es: {
+        "Sim": "Sí",
+        "Não": "No",
+        "Por Favor": "Por favor",
+        "Obrigado": "Gracias",
+        "Oi / Olá": "Hola",
+        "Tchau": "Adiós",
+        "Socorro / Ajuda": "Ayuda",
+        "Minha vez": "Mi turno",
+        "Sua vez": "Tu turno",
+        "Mais": "Más",
+        "Acabou": "Terminado",
+        "Diferente": "Diferente",
+        "Igual": "Igual",
+        "Eu Quero": "Yo quiero",
+        "Não quero": "No quiero",
+        "Comer": "Comer",
+        "Beber": "Beber",
+        "Falar com": "Hablar con",
+        "Ir": "Ir",
+        "Parar": "Parar",
+        "Ver / Olhar": "Ver / Mirar",
+        "Gostar": "Me gusta",
+        "Não gostar": "No me gusta",
+        "Brincar": "Jugar",
+        "Dormir": "Dormir",
+        "Ouvir": "Oír",
+        "Água": "Agua",
+        "Suco": "Jugo",
+        "Fruta": "Fruta",
+        "Pão": "Pan",
+        "Comida": "Comida",
+        "Bolo": "Pastel",
+        "Fome": "Hambre",
+        "Feliz": "Feliz",
+        "Triste": "Triste",
+        "Cansado": "Cansado",
+        "Dor": "Dolor",
+        "Machucado": "Lastimado",
+        "Bravo": "Enojado",
+        "Assustado": "Asustado",
+        "Banheiro": "Baño",
+        "Casa": "Casa",
+        "Escola": "Escuela",
+        "Parque / Rua": "Parque / Calle",
+        "Quarto": "Habitación",
+        "Eu": "Yo",
+        "Você": "Tú",
+        "Mamãe": "Mamá",
+        "Papai": "Papá",
+        "Professor(a)": "Profesor(a)",
+        "Amigo": "Amigo",
+        "Dor de Cabeça": "Dolor de Cabeza",
+        "Dor de Barriga": "Dolor de Barriga",
+        "Dor de Dente": "Dolor de Muelas",
+        "Dor de Ouvido": "Dolor de Oído",
+        "Dor na Garganta": "Dolor de Garganta",
+        "Dor nas Costas": "Dolor de Espalda",
+        "Dor no Braço": "Dolor de Brazo",
+        "Dor na Perna": "Dolor de Pierna"
+    }
+};
+
+var CATEGORY_TRANSLATIONS = {
+    pt: { all: 'Todos', favorites: 'Favoritos', essential: 'Essencial', action: 'Ações', food: 'Alimentação', feeling: 'Sentimentos', place: 'Lugares', person: 'Pessoas', custom: 'Personalizados', pain: 'Dor' },
+    en: { all: 'All', favorites: 'Favorites', essential: 'Essential', action: 'Actions', food: 'Food', feeling: 'Feelings', place: 'Places', person: 'People', custom: 'Custom', pain: 'Pain' },
+    es: { all: 'Todos', favorites: 'Favoritos', essential: 'Esencial', action: 'Acciones', food: 'Alimentación', feeling: 'Sentimientos', place: 'Lugares', person: 'Personas', custom: 'Personalizados', pain: 'Dolor' }
+};
+
+var UI_TRANSLATIONS = {
+    pt: {
+        app_title: "Fale Comigo",
+        sentence_placeholder: "Toque nas figuras para montar a frase...",
+        sentence_title: "Últimas Usadas",
+        btn_speak: "FALAR",
+        btn_send: "ENVIAR",
+        btn_clear: "LIMPAR",
+        search_placeholder: "Buscar figura... 🔍",
+        brand_signature: "Desenvolvido por Bruno Serra de Oliveira",
+        brand_purpose: "Criado com carinho para ajudar as pessoas a se comunicarem.",
+        brand_version_label: "Versão",
+        btn_support: "Apoiar Projeto 💖",
+        settings_title: "Configurações do Tutor",
+        label_theme: "Aparência:",
+        label_low_vision: "Baixa Visão:",
+        label_language: "Idioma do Perfil:",
+        label_voice: "Voz do Sistema:",
+        loading_voices: "Carregando vozes...",
+        label_voice_rate: "Velocidade da Voz:",
+        label_voice_pitch: "Tom da Voz:",
+        label_total_accesses: "Total de Acessos:",
+        label_layout_mode: "Modo de Visualização:",
+        layout_mode_folder: "Pastas (Categorias)",
+        layout_mode_grid: "Grade (Tudo na Tela)",
+        in_app_warning: "⚠️ Você abriu pelo Instagram. Para o áudio funcionar e salvar seus dados, toque nos 3 pontinhos no topo direito e selecione 'Abrir no Navegador' (ou 'Abrir no Chrome/Safari')."
+    },
+    en: {
+        app_title: "Talk to Me",
+        sentence_placeholder: "Tap the cards to build a sentence...",
+        sentence_title: "Last Used",
+        btn_speak: "SPEAK",
+        btn_send: "SEND",
+        btn_clear: "CLEAR",
+        search_placeholder: "Search figure... 🔍",
+        brand_signature: "Developed by Bruno Serra de Oliveira",
+        brand_purpose: "Created with love to help people communicate.",
+        brand_version_label: "Version",
+        btn_support: "Support Project 💖",
+        settings_title: "Tutor Settings",
+        label_theme: "Theme:",
+        label_low_vision: "Low Vision:",
+        label_language: "Profile Language:",
+        label_voice: "System Voice:",
+        loading_voices: "Loading voices...",
+        label_voice_rate: "Voice Speed:",
+        label_voice_pitch: "Voice Pitch:",
+        label_total_accesses: "Total Accesses:",
+        label_layout_mode: "Display Mode:",
+        layout_mode_folder: "Folders (Categories)",
+        layout_mode_grid: "Grid (Show All)",
+        in_app_warning: "⚠️ Opened via Instagram. For audio to work and to save your settings, tap the 3 dots in the top right and choose 'Open in Browser'."
+    },
+    es: {
+        app_title: "Habla Conmigo",
+        sentence_placeholder: "Toca las figuras para armar la frase...",
+        sentence_title: "Últimas Usadas",
+        btn_speak: "HABLAR",
+        btn_send: "ENVIAR",
+        btn_clear: "LIMPIAR",
+        search_placeholder: "Buscar figura... 🔍",
+        brand_signature: "Desarrollado por Bruno Serra de Oliveira",
+        brand_purpose: "Creado con cariño para ayudar a las personas a comunicarse.",
+        brand_version_label: "Versión",
+        btn_support: "Apoyar Projeto 💖",
+        settings_title: "Ajustes del Tutor",
+        label_theme: "Apariencia:",
+        label_low_vision: "Baja Visión:",
+        label_language: "Idioma del Perfil:",
+        label_voice: "Voz del Sistema:",
+        loading_voices: "Cargando voces...",
+        label_voice_rate: "Velocidad de Voz:",
+        label_voice_pitch: "Tono de Voz:",
+        label_total_accesses: "Accesos Totales:",
+        label_layout_mode: "Modo de Visualización:",
+        layout_mode_folder: "Carpetas (Categorías)",
+        layout_mode_grid: "Cuadrícula (Mostrar Todo)",
+        in_app_warning: "⚠️ Abierto por Instagram. Para que funcione el audio y guardar sus ajustes, toque los 3 puntos arriba a la derecha y elija 'Abrir en Navegador'."
+    }
+};
+
+function getProfileLanguage() {
+    return localStorage.getItem('caa_lang_' + currentProfileId) || 'pt';
+}
+
+function loadProfileLanguage() {
+    var lang = getProfileLanguage();
+    if (seletorIdioma) {
+        seletorIdioma.value = lang;
+    }
+    translatePage();
+}
+
+function translatePage() {
+    var lang = getProfileLanguage();
+    var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
+    
+    var elements = document.querySelectorAll('[data-i18n]');
+    elements.forEach(function(el) {
+        var key = el.dataset.i18n;
+        var translation = dict[key];
+        if (translation) {
+            var span = el.querySelector('span');
+            if (span) {
+                span.textContent = translation;
+            } else {
+                el.textContent = translation;
+            }
+        }
+    });
+
+    var placeholders = document.querySelectorAll('[data-i18n-placeholder]');
+    placeholders.forEach(function(el) {
+        var key = el.dataset.i18nPlaceholder;
+        var translation = dict[key];
+        if (translation && el.placeholder !== undefined) {
+            el.placeholder = translation;
+        }
+    });
+
+    var dataPlaceholders = document.querySelectorAll('[data-i18n-data-placeholder]');
+    dataPlaceholders.forEach(function(el) {
+        var key = el.dataset.i18nDataPlaceholder;
+        var translation = dict[key];
+        if (translation) {
+            el.setAttribute('data-placeholder', translation);
+        }
+    });
+    updateLayoutButtonUI();
+}
+
+function getCardText(card) {
+    if (!card) return '';
+    var lang = getProfileLanguage();
+    if (lang === 'pt') return card.text;
+    var translations = CARD_TRANSLATIONS[lang];
+    if (translations && translations[card.text]) {
+        return translations[card.text];
+    }
+    return card.text;
+}
+
+function getCategoryName(catId) {
+    var lang = getProfileLanguage();
+    var catObj = CATEGORY_TRANSLATIONS[lang] || CATEGORY_TRANSLATIONS.pt;
+    return catObj[catId] || catId;
+}
+
+// App State
+var cards = [];
+var selectedCards = [];
+var currentFolder = 'root';
+var currentLayoutMode = 'folder'; // 'folder' or 'grid'
+
+// TelepatiX Accessibility Scanning State
+var isTelepatixActive = false;
+var telepatixSpeed = 2.0; // seconds
+var telepatixMode = 'switch'; // 'switch' or 'camera'
+var scanIndex = -1;
+var scanTimer = null;
+var scanElements = []; // DOM elements to scan
+var telepatixTriggerOverlay = null;
+
+// TelepatiX Camera Eye Blink State
+var telepatixStream = null;
+var isBlinkDetectorRunning = false;
+var lastLuminance = null;
+var baselineLuminance = null;
+var blinkAnimationId = null;
+var telepatixSensitivity = 15;
+var blinkCooldown = false;
+
+
+// DOM Elements
+var cardsGrid = document.getElementById('cards-grid');
+var sentenceList = document.getElementById('sentence-list');
+var searchInput = document.getElementById('search-input');
+var btnClearSearch = document.getElementById('btn-clear-search');
+
+// Main Buttons
+var btnSpeak = document.getElementById('btn-speak');
+var btnClearAll = document.getElementById('btn-clear-all');
+var btnToggleTheme = document.getElementById('btn-toggle-theme');
+var btnToggleLowVision = document.getElementById('btn-toggle-low-vision');
+var seletorVozes = document.getElementById('seletor-vozes');
+var seletorIdioma = document.getElementById('seletor-idioma');
+var btnToggleLayout = document.getElementById('btn-toggle-layout');
+var vozesDisponiveis = [];
+
+// Settings Modal Elements
+var btnSettings = document.getElementById('btn-settings');
+var modalSettings = document.getElementById('modal-settings');
+var btnCloseSettings = document.getElementById('btn-close-settings');
+var btnResetCards = document.getElementById('btn-reset-cards');
+var btnExportCards = document.getElementById('btn-export-cards');
+var btnDownloadBackup = document.getElementById('btn-download-backup');
+var btnImportBackupTrigger = document.getElementById('btn-import-backup-trigger');
+var inputImportBackup = document.getElementById('input-import-backup');
+
+// Add Card Form Elements inside Settings
+var formAddCard = document.getElementById('form-add-card');
+var cardTextInput = document.getElementById('card-text');
+var cardEmojiInput = document.getElementById('card-emoji');
+var imageTypeRadios = document.getElementsByName('image-type');
+var groupEmoji = document.getElementById('group-emoji');
+var groupUpload = document.getElementById('group-upload');
+var cardImageFileInput = document.getElementById('card-image-file');
+var imagePreview = document.getElementById('image-preview');
+
+// Temporary image storage (base64)
+var uploadedImageBase64 = null;
+
+// Sub Choice Modal Elements
+var modalSubChoice = document.getElementById('modal-sub-choice');
+var subChoiceGrid = document.getElementById('sub-choice-grid');
+var subChoiceTitle = document.getElementById('sub-choice-title');
+var btnCloseSubChoice = document.getElementById('btn-close-sub-choice');
+var btnAddSubChoice = document.getElementById('btn-add-sub-choice');
+
+// Floating Bottom Bar Elements
+var floatingBottomBar = document.getElementById('floating-bottom-bar');
+var floatingSentencePreview = document.getElementById('floating-sentence-preview');
+var btnSpeakFloat = document.getElementById('btn-speak-float');
+var btnClearFloat = document.getElementById('btn-clear-float');
+
+// Google Drive Sync Elements
+var syncDriveIdInput = document.getElementById('sync-drive-id');
+var syncAppsScriptUrlInput = document.getElementById('sync-apps-script-url');
+var checkAutoBackup = document.getElementById('check-auto-backup');
+var btnSyncNow = document.getElementById('btn-sync-now');
+var syncStatusText = document.getElementById('sync-status');
+
+// Changelog Modal Elements
+var modalChangelog = document.getElementById('modal-changelog');
+var btnCloseChangelog = document.getElementById('btn-close-changelog');
+var btnOkChangelog = document.getElementById('btn-ok-changelog');
+var changelogAddedSection = document.getElementById('changelog-added-section');
+var changelogAddedList = document.getElementById('changelog-added-list');
+var changelogRemovedSection = document.getElementById('changelog-removed-section');
+var changelogRemovedList = document.getElementById('changelog-removed-list');
+
+// Initialize Web Speech Synthesis
+var synth = window.speechSynthesis;
+
+// Elementos de Velocidade e Tom da Voz
+var inputVoiceRate = document.getElementById('input-voice-rate');
+var valVoiceRate = document.getElementById('val-voice-rate');
+var inputVoicePitch = document.getElementById('input-voice-pitch');
+var valVoicePitch = document.getElementById('val-voice-pitch');
+var btnShareWhatsapp = document.getElementById('btn-share-whatsapp');
+var btnShareFloat = document.getElementById('btn-share-float');
+
+// Elementos da API ARASAAC
+var groupArasaac = document.getElementById('group-arasaac');
+var arasaacSearchInput = document.getElementById('arasaac-search-input');
+var btnArasaacSearch = document.getElementById('btn-arasaac-search');
+var arasaacResultsContainer = document.getElementById('arasaac-results-container');
+var selectedArasaacIdInput = document.getElementById('selected-arasaac-id');
+var selectedArasaacBase64 = null;
+
+// Elementos do Histórico de Frases Recentes
+var recentSentencesSection = document.getElementById('recent-sentences-section');
+var recentSentencesList = document.getElementById('recent-sentences-list');
+var recentSentences = [];
+
+function convertImageUrlToBase64(url) {
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'blob';
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                var reader = new FileReader();
+                reader.onloadend = function() {
+                    resolve(reader.result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(xhr.response);
+            } else {
+                reject(new Error('Falha no download da imagem: HTTP ' + xhr.status));
+            }
+        };
+        xhr.onerror = function() {
+            reject(new Error('Erro de rede ao baixar imagem.'));
+        };
+        xhr.send();
+    });
+}
+
+function carregarVozConfig() {
+    var voiceRate = localStorage.getItem('caa_voice_rate_' + currentProfileId) || '1.0';
+    var voicePitch = localStorage.getItem('caa_voice_pitch_' + currentProfileId) || '1.0';
+    
+    if (inputVoiceRate) inputVoiceRate.value = voiceRate;
+    if (valVoiceRate) valVoiceRate.textContent = parseFloat(voiceRate).toFixed(1);
+    if (inputVoicePitch) inputVoicePitch.value = voicePitch;
+    if (valVoicePitch) valVoicePitch.textContent = parseFloat(voicePitch).toFixed(1);
+}
+
+function carregarLayoutModeConfig() {
+    currentLayoutMode = localStorage.getItem('caa_layout_mode_' + currentProfileId) || 'folder';
+    updateLayoutButtonUI();
+}
+
+function updateLayoutButtonUI() {
+    if (!btnToggleLayout) return;
+    
+    var lang = getProfileLanguage();
+    var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
+    
+    var folderSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+    var gridSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';
+
+    if (currentLayoutMode === 'folder') {
+        btnToggleLayout.innerHTML = gridSvg;
+        btnToggleLayout.title = (dict.layout_mode_grid ? ("Mudar para " + dict.layout_mode_grid) : "Mudar para Modo Grade");
+    } else {
+        btnToggleLayout.innerHTML = folderSvg;
+        btnToggleLayout.title = (dict.layout_mode_folder ? ("Mudar para " + dict.layout_mode_folder) : "Mudar para Modo Pastas");
+    }
+}
+
+function carregarRecentes() {
+    if (!recentSentencesSection || !recentSentencesList) return;
+    
+    var stored = localStorage.getItem('caa_recent_sentences_' + currentProfileId);
+    recentSentences = [];
+    if (stored) {
+        try {
+            recentSentences = JSON.parse(stored);
+        } catch (e) {
+            console.error('Erro ao fazer parse das frases recentes:', e);
+        }
+    }
+    
+    if (!Array.isArray(recentSentences) || recentSentences.length === 0) {
+        recentSentencesSection.classList.add('d-none');
+        recentSentencesList.innerHTML = '';
+        return;
+    }
+    
+    recentSentencesSection.classList.remove('d-none');
+    var html = '';
+    recentSentences.forEach(function(sentenceCards, idx) {
+        var textLabel = sentenceCards.map(function(c) { return c.text; }).join(' ');
+        var firstCard = sentenceCards[0];
+        var iconHtml = '';
+        if (firstCard) {
+            if (firstCard.type === 'emoji') {
+                iconHtml = '<span style="font-size: 1rem; flex-shrink: 0;">' + firstCard.value + '</span>';
+            } else {
+                iconHtml = '<img src="' + firstCard.value + '" style="width: 16px; height: 16px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">';
+            }
+        }
+        
+        html += 
+            '<button type="button" class="recent-chip" data-idx="' + idx + '">' +
+                iconHtml +
+                '<span style="overflow: hidden; text-overflow: ellipsis; max-width: 140px; white-space: nowrap;">' + textLabel + '</span>' +
+            '</button>';
+    });
+    
+    recentSentencesList.innerHTML = html;
+    
+    var chips = recentSentencesList.querySelectorAll('.recent-chip');
+    chips.forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            var idx = parseInt(chip.dataset.idx, 10);
+            var selectedList = recentSentences[idx];
+            if (Array.isArray(selectedList)) {
+                selectedCards = selectedList.slice();
+                updateSentenceBuilder();
+                
+                var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
+                speakText(fullSentence);
+            }
+        });
+    });
+}
+
+function adicionarFraseRecente(cardsArray) {
+    if (!Array.isArray(cardsArray) || cardsArray.length === 0) return;
+    
+    var currentText = cardsArray.map(function(c) { return c.text; }).join(' ').trim();
+    if (!currentText) return;
+    
+    var stored = localStorage.getItem('caa_recent_sentences_' + currentProfileId);
+    var list = [];
+    if (stored) {
+        try { list = JSON.parse(stored); } catch (e) {}
+    }
+    if (!Array.isArray(list)) list = [];
+    
+    list = list.filter(function(sentenceCards) {
+        var text = sentenceCards.map(function(c) { return c.text; }).join(' ').trim();
+        return text !== currentText;
+    });
+    
+    list.unshift(cardsArray);
+    
+    if (list.length > 5) {
+        list = list.slice(0, 5);
+    }
+    
+    localStorage.setItem('caa_recent_sentences_' + currentProfileId, JSON.stringify(list));
+    carregarRecentes();
+}
+
+function carregarEstatisticas() {
+    var statsContainer = document.getElementById('stats-usage-list');
+    if (!statsContainer) return;
+    
+    var stored = localStorage.getItem('caa_stats_' + currentProfileId);
+    var stats = {};
+    if (stored) {
+        try { stats = JSON.parse(stored); } catch(e) {}
+    }
+    
+    var statsArray = [];
+    for (var key in stats) {
+        if (stats.hasOwnProperty(key)) {
+            statsArray.push({ text: key, count: stats[key] });
+        }
+    }
+    
+    statsArray.sort(function(a, b) { return b.count - a.count; });
+    
+    if (statsArray.length === 0) {
+        statsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary); text-align: center; display: block; padding: 10px 0;">Nenhum uso registrado ainda.</span>';
+        return;
+    }
+    
+    var topStats = statsArray.slice(0, 7);
+    var html = '';
+    topStats.forEach(function(item) {
+        var card = cards.find(function(c) { return c.text === item.text; });
+        var iconHtml = '🖼️';
+        if (card) {
+            if (card.type === 'emoji') {
+                iconHtml = card.value;
+            } else {
+                iconHtml = '<img src="' + card.value + '" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">';
+            }
+        }
+        
+        html += 
+            '<div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);">' +
+                '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
+                    '<span style="font-size: 1.1rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;">' + iconHtml + '</span>' +
+                    '<span style="font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis;">' + item.text + '</span>' +
+                '</div>' +
+                '<span style="font-weight: 700; color: var(--color-primary); flex-shrink: 0;">' + item.count + ' ' + (item.count === 1 ? 'toque' : 'toques') + '</span>' +
+            '</div>';
+    });
+    
+    statsContainer.innerHTML = html;
+}
+
+function registrarUsoFigura(text) {
+    if (!text) return;
+    
+    var stored = localStorage.getItem('caa_stats_' + currentProfileId);
+    var stats = {};
+    if (stored) {
+        try { stats = JSON.parse(stored); } catch(e) {}
+    }
+    
+    stats[text] = (stats[text] || 0) + 1;
+    
+    localStorage.setItem('caa_stats_' + currentProfileId, JSON.stringify(stats));
+    
+    var modalSettingsEl = document.getElementById('modal-settings');
+    if (modalSettingsEl && modalSettingsEl.classList.contains('open')) {
+        carregarEstatisticas();
+    }
+}
+
+// Function to load Portuguese voices
+function carregarVozes() {
+    if (!seletorVozes || !synth) return;
+    try {
+        vozesDisponiveis = synth.getVoices();
+    } catch(e) {
+        console.warn('Erro ao obter vozes:', e);
+        return;
+    }
+    seletorVozes.innerHTML = '';
+    
+    // Filter voices based on active language
+    var lang = getProfileLanguage();
+    var langPrefix = 'pt';
+    if (lang === 'en') langPrefix = 'en';
+    else if (lang === 'es') langPrefix = 'es';
+
+    var vozesFiltradas = vozesDisponiveis.filter(function(voz) {
+        return voz && voz.lang && typeof voz.lang === 'string' && voz.lang.toLowerCase().indexOf(langPrefix) !== -1;
+    });
+
+    if (vozesFiltradas.length === 0) {
+        var noVoiceText = 'Nenhuma voz PT encontrada';
+        if (lang === 'en') noVoiceText = 'No EN voice found';
+        else if (lang === 'es') noVoiceText = 'No se encontró voz ES';
+        
+        seletorVozes.innerHTML = '<option value="">' + noVoiceText + '</option>';
+        return;
+    }
+
+    var savedVoiceName = localStorage.getItem('caa_selected_voice_' + currentProfileId) || '';
+    
+    vozesFiltradas.forEach(function(voz) {
+        var vozName = voz.name || '';
+        var vozLang = voz.lang || '';
+        var opcao = document.createElement('option');
+        opcao.value = vozName;
+        opcao.textContent = vozName + ' (' + vozLang + ')';
+        if (vozName === savedVoiceName) {
+            opcao.selected = true;
+        }
+        seletorVozes.appendChild(opcao);
+    });
+}
+
+if (synth && synth.onvoiceschanged !== undefined) {
+    synth.onvoiceschanged = carregarVozes;
+}
+
+// Profile State Variables
+var currentProfileId = 'default';
+var profiles = [{ id: 'default', name: 'Padrão' }];
+
+// Audio Recording State
+var mediaRecorder = null;
+var audioChunks = [];
+var recordedAudioBase64 = null;
+
+// Profile DOM Elements
+var selectProfile = document.getElementById('select-profile');
+var btnManageProfiles = document.getElementById('btn-manage-profiles');
+var modalProfiles = document.getElementById('modal-profiles');
+var btnCloseProfiles = document.getElementById('btn-close-profiles');
+var inputNewProfileName = document.getElementById('input-new-profile-name');
+var btnCreateProfile = document.getElementById('btn-create-profile');
+var btnSyncProfilesCloud = document.getElementById('btn-sync-profiles-cloud');
+var profilesList = document.getElementById('profiles-list');
+var accessCounterVal = document.getElementById('access-counter-val');
+var cloudProfilesList = document.getElementById('cloud-profiles-list');
+var cloudStatusIndicator = document.getElementById('cloud-status-indicator');
+var btnRecordAudio = document.getElementById('btn-record-audio');
+var recordStatus = document.getElementById('record-status');
+var audioPreview = document.getElementById('audio-preview');
+var groupAudioRecord = document.getElementById('group-audio-record');
+
+// Lock App Mode State & DOM Elements
+var isAppLocked = false;
+var currentLockAnswer = 0;
+var btnLockApp = document.getElementById('btn-lock-app');
+var modalLockChallenge = document.getElementById('modal-lock-challenge');
+var lockMathQuestion = document.getElementById('lock-math-question');
+var lockMathAnswer = document.getElementById('lock-math-answer');
+var btnLockCancel = document.getElementById('btn-lock-cancel');
+var btnLockSubmit = document.getElementById('btn-lock-submit');
+
+// Premium & Reordering Mode State & DOM Elements
+var isReorderModeActive = false;
+var btnToggleReorder = document.getElementById('btn-toggle-reorder');
+var premiumCodeInput = document.getElementById('premium-code-input');
+var premiumStatusLabel = document.getElementById('premium-status-label');
+var btnActivatePremium = document.getElementById('btn-activate-premium');
+
+function checkPremiumStatus() {
+    return localStorage.getItem('caa_premium_active') === 'true' || localStorage.getItem('caa_dev_mode') === 'true';
+}
+
+function updatePremiumUI() {
+    var isPremium = checkPremiumStatus();
+    var isDev = localStorage.getItem('caa_dev_mode') === 'true';
+    
+    if (premiumStatusLabel) {
+        if (isPremium) {
+            var devSuffix = isDev ? ' (Dev Mode)' : '';
+            var buttonHtml = isDev ? ' <a href="#" id="link-disable-dev" style="color: #ef4444; font-size: 0.75rem; text-decoration: underline; margin-left: 6px; font-weight: 700;">[Desativar]</a>' : '';
+            premiumStatusLabel.innerHTML = 'Status: Versão Completa 🌟' + devSuffix + buttonHtml;
+            premiumStatusLabel.style.color = "var(--color-primary)";
+            
+            // Add click listener to deactivation link if exists
+            var linkDisableDev = document.getElementById('link-disable-dev');
+            if (linkDisableDev) {
+                linkDisableDev.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    localStorage.removeItem('caa_premium_active');
+                    localStorage.removeItem('caa_dev_mode');
+                    updatePremiumUI();
+                    showCustomAlert("Modo Desenvolvedor desativado. Retornou para Versão Grátis!");
+                    
+                    // Refresh data
+                    loadProfiles();
+                    renderProfileSelector();
+                    renderProfilesList();
+                    renderCards();
+                });
+            }
+        } else {
+            premiumStatusLabel.innerHTML = 'Status: Versão Grátis';
+            premiumStatusLabel.style.color = "var(--text-secondary)";
+        }
+    }
+    
+    if (premiumCodeInput) {
+        var parent = premiumCodeInput.parentElement;
+        if (parent) {
+            if (!isPremium || isDev) {
+                parent.style.display = 'flex';
+            } else {
+                parent.style.display = 'none';
+            }
+        }
+    }
+    
+    // Mostra o botão de reordenar apenas para VIP
+    if (btnToggleReorder) {
+        if (isPremium) {
+            btnToggleReorder.style.display = ''; // Volta ao padrão do CSS
+        } else {
+            btnToggleReorder.style.display = 'none';
+        }
+    }
+}
+
+
+function updateLockUI() {
+    var openLockSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+    var closedLockSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+    if (isAppLocked) {
+        document.body.classList.add('is-locked');
+        if (btnLockApp) {
+            btnLockApp.innerHTML = closedLockSvg;
+            btnLockApp.title = "Desbloquear Configurações";
+        }
+    } else {
+        document.body.classList.remove('is-locked');
+        if (btnLockApp) {
+            btnLockApp.innerHTML = openLockSvg;
+            btnLockApp.title = "Bloquear Configurações";
+        }
+    }
+}
+
+function generateLockChallenge() {
+    var num1 = Math.floor(Math.random() * 8) + 2; // 2 to 9
+    var num2 = Math.floor(Math.random() * 8) + 2; // 2 to 9
+    currentLockAnswer = num1 + num2;
+    if (lockMathQuestion) {
+        lockMathQuestion.textContent = num1 + " + " + num2 + " = ?";
+    }
+    if (lockMathAnswer) {
+        lockMathAnswer.value = '';
+    }
+}
+
+// IndexedDB Helper for storing card data locally (bypassing 5MB localStorage limit)
+var dbHelper = {
+    dbName: 'caa_db',
+    dbVersion: 1,
+    db: null,
+
+    init: function() {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+            if (!window.indexedDB) {
+                console.warn('IndexedDB não é suportado pelo seu navegador.');
+                resolve(null);
+                return;
+            }
+            var request = indexedDB.open(self.dbName, self.dbVersion);
+
+            request.onupgradeneeded = function(e) {
+                var db = e.target.result;
+                if (!db.objectStoreNames.contains('profiles_data')) {
+                    db.createObjectStore('profiles_data', { keyPath: 'id' });
+                }
+            };
+
+            request.onsuccess = function(e) {
+                self.db = e.target.result;
+                resolve(self.db);
+            };
+
+            request.onerror = function(e) {
+                console.error('Erro ao abrir IndexedDB:', e.target.error);
+                resolve(null);
+            };
+        });
+    },
+
+    get: function(key) {
+        var self = this;
+        return new Promise(function(resolve) {
+            if (!self.db) {
+                resolve(null);
+                return;
+            }
+            try {
+                var transaction = self.db.transaction(['profiles_data'], 'readonly');
+                var store = transaction.objectStore('profiles_data');
+                var request = store.get(key);
+
+                request.onsuccess = function(e) {
+                    resolve(e.target.result ? e.target.result.value : null);
+                };
+
+                request.onerror = function() {
+                    resolve(null);
+                };
+            } catch(err) {
+                console.error('Erro no IndexedDB get:', err);
+                resolve(null);
+            }
+        });
+    },
+
+    set: function(key, value) {
+        var self = this;
+        return new Promise(function(resolve) {
+            if (!self.db) {
+                resolve(false);
+                return;
+            }
+            try {
+                var transaction = self.db.transaction(['profiles_data'], 'readwrite');
+                var store = transaction.objectStore('profiles_data');
+                var request = store.put({ id: key, value: value });
+
+                request.onsuccess = function() {
+                    resolve(true);
+                };
+
+                request.onerror = function(e) {
+                    console.error('Erro no IndexedDB set:', e.target.error);
+                    resolve(false);
+                };
+            } catch(err) {
+                console.error('Erro no IndexedDB set:', err);
+                resolve(false);
+            }
+        });
+    },
+
+    delete: function(key) {
+        var self = this;
+        return new Promise(function(resolve) {
+            if (!self.db) {
+                resolve(false);
+                return;
+            }
+            try {
+                var transaction = self.db.transaction(['profiles_data'], 'readwrite');
+                var store = transaction.objectStore('profiles_data');
+                var request = store.delete(key);
+
+                request.onsuccess = function() {
+                    resolve(true);
+                };
+
+                request.onerror = function() {
+                    resolve(false);
+                };
+            } catch(err) {
+                console.error('Erro no IndexedDB delete:', err);
+                resolve(false);
+            }
+        });
+    }
+};
+
+// Render loading skeletons in the grid
+function showSkeletonLoading() {
+    if (!cardsGrid) return;
+    var html = '';
+    for (var i = 0; i < 8; i++) {
+        html += 
+            '<div class="skeleton-card">' +
+                '<div class="skeleton-visual"></div>' +
+                '<div class="skeleton-text"></div>' +
+            '</div>';
+    }
+    cardsGrid.innerHTML = html;
+}
+
+function setCloudStatus(status, titleText) {
+    if (!cloudStatusIndicator) return;
+    cloudStatusIndicator.className = 'cloud-status-indicator ' + status;
+    if (titleText) {
+        cloudStatusIndicator.title = 'Status de Backup: ' + titleText;
+    } else {
+        if (status === 'success') cloudStatusIndicator.title = 'Status de Backup: Sincronizado';
+        if (status === 'loading') cloudStatusIndicator.title = 'Status de Backup: Sincronizando...';
+        if (status === 'error') cloudStatusIndicator.title = 'Status de Backup: Erro ou Desconectado';
+    }
+}
+
+// Dicionário de sugestão de emojis em português
+var EMOJI_DICTIONARY = {
+    // Alimentos
+    "agua": "💧", "suco": "🧃", "refrigerante": "🥤", "refri": "🥤", "leite": "🥛", "cafe": "☕", "cha": "🍵",
+    "pao": "🍞", "bolo": "🍰", "chocolate": "🍫", "biscoito": "🍪", "bolacha": "🍪", "queijo": "🧀",
+    "fruta": "🍎", "maca": "🍎", "banana": "🍌", "uva": "🍇", "laranja": "🍊", "morango": "🍓", "melancia": "🍉",
+    "abacaxi": "🍍", "limao": "🍋", "pera": "🍐", "pessego": "🍑", "cereja": "🍒", "coco": "🥥",
+    "comida": "🍽️", "arroz": "🍚", "feijao": "🍲", "sopa": "🥣", "salada": "🥗", "carne": "🥩", "frango": "🍗",
+    "peixe": "🐟", "ovo": "🥚", "batata": "🍟", "pizza": "🍕", "hamburguer": "🍔", "pastel": "🥟", "sorvete": "🍨",
+    
+    // Ações
+    "comer": "😋", "beber": "🥛", "ir": "🚶", "correr": "🏃", "brincar": "🧸", "dormir": "😴", "ouvir": "👂",
+    "ver": "👀", "olhar": "👀", "falar": "🗣️", "cantar": "🎤", "dancar": "💃", "escrever": "✍️", "desenhar": "🎨",
+    "ler": "📖", "estudar": "📚", "banho": "🚿", "escovar": "🪥", "sentar": "🪑", "levantar": "🧍", "parar": "🛑",
+    "gostar": "❤️", "amar": "💖", "ajudar": "🆘", "socorro": "🆘", "limpar": "🧹",
+    
+    // Sentimentos
+    "feliz": "😊", "alegre": "😁", "triste": "😢", "cansado": "🥱", "sono": "😴", "dor": "🤕", "machucado": "🩹",
+    "doente": "🤒", "bravo": "😡", "irritado": "😠", "assustado": "😨", "medo": "😱", "surpreso": "😲",
+    "nojo": "🤢", "vergonha": "😳", "amor": "❤️",
+    
+    // Lugares
+    "casa": "🏠", "escola": "🏫", "parque": "🌳", "rua": "🛣️", "quarto": "🛏️", "banheiro": "🚾",
+    "cozinha": "🍳", "sala": "🛋️", "quintal": "🏡", "praia": "🏖️", "shopping": "🛍️", "hospital": "🏥",
+    "cinema": "🎬", "mercado": "🛒", "igreja": "⛪",
+    
+    // Pessoas
+    "eu": "🙋", "voce": "🫵", "mamae": "👩", "papai": "👨", "vovo": "👵", "vovo": "👴", "irmao": "👦",
+    "irma": "👧", "amigo": "👦", "amiga": "👧", "professor": "👨‍🏫", "professora": "👩‍🏫",
+    "medico": "👨‍⚕️", "medica": "👩‍⚕️", "bebe": "👶", "tio": "👨", "tia": "👩",
+    
+    // Objetos
+    "brinquedo": "🧸", "bola": "⚽", "boneca": "🪆", "carro": "🚗", "bicicleta": "🚲", "bike": "🚲",
+    "moto": "🏍️", "aviao": "✈️", "trem": "🚂", "barco": "⛵", "livro": "📚", "caderno": "📓", "lapis": "✏️",
+    "mochila": "🎒", "computador": "💻", "pc": "💻", "tablet": "📱", "celular": "📱", "telefone": "📞",
+    "tv": "📺", "televisao": "📺", "relogio": "⌚", "chave": "🔑", "oculos": "👓", "tenis": "👟", "sapato": "👟",
+    "camisa": "👕", "roupa": "👕", "calca": "👖", "copo": "🥛", "prato": "🍽️", "colher": "🥄",
+    
+    // Animais
+    "cachorro": "🐶", "cao": "🐶", "gato": "🐱", "passaro": "🐦", "passarinho": "🐦", "peixinho": "🐟",
+    "cavalo": "🐴", "vaca": "🐮", "porco": "🐷", "ovelha": "🐑", "galinha": "🐔", "pato": "🦆",
+    "leao": "🦁", "urso": "🐻", "macaco": "🐵", "elefante": "🐘", "girafa": "🦒",
+    
+    // Outros comuns
+    "sim": "👍", "nao": "👎", "por favor": "🙏", "obrigado": "💖", "oi": "👋", "ola": "👋", "tchau": "👋"
+};
+
+// Função para normalizar strings para busca no dicionário (sem acentos e minúsculo)
+function normalizeText(text) {
+    return text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+}
+
+function isDrinkCard(card) {
+    if (card.category === 'drink') return true;
+    var norm = normalizeText(card.text);
+    return DRINK_KEYWORDS.some(function(kw) {
+        return norm === kw || norm.indexOf(kw) !== -1;
+    });
+}
+
+// Função para identificar a categoria correspondente a partir do texto digitado
+function detectCategory(text) {
+    var normalized = normalizeText(text);
+    
+    // Dor (pain)
+    if (PAIN_KEYWORDS.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'pain';
+    }
+
+    // Bebida (drink)
+    if (DRINK_KEYWORDS.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'drink';
+    }
+
+    // Pessoas (person)
+    var personKeywords = [
+        'eu', 'voce', 'mamae', 'mae', 'papai', 'pai', 'vovo', 'vovo', 'irmao', 'irma', 'amigo', 'amiga', 
+        'professor', 'professora', 'medico', 'medica', 'bebe', 'tio', 'tia', 'primo', 'prima',
+        'pessoa', 'gente', 'crianca', 'filho', 'filha', 'tutor', 'terapeuta', 'fono'
+    ];
+    if (personKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'person';
+    }
+
+    // Lugares (place)
+    var placeKeywords = [
+        'casa', 'escola', 'parque', 'rua', 'quarto', 'banheiro', 'cozinha', 'sala', 'quintal', 
+        'praia', 'shopping', 'shopping', 'hospital', 'cinema', 'mercado', 'igreja', 'clube', 'piscina'
+    ];
+    if (placeKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'place';
+    }
+
+    // Alimentação (food)
+    var foodKeywords = [
+        'agua', 'suco', 'refrigerante', 'refri', 'leite', 'cafe', 'cha', 'pao', 'bolo', 
+        'chocolate', 'biscoito', 'bolacha', 'queijo', 'fruta', 'maca', 'banana', 'uva', 
+        'laranja', 'morango', 'melancia', 'abacaxi', 'limao', 'pera', 'pessego', 'cereja', 
+        'coco', 'comida', 'arroz', 'feijao', 'sopa', 'salada', 'carne', 'frango', 'peixe', 
+        'ovo', 'batata', 'pizza', 'hamburguer', 'pastel', 'sorvete', 'comer', 'beber', 'fome'
+    ];
+    if (foodKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'food';
+    }
+
+    // Sentimentos (feeling)
+    var feelingKeywords = [
+        'feliz', 'alegre', 'triste', 'cansado', 'sono', 'dor', 'machucado', 'doente', 
+        'bravo', 'irritado', 'assustado', 'medo', 'surpreso', 'nojo', 'vergonha', 'amor',
+        'gostar', 'amar', 'odiar'
+    ];
+    if (feelingKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'feeling';
+    }
+
+    // Ações (action)
+    var actionKeywords = [
+        'ir', 'correr', 'brincar', 'dormir', 'ouvir', 'ver', 'olhar', 'falar', 'cantar', 
+        'dancar', 'escrever', 'desenhar', 'ler', 'estudar', 'banho', 'escovar', 'sentar', 
+        'levantar', 'parar', 'ajudar', 'socorro', 'limpar', 'pegar', 'dar', 'abrir', 'fechar'
+    ];
+    if (actionKeywords.some(function(keyword) { return normalized === keyword || normalized.indexOf(keyword) !== -1; })) {
+        return 'action';
+    }
+
+    // Default to custom
+    return 'custom';
+}
+
+function fallbackCopyText(text) {
+    var textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        showCustomAlert('Frase copiada para a área de transferência! 📋');
+    } catch (err) {
+        console.error('Erro ao copiar texto: ', err);
+    }
+    document.body.removeChild(textArea);
+}
+
+function showShareOptions(sentence) {
+    if (!sentence) return;
+    
+    var dialog = document.getElementById('modal-custom-dialog');
+    var title = document.getElementById('custom-dialog-title');
+    var msg = document.getElementById('custom-dialog-message');
+    var buttonsContainer = document.getElementById('custom-dialog-buttons');
+
+    if (!dialog || !msg || !buttonsContainer) {
+        var opt = confirm('Deseja enviar no WhatsApp? (Se não, copiará para área de transferência)');
+        if (opt) {
+            window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(sentence), '_blank');
+        } else {
+            navigator.clipboard.writeText(sentence);
+            alert('Frase copiada!');
+        }
+        return;
+    }
+
+    title.textContent = 'Enviar Frase 📤';
+    msg.innerHTML = 'O que deseja fazer com a frase:<br><strong style="font-size: 1.15rem; color: var(--text-primary); display: block; margin-top: 8px;">"' + sentence + '"</strong>';
+    
+    buttonsContainer.innerHTML = 
+        '<button id="btn-share-whatsapp-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; background-color: var(--color-share); color: white; border: none; font-weight: 700; gap: 6px;">' +
+            '<span>💬</span> WhatsApp' +
+        '</button>' +
+        '<button id="btn-share-copy-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; font-weight: 700; gap: 6px;">' +
+            '<span>📋</span> Copiar' +
+        '</button>' +
+        '<button id="btn-share-cancel-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px;">' +
+            'Fechar' +
+        '</button>';
+
+    dialog.classList.add('open');
+
+    var btnWhatsapp = document.getElementById('btn-share-whatsapp-action');
+    var btnCopy = document.getElementById('btn-share-copy-action');
+    var btnCancel = document.getElementById('btn-share-cancel-action');
+
+    btnWhatsapp.addEventListener('click', function() {
+        dialog.classList.remove('open');
+        var url = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(sentence);
+        window.open(url, '_blank');
+    }, { once: true });
+
+    btnCopy.addEventListener('click', function() {
+        dialog.classList.remove('open');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(sentence).then(function() {
+                showCustomAlert('Frase copiada para a área de transferência! 📋');
+            }).catch(function() {
+                fallbackCopyText(sentence);
+            });
+        } else {
+            fallbackCopyText(sentence);
+        }
+    }, { once: true });
+
+    btnCancel.addEventListener('click', function() {
+        dialog.classList.remove('open');
+    }, { once: true });
+}
+
+// Custom alert modal using HTML (bypasses native alert blocks on iOS WebView)
+function showCustomAlert(message) {
+    return new Promise(function(resolve) {
+        var dialog = document.getElementById('modal-custom-dialog');
+        var title = document.getElementById('custom-dialog-title');
+        var msg = document.getElementById('custom-dialog-message');
+        var buttonsContainer = document.getElementById('custom-dialog-buttons');
+
+        if (!dialog || !msg || !buttonsContainer) {
+            alert(message);
+            resolve();
+            return;
+        }
+
+        title.textContent = 'Aviso 💡';
+        msg.textContent = message;
+        buttonsContainer.innerHTML = 
+            '<button id="btn-dialog-ok" class="btn btn-primary" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">OK</button>';
+
+        dialog.classList.add('open');
+
+        var btnOk = document.getElementById('btn-dialog-ok');
+        btnOk.addEventListener('click', function() {
+            dialog.classList.remove('open');
+            resolve();
+        }, { once: true });
+    });
+}
+
+// Custom confirm modal using HTML (bypasses native confirm blocks on iOS WebView)
+function showCustomConfirm(message) {
+    return new Promise(function(resolve) {
+        var dialog = document.getElementById('modal-custom-dialog');
+        var title = document.getElementById('custom-dialog-title');
+        var msg = document.getElementById('custom-dialog-message');
+        var buttonsContainer = document.getElementById('custom-dialog-buttons');
+
+        if (!dialog || !msg || !buttonsContainer) {
+            var res = confirm(message);
+            resolve(res);
+            return;
+        }
+
+        title.textContent = 'Confirmação ❓';
+        msg.textContent = message;
+        buttonsContainer.innerHTML = 
+            '<button id="btn-dialog-cancel" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">Cancelar</button>' +
+            '<button id="btn-dialog-confirm" class="btn btn-danger" style="flex-grow: 1; justify-content: center; font-size: 1.05rem; padding: 12px;">Confirmar</button>';
+
+        dialog.classList.add('open');
+
+        var btnCancel = document.getElementById('btn-dialog-cancel');
+        var btnConfirm = document.getElementById('btn-dialog-confirm');
+
+        btnCancel.addEventListener('click', function() {
+            dialog.classList.remove('open');
+            resolve(false);
+        }, { once: true });
+
+        btnConfirm.addEventListener('click', function() {
+            dialog.classList.remove('open');
+            resolve(true);
+        }, { once: true });
+    });
+}
+
+function setAndCleanCards(newCards) {
+    var cleaned = newCards.slice();
+    // Remove obsolete cards
+    cleaned = cleaned.filter(function(c) { return c.text !== 'Dor / Machucado'; });
+    
+    // Sync default properties
+    cleaned = cleaned.map(function(savedCard) {
+        var defaultCard = DEFAULT_CARDS.find(function(d) { return d.text === savedCard.text; });
+        if (defaultCard) {
+            if (defaultCard.goToCategory) {
+                savedCard.goToCategory = defaultCard.goToCategory;
+            }
+        }
+        return savedCard;
+    });
+    
+    var isPremium = checkPremiumStatus();
+    if (!isPremium) {
+        // If not premium, keep ONLY the default cards
+        cleaned = cleaned.filter(function(card) {
+            return DEFAULT_CARDS.some(function(defaultCard) { return defaultCard.text === card.text; });
+        });
+    }
+    
+    // Ensure all default cards are present
+    DEFAULT_CARDS.forEach(function(defaultCard) {
+        var exists = cleaned.some(function(c) { return c.text === defaultCard.text; });
+        if (!exists) {
+            cleaned.push(defaultCard);
+        }
+    });
+
+    cards = cleaned;
+}
+
+// Render the list of custom cards inside settings for management
+function renderManageCustomCards() {
+    var listContainer = document.getElementById('custom-cards-list');
+    if (!listContainer) return;
+
+    // Filter only custom cards (not present in DEFAULT_CARDS)
+    var customCards = cards.filter(function(c) { return !DEFAULT_CARDS.some(function(d) { return d.text === c.text; }); });
+
+    if (customCards.length === 0) {
+        listContainer.innerHTML = '<span style="font-size: 0.9rem; color: var(--text-secondary); font-style: italic; display: block; text-align: center; padding: 10px;">Nenhum cartão personalizado criado.</span>';
+        return;
+    }
+
+    listContainer.innerHTML = customCards.map(function(card) {
+        var displayVal = card.type === 'emoji' ? card.value : '🖼️';
+        return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
+                '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
+                    '<span style="font-size: 1.2rem; flex-shrink: 0;">' + displayVal + '</span>' +
+                    '<span style="font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis;">' + card.text + '</span>' +
+                '</div>' +
+                '<button type="button" class="btn-delete-card" data-text="' + card.text + '" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Cartão">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>' +
+                '</button>' +
+            '</div>';
+    }).join('');
+}
+
+// Helper functions to manage profiles
+function loadProfiles() {
+    var stored = localStorage.getItem('caa_profiles');
+    if (stored) {
+        try {
+            profiles = JSON.parse(stored);
+        } catch (e) {
+            profiles = [{ id: 'default', name: 'Padrão' }];
+        }
+    } else {
+        profiles = [{ id: 'default', name: 'Padrão' }];
+    }
+    
+    currentProfileId = localStorage.getItem('caa_current_profile') || 'default';
+    if (!profiles.some(function(p) { return p.id === currentProfileId; })) {
+        currentProfileId = profiles[0].id;
+    }
+}
+
+function saveProfiles() {
+    localStorage.setItem('caa_profiles', JSON.stringify(profiles));
+    localStorage.setItem('caa_current_profile', currentProfileId);
+}
+
+function renderProfileSelector() {
+    if (!selectProfile) return;
+    selectProfile.innerHTML = profiles.map(function(p) {
+        var selected = p.id === currentProfileId ? 'selected' : '';
+        return '<option value="' + p.id + '" ' + selected + '>' + p.name + '</option>';
+    }).join('');
+}
+
+function renderProfilesList() {
+    if (!profilesList) return;
+    profilesList.innerHTML = profiles.map(function(p) {
+        var isCurrent = p.id === currentProfileId;
+        var deleteBtn = '';
+        if (p.id !== 'default') {
+            deleteBtn = 
+                '<button type="button" class="btn-delete-profile" data-id="' + p.id + '" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Perfil">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>' +
+                '</button>';
+        }
+        var activeBadge = isCurrent ? '<span style="font-size: 0.8rem; background-color: var(--color-primary); color: white; padding: 2px 6px; border-radius: 10px; font-weight: bold;">Ativo</span>' : '';
+        
+        return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
+                '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
+                    '<span style="font-weight: 600; font-size: 0.95rem; cursor: pointer;" onclick="switchProfile(\'' + p.id + '\')">' + p.name + '</span>' +
+                    activeBadge +
+                '</div>' +
+                '<div style="display: flex; gap: 6px; align-items: center;">' +
+                    '<button type="button" class="btn-rename-profile" data-id="' + p.id + '" data-name="' + p.name + '" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Renomear Perfil">✏️</button>' +
+                    deleteBtn +
+                '</div>' +
+            '</div>';
+    }).join('');
+}
+
+function loadSpecialProfileBackup(profileName) {
+    if (!profileName) return Promise.resolve([]);
+    var normalizedName = normalizeText(profileName);
+    if (normalizedName === 'mauro') {
+        return ajaxRequest('backup_comunicador_caa_mauro.json')
+            .then(function(res) {
+                if (Array.isArray(res)) return res;
+                return [];
+            })
+            .catch(function(e) {
+                console.warn('Erro ao carregar backup do Mauro:', e);
+                return [];
+            });
+    }
+    return Promise.resolve([]);
+}
+
+function loadProfileCards(profileId) {
+    var profileObj = profiles.find(function(p) { return p.id === profileId; });
+    var profileName = profileObj ? profileObj.name : '';
+
+    var fetchPromise;
+    if (dbHelper.db) {
+        fetchPromise = dbHelper.get('caa_custom_cards_' + profileId).then(function(dbCards) {
+            if (dbCards) {
+                return dbCards;
+            }
+            // fallback
+            var savedCards = localStorage.getItem('caa_custom_cards_' + profileId);
+            if (savedCards) {
+                try {
+                    var parsed = JSON.parse(savedCards);
+                    // migrate to db
+                    dbHelper.set('caa_custom_cards_' + profileId, parsed);
+                    return parsed;
+                } catch(e) {}
+            }
+            return null;
+        });
+    } else {
+        var savedCards = localStorage.getItem('caa_custom_cards_' + profileId);
+        if (savedCards) {
+            try {
+                fetchPromise = Promise.resolve(JSON.parse(savedCards));
+            } catch(e) {
+                fetchPromise = Promise.resolve(null);
+            }
+        } else {
+            fetchPromise = Promise.resolve(null);
+        }
+    }
+
+    return fetchPromise.then(function(cardsLoaded) {
+        if (cardsLoaded && cardsLoaded.length > 0) {
+            return cardsLoaded;
+        }
+        return loadSpecialProfileBackup(profileName);
+    });
+}
+
+function switchProfile(profileId) {
+    if (profileId === currentProfileId) return;
+    currentProfileId = profileId;
+    saveProfiles();
+    
+    // Clear selection
+    selectedCards = [];
+    currentFolder = 'root';
+    
+    // Load and clean cards for this profile
+    loadProfileCards(currentProfileId).then(function(loadedCards) {
+        setAndCleanCards(loadedCards);
+        
+        // Set theme for this profile
+        var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+        loadGridColsConfig();
+        loadFitzgeraldConfig();
+        loadGridColsConfig();
+        loadFitzgeraldConfig();
+        
+        // Set Low Vision Mode for this profile
+        var lowVision = localStorage.getItem('caa_low_vision_' + currentProfileId) === 'true';
+        if (lowVision) {
+            document.body.classList.add('low-vision');
+        } else {
+            document.body.classList.remove('low-vision');
+        }
+        updateLowVisionIcon(lowVision);
+
+        // Load language for this profile
+        loadProfileLanguage();
+        
+        // Load voices for this profile
+        carregarVozes();
+        carregarVozConfig();
+        carregarLayoutModeConfig();
+        carregarRecentes();
+        carregarEstatisticas();
+        
+        // Setup inputs
+        var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId) || '';
+        var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+        var oldUrls = [
+            'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec',
+            'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec'
+        ];
+        if (!syncAppsScriptUrl || oldUrls.indexOf(syncAppsScriptUrl) !== -1) {
+            syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
+            localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
+        }
+        var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
+        
+        if (syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
+        if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
+        if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
+        
+        // Render
+        renderCards();
+        updateSentenceBuilder();
+        renderProfileSelector();
+        renderProfilesList();
+        
+        loadTelepatixConfig();
+        
+        if (modalProfiles) modalProfiles.classList.remove('open');
+    });
+}
+window.switchProfile = switchProfile;
+
+// Load app data
+function init() {
+    // Refresh DOM element references
+    cardsGrid = document.getElementById('cards-grid');
+    sentenceList = document.getElementById('sentence-list');
+    searchInput = document.getElementById('search-input');
+    btnClearSearch = document.getElementById('btn-clear-search');
+    btnSpeak = document.getElementById('btn-speak');
+    btnClearAll = document.getElementById('btn-clear-all');
+    btnToggleTheme = document.getElementById('btn-toggle-theme');
+    btnToggleLowVision = document.getElementById('btn-toggle-low-vision');
+    seletorVozes = document.getElementById('seletor-vozes');
+    seletorIdioma = document.getElementById('seletor-idioma');
+    btnToggleLayout = document.getElementById('btn-toggle-layout');
+    btnSettings = document.getElementById('btn-settings');
+    modalSettings = document.getElementById('modal-settings');
+    isAppLocked = localStorage.getItem('caa_app_locked') === 'true';
+    updateLockUI();
+    updatePremiumUI();
+
+    loadProfiles();
+    renderProfileSelector();
+    renderProfilesList();
+
+    // Migrate old settings if existing
+    var oldCards = localStorage.getItem('caa_custom_cards');
+    if (oldCards && !localStorage.getItem('caa_custom_cards_default')) {
+        localStorage.setItem('caa_custom_cards_default', oldCards);
+    }
+    var oldTheme = localStorage.getItem('caa_theme');
+    if (oldTheme && !localStorage.getItem('caa_theme_default')) {
+        localStorage.setItem('caa_theme_default', oldTheme);
+    }
+    var oldDriveId = localStorage.getItem('caa_sync_drive_id');
+    if (oldDriveId && !localStorage.getItem('caa_sync_drive_id_default')) {
+        localStorage.setItem('caa_sync_drive_id_default', oldDriveId);
+    }
+    var oldScriptUrl = localStorage.getItem('caa_sync_apps_script_url');
+    if (oldScriptUrl && !localStorage.getItem('caa_sync_apps_script_url_default')) {
+        localStorage.setItem('caa_sync_apps_script_url_default', oldScriptUrl);
+    }
+    var oldAutoBackup = localStorage.getItem('caa_auto_backup');
+    if (oldAutoBackup && !localStorage.getItem('caa_auto_backup_default')) {
+        localStorage.setItem('caa_auto_backup_default', oldAutoBackup);
+    }
+
+    dbHelper.init().then(function() {
+        return loadProfileCards(currentProfileId);
+    }).then(function(loadedCards) {
+        setAndCleanCards(loadedCards);
+        // Force save to IndexedDB just in case it was migrated from localStorage
+        saveCardsToStorage(false);
+
+        // Set Theme
+        var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+        loadGridColsConfig();
+        loadFitzgeraldConfig();
+        loadGridColsConfig();
+        loadFitzgeraldConfig();
+
+        // Set Low Vision Mode
+        var lowVision = localStorage.getItem('caa_low_vision_' + currentProfileId) === 'true';
+        if (lowVision) {
+            document.body.classList.add('low-vision');
+        } else {
+            document.body.classList.remove('low-vision');
+        }
+        updateLowVisionIcon(lowVision);
+
+        // Load profile language
+        loadProfileLanguage();
+
+        // Load system voices
+        carregarVozes();
+        carregarVozConfig();
+        carregarLayoutModeConfig();
+        carregarRecentes();
+        carregarEstatisticas();
+
+        // Increment Access Counter
+        var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
+        accesses++;
+        localStorage.setItem('caa_access_count', accesses.toString());
+        if (accessCounterVal) {
+            accessCounterVal.textContent = accesses;
+        }
+
+        // Render interface elements
+        renderCards();
+        updateSentenceBuilder();
+
+        // Setup event listeners
+        setupEventListeners();
+
+        // Load TelepatiX configurations
+        loadTelepatixConfig();
+
+        // Check Google Drive & Apps Script Sync on Startup
+        var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
+        var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+        var oldUrls = [
+            'https://script.google.com/macros/s/AKfycbz4-E-jnRD9n0cQXf3ttmiLJWE9MMyQCl7RS_Tl5Va2f5O21jzYDau9vuW8x3Ro0fVh/exec',
+            'https://script.google.com/macros/s/AKfycbxKaNfrudkvByEXalv30gB2FdwBsDfih_Awwo2kItRT4oMszKySDtQT3VfxQZ9x5ghp/exec',
+            'https://script.google.com/macros/s/AKfycbzd4p77phKJbytTG2qdg7BIRGabxWWAh-hopTP2KZOjkgNUj2pmKt6lX4gLejlorE4V/exec',
+            'https://script.google.com/macros/s/AKfycby3c-3VUtkTYMxAaQipkA1A1QqVau2_Y2Lxr7fL68rGmWwMewn-6LlsfwHQnOx7LRje/exec'
+        ];
+        if (!syncAppsScriptUrl || oldUrls.indexOf(syncAppsScriptUrl) !== -1) {
+            syncAppsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
+            localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, DEFAULT_APPS_SCRIPT_URL);
+        }
+        var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
+
+        if (syncDriveId && syncDriveIdInput) syncDriveIdInput.value = syncDriveId;
+        if (syncAppsScriptUrlInput) syncAppsScriptUrlInput.value = syncAppsScriptUrl;
+        if (checkAutoBackup) checkAutoBackup.checked = autoBackup;
+
+        var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+        var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+
+        // Record Access in Cloud synchronously if online
+        if (navigator.onLine && syncAppsScriptUrl) {
+            ajaxRequest(syncAppsScriptUrl, 'POST', { action: 'recordAccess', profile: profileName, accesses: accesses }).catch(function(e) {
+                console.warn('Erro ao registrar acesso na nuvem:', e);
+            });
+        }
+
+        if (navigator.onLine) {
+            var hasCustomUrl = !!localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId);
+            var isNewDevice = !localStorage.getItem('caa_custom_cards_' + currentProfileId);
+            if (syncAppsScriptUrl && (hasCustomUrl || isNewDevice)) {
+                syncWithAppsScript(syncAppsScriptUrl);
+            } else if (syncDriveId) {
+                syncWithGoogleDrive(syncDriveId);
+            }
+        } else if (syncStatusText) {
+            syncStatusText.className = 'sync-status-text success';
+            syncStatusText.textContent = 'Offline (Usando figuras salvas em cache) 💾';
+        }
+        
+        checkInAppBrowser();
+    });
+}
+
+// Check if app is open inside Instagram or Facebook WebViews to warn the user
+function checkInAppBrowser() {
+    var ua = navigator.userAgent || navigator.vendor || window.opera;
+    var isInstagram = /Instagram/i.test(ua);
+    var isFB = /FBAN|FBAV/i.test(ua);
+    
+    // Check if it is a general WebView on Android or iOS
+    var isAndroidWebView = /wv\)/.test(ua) || (/Android/i.test(ua) && /Version\/[0-9.]+/i.test(ua));
+    var isIOSWebView = /iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua);
+    
+    if (isInstagram || isFB || isAndroidWebView || isIOSWebView) {
+        var lang = getProfileLanguage();
+        var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
+        var msg = dict.in_app_warning || '⚠️ Para o áudio funcionar, toque nos 3 pontinhos e escolha "Abrir no Navegador".';
+        
+        var banner = document.createElement('div');
+        banner.id = 'in-app-browser-banner';
+        banner.style.cssText = 'background-color: #f59e0b; color: #ffffff; padding: 12px 16px; text-align: center; font-family: var(--font-primary); font-size: 0.95rem; font-weight: 700; position: sticky; top: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-bottom: 2px solid #d97706; line-height: 1.4;';
+        
+        banner.innerHTML = '<span style="flex-grow: 1; text-align: left;">' + msg + '</span>' +
+                           '<button id="btn-close-inapp-banner" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem; font-weight: bold; padding: 0 10px; display: flex; align-items: center; line-height: 1;">&times;</button>';
+        
+        document.body.insertBefore(banner, document.body.firstChild);
+        
+        var closeBtn = document.getElementById('btn-close-inapp-banner');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                banner.style.display = 'none';
+            });
+        }
+    }
+}
+
+function saveCardsToStorage(triggerCloudUpload) {
+    if (triggerCloudUpload === undefined) triggerCloudUpload = true;
+    localStorage.setItem('caa_custom_cards_' + currentProfileId, JSON.stringify(cards));
+    if (dbHelper.db) {
+        dbHelper.set('caa_custom_cards_' + currentProfileId, cards);
+    }
+    if (triggerCloudUpload) {
+        uploadBackupToCloud();
+    }
+}
+
+function toggleFavorite(cardIndex) {
+    if (cardIndex >= 0 && cardIndex < cards.length) {
+        var card = cards[cardIndex];
+        card.favorite = !card.favorite;
+        saveCardsToStorage();
+        renderCards();
+    }
+}
+
+function switchFolder(folderId) {
+    if (currentLayoutMode === 'grid') return;
+    currentFolder = folderId;
+    renderCards();
+}
+window.switchFolder = switchFolder;
+
+function updateBreadcrumbs() {
+    var container = document.getElementById('breadcrumb-container');
+    var pathEl = document.getElementById('breadcrumb-path');
+    if (!container || !pathEl) return;
+
+    if (currentLayoutMode === 'grid') {
+        container.style.display = 'none';
+        return;
+    }
+
+    var lang = getProfileLanguage();
+    var homeText = 'Página Inicial';
+    if (lang === 'en') homeText = 'Home';
+    else if (lang === 'es') homeText = 'Página Inicial';
+
+    if (currentFolder === 'root') {
+        container.style.display = 'flex';
+        pathEl.innerHTML = '<span>🏠 ' + homeText + '</span>';
+    } else {
+        container.style.display = 'flex';
+        var catName = getCategoryName(currentFolder);
+        if (currentFolder === 'custom') {
+            catName = getCategoryName('custom');
+        } else if (currentFolder === 'pain') {
+            catName = getCategoryName('pain');
+        }
+        pathEl.innerHTML = '<span style="cursor: pointer;" onclick="switchFolder(\'root\')">🏠 ' + homeText + '</span> <span style="margin: 0 4px; opacity: 0.5;">&gt;</span> <span style="color: var(--color-primary);">' + catName + '</span>';
+    }
+}
+
+// Render Main AAC Cards Grid
+function renderCards() {
+    var cardsGrid = document.getElementById('cards-grid');
+    if (!cardsGrid) return;
+    var searchQuery = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
+
+    // Se houver busca ativa, mostra todas as figuras correspondentes sem estrutura de pasta
+    if (searchQuery !== '') {
+        var breadcrumbContainer = document.getElementById('breadcrumb-container');
+        if (breadcrumbContainer) {
+            breadcrumbContainer.style.display = 'none';
+        }
+
+        var filtered = cards.filter(function(card) {
+            var textPT = card.text.toLowerCase();
+            var textTranslated = getCardText(card).toLowerCase();
+            return textPT.indexOf(searchQuery) !== -1 || textTranslated.indexOf(searchQuery) !== -1;
+        });
+
+        if (filtered.length === 0) {
+            var lang = getProfileLanguage();
+            var noResultsMsg = 'Nenhuma figura encontrada para';
+            if (lang === 'en') noResultsMsg = 'No figure found for';
+            else if (lang === 'es') noResultsMsg = 'No se encontró figura para';
+
+            cardsGrid.innerHTML = 
+                '<div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary); width: 100%;">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 12px; display: block; color: var(--text-secondary);"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>' +
+                    '<p>' + noResultsMsg + ' "' + searchQuery + '".</p>' +
+                '</div>';
+            return;
+        }
+
+        // Group cards by category
+        var cardsByCategory = {};
+        var favoriteCards = filtered.filter(function(card) { return card.favorite === true; });
+        if (favoriteCards.length > 0) {
+            cardsByCategory['favorites'] = favoriteCards;
+        }
+
+        filtered.forEach(function(card) {
+            var cat = card.category || 'custom';
+            if (cat === 'drink') cat = 'food';
+            if (!cardsByCategory[cat]) {
+                cardsByCategory[cat] = [];
+            }
+            cardsByCategory[cat].push(card);
+        });
+
+        var html = '';
+        var categoriesOrder = CATEGORIES.filter(function(c) { return c.id !== 'all'; }).concat([{ id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }]);
+
+        categoriesOrder.forEach(function(cat) {
+            var catCards = cardsByCategory[cat.id];
+            if (catCards && catCards.length > 0) {
+                html += 
+                    '<div class="category-group-header">' +
+                        '<h3><span>' + cat.icon + '</span> ' + getCategoryName(cat.id).toUpperCase() + '</h3>' +
+                    '</div>';
+                
+                catCards.forEach(function(card) {
+                    var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
+                    var catClass = catObj ? catObj.class : 'cat-custom';
+                    var catName = catObj ? getCategoryName(catObj.id) : getCategoryName('custom');
+                    
+                    var visualContent = '';
+                    if (card.type === 'emoji') {
+                        visualContent = '<div class="card-emoji">' + card.value + '</div>';
+                    } else {
+                        visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+                    }
+
+                    var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
+                    var isFav = card.favorite === true;
+                    var favClass = isFav ? 'active' : '';
+                    var favStarSymbol = isFav ? '★' : '☆';
+
+                    html += 
+                        '<div class="aac-card ' + catClass + '" data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                            '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                            '<span class="card-category-tag">' + catName + '</span>' +
+                            visualContent +
+                            '<span>' + getCardText(card) + '</span>' +
+                        '</div>';
+                });
+            }
+        });
+
+        cardsGrid.innerHTML = html;
+        return;
+    }
+
+    // Se NÃO houver busca ativa, renderiza pastas ou conteúdo da pasta ativa
+    updateBreadcrumbs();
+
+    var html = '';
+
+    if (currentLayoutMode === 'grid') {
+        var cardsByCategory = {};
+        var favoriteCards = cards.filter(function(card) { return card.favorite === true; });
+        if (favoriteCards.length > 0) {
+            cardsByCategory['favorites'] = favoriteCards;
+        }
+
+        cards.forEach(function(card) {
+            var cat = card.category || 'custom';
+            if (cat === 'drink') cat = 'food';
+            if (!cardsByCategory[cat]) {
+                cardsByCategory[cat] = [];
+            }
+            cardsByCategory[cat].push(card);
+        });
+
+        var categoriesOrder = CATEGORIES.filter(function(c) { return c.id !== 'all'; }).concat([{ id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }]);
+
+        categoriesOrder.forEach(function(cat) {
+            var catCards = cardsByCategory[cat.id];
+            if (catCards && catCards.length > 0) {
+                html += 
+                    '<div class="category-group-header">' +
+                        '<h3><span>' + cat.icon + '</span> ' + getCategoryName(cat.id).toUpperCase() + '</h3>' +
+                    '</div>';
+                
+                catCards.forEach(function(card) {
+                    var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
+                    var catClass = catObj ? catObj.class : 'cat-custom';
+                    var catName = catObj ? getCategoryName(catObj.id) : getCategoryName('custom');
+                    
+                    var visualContent = '';
+                    if (card.type === 'emoji') {
+                        visualContent = '<div class="card-emoji">' + card.value + '</div>';
+                    } else {
+                        visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+                    }
+
+                    var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
+                    var isFav = card.favorite === true;
+                    var favClass = isFav ? 'active' : '';
+                    var favStarSymbol = isFav ? '★' : '☆';
+
+                    var draggableAttr = isReorderModeActive ? 'draggable="true"' : '';
+                    
+                    var shortcutBadgeHtml = '';
+                    if (cat.id === 'favorites') {
+                        var favIndex = favoriteCards.findIndex(function(c) { return c.text === card.text; });
+                        if (favIndex >= 0 && favIndex < 9) {
+                            shortcutBadgeHtml = '<div class="card-shortcut-badge">' + (favIndex + 1) + '</div>';
+                        }
+                    }
+
+                    var apiBadgeHtml = '';
+                    if (card.fromApi) {
+                        apiBadgeHtml = '<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>';
+                    }
+
+                    html += 
+                        '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                            shortcutBadgeHtml +
+                            apiBadgeHtml +
+                            '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                            '<span class="card-category-tag">' + catName + '</span>' +
+                            visualContent +
+                            '<span>' + getCardText(card) + '</span>' +
+                        '</div>';
+                });
+            }
+        });
+
+        cardsGrid.innerHTML = html;
+        if (isTelepatixActive) {
+            scanIndex = 0;
+            updateScanList();
+            highlightCurrentScanElement();
+        }
+        return;
+    }
+
+    if (currentFolder === 'root') {
+        // Renderizar pastas de categorias
+        var categoriesOrder = CATEGORIES.filter(function(c) { return c.id !== 'all'; })
+            .concat([{ id: 'custom', name: 'Personalizados', icon: '🎨', class: 'cat-custom' }]);
+
+        categoriesOrder.forEach(function(cat) {
+            var folderName = getCategoryName(cat.id);
+            html += 
+                '<div class="aac-card folder-card ' + cat.class + '" data-folder-id="' + cat.id + '">' +
+                    '<span class="card-category-tag">' + folderName + '</span>' +
+                    '<div class="card-emoji">' + cat.icon + '</div>' +
+                    '<span>' + folderName + '</span>' +
+                '</div>';
+        });
+
+        cardsGrid.innerHTML = html;
+        return;
+    }
+
+    // Renderizar conteúdo de uma pasta específica
+    var backText = 'Voltar';
+    var lang = getProfileLanguage();
+    if (lang === 'en') backText = 'Back';
+    else if (lang === 'es') backText = 'Volver';
+
+    // Primeiro item: Cartão de Voltar
+    html += 
+        '<div class="aac-card back-card" data-action="back">' +
+            '<div class="card-emoji">⬅️</div>' +
+            '<span>' + backText + '</span>' +
+        '</div>';
+
+    // Filtrar cartões da pasta atual
+    var folderCards = [];
+    if (currentFolder === 'favorites') {
+        folderCards = cards.filter(function(card) { return card.favorite === true; });
+    } else if (currentFolder === 'food') {
+        folderCards = cards.filter(function(card) { return (card.category === 'food' || card.category === 'drink') && !isDrinkCard(card); });
+    } else if (currentFolder === 'drink') {
+        folderCards = cards.filter(function(card) { return (card.category === 'food' || card.category === 'drink') && isDrinkCard(card); });
+    } else {
+        folderCards = cards.filter(function(card) { return (card.category || 'custom') === currentFolder; });
+    }
+
+    if (folderCards.length === 0) {
+        var emptyMsg = 'Esta pasta está vazia.';
+        if (lang === 'en') emptyMsg = 'This folder is empty.';
+        else if (lang === 'es') emptyMsg = 'Esta carpeta está vacía.';
+
+        html += 
+            '<div style="text-align: center; padding: 40px; color: var(--text-secondary); width: 100%; grid-column: 2 / -1;">' +
+                '<p>' + emptyMsg + '</p>' +
+            '</div>';
+    } else {
+        folderCards.forEach(function(card) {
+            var catObj = CATEGORIES.find(function(c) { return c.id === (card.category || 'custom'); });
+            var catClass = catObj ? catObj.class : 'cat-custom';
+            var catName = catObj ? getCategoryName(catObj.id) : getCategoryName('custom');
+            
+            var visualContent = '';
+            if (card.type === 'emoji') {
+                visualContent = '<div class="card-emoji">' + card.value + '</div>';
+            } else {
+                visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+            }
+
+            var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
+            var isFav = card.favorite === true;
+            var favClass = isFav ? 'active' : '';
+            var favStarSymbol = isFav ? '★' : '☆';
+
+            var shortcutBadgeHtml = '';
+            if (currentFolder === 'favorites') {
+                var favIndex = folderCards.findIndex(function(c) { return c.text === card.text; });
+                if (favIndex >= 0 && favIndex < 9) {
+                    shortcutBadgeHtml = '<div class="card-shortcut-badge">' + (favIndex + 1) + '</div>';
+                }
+            }
+
+            var draggableAttr = (isReorderModeActive && currentFolder !== 'root') ? 'draggable="true"' : '';
+            var apiBadgeHtml = '';
+            if (card.fromApi) {
+                apiBadgeHtml = '<div class="card-api-badge" style="position: absolute; bottom: 5px; right: 5px; background-color: var(--color-primary); color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; z-index: 5; opacity: 0.95; pointer-events: none; letter-spacing: 0.5px;">API</div>';
+            }
+
+            html += 
+                '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                    shortcutBadgeHtml +
+                    apiBadgeHtml +
+                    '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                    '<span class="card-category-tag">' + catName + '</span>' +
+                    visualContent +
+                    '<span>' + getCardText(card) + '</span>' +
+                '</div>';
+        });
+    }
+
+    cardsGrid.innerHTML = html;
+
+    if (isTelepatixActive) {
+        scanIndex = 0;
+        updateScanList();
+        highlightCurrentScanElement();
+    }
+}
+
+// Add a card to the sentence with a maximum limit of 7 (rolling off the oldest card)
+function addCardToSentence(card) {
+    if (selectedCards.length >= 7) {
+        selectedCards.shift(); // Remove the oldest card
+    }
+    selectedCards.push(card);
+    updateSentenceBuilder();
+    playCardVoice(card);
+    registrarUsoFigura(card.text);
+}
+
+// Update Sentence Builder Output
+function updateSentenceBuilder() {
+    sentenceList.innerHTML = selectedCards.map(function(card, idx) {
+        var visualContent = '';
+        if (card.type === 'emoji') {
+            visualContent = '<div class="card-emoji">' + card.value + '</div>';
+        } else {
+            visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+        }
+        return '<div class="sentence-card" data-idx="' + idx + '">' +
+                visualContent +
+                '<span>' + getCardText(card) + '</span>' +
+            '</div>';
+    }).join('');
+
+    // Update disabled state and visibility of control buttons
+    var isEmpty = selectedCards.length === 0;
+    var controlsEl = document.querySelector('.sentence-controls');
+    if (controlsEl) {
+        if (isEmpty) {
+            controlsEl.classList.add('d-none');
+        } else {
+            controlsEl.classList.remove('d-none');
+        }
+    }
+
+    if (btnSpeak) btnSpeak.disabled = isEmpty;
+    if (btnShareWhatsapp) btnShareWhatsapp.disabled = isEmpty;
+    if (btnClearAll) btnClearAll.disabled = isEmpty;
+
+    // Update sentence counter
+    var counterEl = document.getElementById('sentence-counter');
+    if (counterEl) {
+        counterEl.textContent = selectedCards.length + ' / 7';
+    }
+
+    updateFloatingBar();
+
+    if (isTelepatixActive) {
+        updateScanList();
+        highlightCurrentScanElement();
+    }
+}
+
+// Update Floating Bottom Bar visibility & preview
+function updateFloatingBar() {
+    if (!floatingBottomBar) return;
+
+    if (selectedCards.length > 0 && window.scrollY > 150) {
+        floatingBottomBar.classList.remove('d-none');
+        
+        // Build preview text with emojis
+        var textPreview = selectedCards.map(function(c) {
+            if (c.type === 'emoji') {
+                return c.value + ' ' + getCardText(c);
+            }
+            return getCardText(c);
+        }).join(' + ');
+        
+        floatingSentencePreview.textContent = textPreview;
+    } else {
+        floatingBottomBar.classList.add('d-none');
+    }
+}
+
+// Sync figures list with public Google Drive JSON file
+function syncWithGoogleDrive(fileId, showFeedback) {
+    if (showFeedback === undefined) showFeedback = false;
+    if (!fileId) {
+        if (showFeedback && syncStatusText) {
+            syncStatusText.className = 'sync-status-text error';
+            syncStatusText.textContent = 'Por favor, insira o ID do arquivo.';
+        }
+        return Promise.resolve(false);
+    }
+
+    if (syncStatusText) {
+        syncStatusText.className = 'sync-status-text loading';
+        syncStatusText.textContent = 'Sincronizando figuras... 🔄';
+    }
+    showSkeletonLoading();
+
+    var url;
+    if (fileId.indexOf('http://') === 0 || fileId.indexOf('https://') === 0) {
+        url = fileId;
+    } else {
+        url = 'https://drive.google.com/uc?export=download&id=' + fileId;
+    }
+
+    return ajaxRequest(url)
+        .then(function(remoteCards) {
+            if (!Array.isArray(remoteCards)) {
+                throw new Error('O arquivo carregado não é uma lista JSON válida.');
+            }
+
+            var prevRemoteCardsStr = localStorage.getItem('caa_remote_cards');
+            var prevRemoteCards = [];
+            if (prevRemoteCardsStr) {
+                try {
+                    prevRemoteCards = JSON.parse(prevRemoteCardsStr);
+                } catch (e) {
+                    console.error('Erro ao ler figuras salvas anteriores: ', e);
+                }
+            }
+
+            var addedCards = remoteCards.filter(function(newCard) {
+                return !prevRemoteCards.some(function(oldCard) { return oldCard.text === newCard.text; });
+            });
+
+            var removedCards = prevRemoteCards.filter(function(oldCard) {
+                return !remoteCards.some(function(newCard) { return newCard.text === oldCard.text; });
+            });
+
+            localStorage.setItem('caa_remote_cards', JSON.stringify(remoteCards));
+            localStorage.setItem('caa_sync_drive_id', fileId);
+
+            var customLocalCards = cards.filter(function(c) {
+                return !DEFAULT_CARDS.some(function(d) { return d.text === c.text; });
+            });
+            
+            var mergedCards = customLocalCards.concat(remoteCards);
+            
+            cards = mergedCards;
+            saveCardsToStorage();
+            renderCards();
+
+            if (prevRemoteCards.length > 0 && (addedCards.length > 0 || removedCards.length > 0)) {
+                showChangelogModal(addedCards, removedCards);
+            }
+
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Sincronizado com sucesso! (Nuvem) ✅';
+            }
+            return true;
+        })
+        .catch(function(error) {
+            console.error('Erro na sincronização: ', error);
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text error';
+                syncStatusText.textContent = 'Erro ao sincronizar. Verifique a internet e o ID. ❌';
+            }
+            renderCards();
+            if (showFeedback) {
+                showCustomAlert('Falha na sincronização. Certifique-se de que o arquivo no Google Drive está compartilhado como "Qualquer pessoa com o link" (público) e o ID está correto.');
+            }
+            return false;
+        });
+}
+
+// Wrapper function to fetch data correctly depending on protocol
+function fetchSyncData(url) {
+    if (window.location.protocol === 'file:') {
+        return fetchJSONP(url);
+    }
+
+    return ajaxRequest(url).catch(function(e) {
+        console.warn('Standard fetch failed, falling back to JSONP: ', e);
+        return fetchJSONP(url);
+    });
+}
+
+// Helper function for JSONP fetch (to bypass CORS on file:// protocol)
+function fetchJSONP(url, callbackName) {
+    if (callbackName === undefined) {
+        callbackName = 'callback_' + Math.round(new Date().getTime() * Math.random());
+    }
+    return new Promise(function(resolve, reject) {
+        var script = document.createElement('script');
+        
+        window[callbackName] = function(data) {
+            resolve(data);
+            cleanup();
+        };
+
+        script.onerror = function() {
+            reject(new Error('Falha ao se conectar com o servidor do Google (CORS/Redirecionamento).'));
+            cleanup();
+        };
+
+        var connector = url.indexOf('?') >= 0 ? '&' : '?';
+        script.src = url + connector + 'callback=' + callbackName;
+        
+        document.body.appendChild(script);
+
+        function cleanup() {
+            if (script.parentNode) {
+                script.parentNode.removeChild(script);
+            }
+            delete window[callbackName];
+        }
+    });
+}
+
+// Sync figures list with Google Apps Script Web App (GET via JSONP)
+function syncWithAppsScript(scriptUrl, showFeedback) {
+    if (showFeedback === undefined) showFeedback = false;
+    var urlToUse = scriptUrl || localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+    if (!urlToUse) return Promise.resolve(false);
+
+    setCloudStatus('loading');
+    if (syncStatusText) {
+        syncStatusText.className = 'sync-status-text loading';
+        syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
+    }
+    showSkeletonLoading();
+
+    var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+    var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+    var connector = urlToUse.indexOf('?') >= 0 ? '&' : '?';
+    var urlWithProfile = urlToUse + connector + 'profile=' + encodeURIComponent(profileName);
+
+    return fetchSyncData(urlWithProfile)
+        .then(function(remoteCards) {
+            if (!Array.isArray(remoteCards)) {
+                throw new Error('O arquivo retornado não é uma lista JSON válida.');
+            }
+
+            // Se o backup na nuvem está vazio, significa que é um perfil novo ou sem backup ainda.
+            // Em vez de apagar os dados locais, nós salvamos o estado local atual na nuvem.
+            if (remoteCards.length === 0) {
+                setCloudStatus('success');
+                if (syncStatusText) {
+                    syncStatusText.className = 'sync-status-text success';
+                    syncStatusText.textContent = 'Sincronizado! (Backup criado na nuvem) ✅';
+                }
+                uploadBackupToCloud();
+                renderCards();
+                return true;
+            }
+
+            var prevCardsStr = localStorage.getItem('caa_custom_cards_' + currentProfileId);
+            var prevCards = [];
+            if (prevCardsStr) {
+                try { prevCards = JSON.parse(prevCardsStr); } catch (e) {}
+            }
+
+            var addedCards = remoteCards.filter(function(newCard) {
+                return !prevCards.some(function(oldCard) { return oldCard.text === newCard.text; });
+            });
+            var removedCards = prevCards.filter(function(oldCard) {
+                return !remoteCards.some(function(newCard) { return newCard.text === oldCard.text; });
+            });
+
+            // Merge local custom cards that are missing from remoteCards to prevent data loss
+            var missingLocalCards = prevCards.filter(function(localCard) {
+                var isDefault = DEFAULT_CARDS.some(function(d) { return d.text === localCard.text; });
+                if (isDefault) return false;
+                var inRemote = remoteCards.some(function(rc) { return rc.text === localCard.text; });
+                return !inRemote;
+            });
+            var mergedRemoteCards = remoteCards.concat(missingLocalCards);
+
+            setAndCleanCards(mergedRemoteCards);
+            
+            // If we merged missing local cards, trigger upload to keep cloud updated
+            var hasMissingLocalMerged = missingLocalCards.length > 0;
+            saveCardsToStorage(hasMissingLocalMerged);
+            renderCards();
+            renderManageCustomCards();
+
+            if (prevCards.length > 0 && (addedCards.length > 0 || removedCards.length > 0)) {
+                showChangelogModal(addedCards, removedCards);
+            }
+
+            setCloudStatus('success');
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Sincronizado com sucesso! ✅';
+            }
+            if (showFeedback) {
+                showCustomAlert('Sincronização concluída com sucesso! Suas figuras estão atualizadas. ☁️👍');
+            }
+            return true;
+        })
+        .catch(function(error) {
+            console.error('Erro na sincronização automática: ', error);
+            setCloudStatus('error');
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text error';
+                syncStatusText.textContent = 'Erro ao sincronizar com o Apps Script. ❌';
+            }
+            renderCards();
+            if (showFeedback) {
+                showCustomAlert('Falha ao sincronizar com o Google Apps Script. Verifique a URL e a internet.');
+            }
+            return false;
+        });
+}
+
+// Sync with Google Drive (JSON Backup File download)
+function syncWithGoogleDrive(fileId, showFeedback) {
+    if (showFeedback === undefined) showFeedback = false;
+    var driveFileId = fileId || localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
+    if (!driveFileId) return Promise.resolve(false);
+
+    if (syncStatusText) {
+        syncStatusText.className = 'sync-status-text loading';
+        syncStatusText.textContent = 'Sincronizando com o Drive... 🔄';
+    }
+    showSkeletonLoading();
+
+    var corsBypassUrl = 'https://docs.google.com/uc?export=download&id=' + driveFileId;
+
+    return fetchSyncData(corsBypassUrl)
+        .then(function(remoteCards) {
+            if (!Array.isArray(remoteCards)) {
+                throw new Error('O arquivo retornado não é uma lista JSON válida.');
+            }
+
+            var prevCardsStr = localStorage.getItem('caa_custom_cards_' + currentProfileId);
+            var prevCards = [];
+            if (prevCardsStr) {
+                try { prevCards = JSON.parse(prevCardsStr); } catch (e) {}
+            }
+
+            var addedCards = remoteCards.filter(function(newCard) {
+                return !prevCards.some(function(oldCard) { return oldCard.text === newCard.text; });
+            });
+            var removedCards = prevCards.filter(function(oldCard) {
+                return !remoteCards.some(function(newCard) { return newCard.text === oldCard.text; });
+            });
+
+            // Merge local custom cards that are missing from remoteCards to prevent data loss
+            var missingLocalCards = prevCards.filter(function(localCard) {
+                var isDefault = DEFAULT_CARDS.some(function(d) { return d.text === localCard.text; });
+                if (isDefault) return false;
+                var inRemote = remoteCards.some(function(rc) { return rc.text === localCard.text; });
+                return !inRemote;
+            });
+            var mergedRemoteCards = remoteCards.concat(missingLocalCards);
+
+            setAndCleanCards(mergedRemoteCards);
+            
+            // If we merged missing local cards, trigger upload to keep cloud updated
+            var hasMissingLocalMerged = missingLocalCards.length > 0;
+            saveCardsToStorage(hasMissingLocalMerged);
+            renderCards();
+            renderManageCustomCards();
+
+            if (prevCards.length > 0 && (addedCards.length > 0 || removedCards.length > 0)) {
+                showChangelogModal(addedCards, removedCards);
+            }
+
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Sincronizado com sucesso! ✅';
+            }
+            if (showFeedback) {
+                showCustomAlert('Sincronização concluída com sucesso! Suas figuras estão atualizadas. ☁️👍');
+            }
+            return true;
+        })
+        .catch(function(error) {
+            console.error('Erro na sincronização automática: ', error);
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text error';
+                syncStatusText.textContent = 'Erro ao sincronizar. Verifique a internet e o ID. ❌';
+            }
+            renderCards();
+            if (showFeedback) {
+                showCustomAlert('Falha na sincronização. Certifique-se de que o arquivo no Google Drive está compartilhado como "Qualquer pessoa com o link" (público) e o ID está correto.');
+            }
+            return false;
+        });
+}
+
+// Upload backup to Google Apps Script Web App (POST)
+function uploadBackupToCloud() {
+    var scriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+    var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
+
+    if (!scriptUrl || !autoBackup || !navigator.onLine) return Promise.resolve();
+
+    setCloudStatus('loading');
+    if (syncStatusText) {
+        syncStatusText.className = 'sync-status-text loading';
+        syncStatusText.textContent = 'Enviando backup para nuvem... 🔄';
+    }
+
+    var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+    var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+    var connector = scriptUrl.indexOf('?') >= 0 ? '&' : '?';
+    var uploadUrl = scriptUrl + connector + 'profile=' + encodeURIComponent(profileName);
+
+    return ajaxRequest(uploadUrl, 'POST', cards)
+        .then(function() {
+            setCloudStatus('success');
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Backup salvo na nuvem! ✅';
+            }
+        })
+        .catch(function(error) {
+            console.log('Envio de backup concluído/processado');
+            setCloudStatus('success');
+            if (syncStatusText) {
+                syncStatusText.className = 'sync-status-text success';
+                syncStatusText.textContent = 'Backup enviado! ✅';
+            }
+        });
+}
+
+// Show popup explaining what changed in the cloud figures
+function showChangelogModal(addedCards, removedCards) {
+    if (!modalChangelog) return;
+
+    // Populate added list
+    if (addedCards.length > 0) {
+        changelogAddedSection.classList.remove('d-none');
+        changelogAddedList.innerHTML = addedCards.map(function(c) {
+            var displayVal = c.type === 'emoji' ? c.value + ' ' : '';
+            return '<li>' + displayVal + c.text + '</li>';
+        }).join('');
+    } else {
+        changelogAddedSection.classList.add('d-none');
+    }
+
+    // Populate removed list
+    if (removedCards.length > 0) {
+        changelogRemovedSection.classList.remove('d-none');
+        changelogRemovedList.innerHTML = removedCards.map(function(c) {
+            var displayVal = c.type === 'emoji' ? c.value + ' ' : '';
+            return '<li>' + displayVal + c.text + '</li>';
+        }).join('');
+    } else {
+        changelogRemovedSection.classList.add('d-none');
+    }
+
+    // Close tutor settings modal to prevent layout stack confusion
+    if (modalSettings) modalSettings.classList.remove('open');
+
+    // Open Changelog Modal
+    modalChangelog.classList.add('open');
+}
+
+// Listen to scroll to show/hide bottom bar
+window.addEventListener('scroll', function() {
+    updateFloatingBar();
+});
+
+// Keep references to utterances in a global array to prevent garbage collection on older iOS/Safari
+window.activeUtterances = [];
+var speechUnlocked = false;
+
+// Function to prime/unlock speech synthesis on first user gesture
+function unlockSpeech() {
+    if (speechUnlocked) return;
+    try {
+        var u = new SpeechSynthesisUtterance('Olá');
+        u.volume = 0;
+        window.activeUtterances.push(u);
+        u.onend = function() {
+            var idx = window.activeUtterances.indexOf(u);
+            if (idx !== -1) window.activeUtterances.splice(idx, 1);
+        };
+        synth.speak(u);
+        speechUnlocked = true;
+        console.log('Speech synthesis primed/unlocked.');
+    } catch(e) {
+        console.warn('Erro ao desbloquear fala: ', e);
+    }
+}
+
+// Bind unlock to first interaction
+document.addEventListener('click', unlockSpeech, { once: true });
+document.addEventListener('touchstart', unlockSpeech, { once: true });
+
+// Speak text using Web Speech Synthesis API
+function speakText(text) {
+    if (!text) return;
+    
+    if (synth) {
+        try {
+            if (synth.paused) {
+                synth.resume();
+            }
+            if (synth.speaking || synth.pending) {
+                synth.cancel();
+            }
+        } catch (e) {
+            console.warn('Erro ao limpar fila de voz: ', e);
+        }
+    }
+
+    var lang = getProfileLanguage();
+    var utterance = new SpeechSynthesisUtterance(text);
+    if (lang === 'en') {
+        utterance.lang = 'en-US';
+    } else if (lang === 'es') {
+        utterance.lang = 'es-ES';
+    } else {
+        utterance.lang = 'pt-BR';
+    }
+    
+    // Configura velocidade (rate) e tom (pitch) com validações de limites
+    var savedRate = localStorage.getItem('caa_voice_rate_' + currentProfileId) || '1.0';
+    var savedPitch = localStorage.getItem('caa_voice_pitch_' + currentProfileId) || '1.0';
+    
+    var rateVal = parseFloat(savedRate);
+    if (isNaN(rateVal) || rateVal < 0.1 || rateVal > 10) rateVal = 1.0;
+    utterance.rate = rateVal;
+    
+    var pitchVal = parseFloat(savedPitch);
+    if (isNaN(pitchVal) || pitchVal < 0.0 || pitchVal > 2.0) pitchVal = 1.0;
+    utterance.pitch = pitchVal;
+    
+    utterance.volume = 1.0;
+    
+    // Save reference to prevent garbage collection
+    window.activeUtterances.push(utterance);
+    
+    var cleanup = function() {
+        var idx = window.activeUtterances.indexOf(utterance);
+        if (idx !== -1) {
+            window.activeUtterances.splice(idx, 1);
+        }
+    };
+    
+    utterance.onend = cleanup;
+    utterance.onerror = cleanup;
+    
+    // Choose voice based on language
+    var voices = [];
+    try {
+        voices = synth.getVoices();
+    } catch(e) {
+        console.warn('Erro ao obter vozes: ', e);
+    }
+    
+    var savedVoiceName = localStorage.getItem('caa_selected_voice_' + currentProfileId) || '';
+    var selectedVoiceObj = null;
+    if (savedVoiceName && voices.length > 0) {
+        selectedVoiceObj = voices.find(function(v) { return v && v.name === savedVoiceName; });
+    }
+    
+    if (selectedVoiceObj) {
+        utterance.voice = selectedVoiceObj;
+    } else {
+        var preferredLangPrefix = 'pt-';
+        if (lang === 'en') preferredLangPrefix = 'en-';
+        else if (lang === 'es') preferredLangPrefix = 'es-';
+
+        // 1. Prioritize a local voice with preferred language and "google" in its name
+        var preferredVoice = voices.find(function(voice) { 
+            return voice && voice.lang && voice.name && 
+                   typeof voice.lang === 'string' && typeof voice.name === 'string' &&
+                   voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+                   voice.name.toLowerCase().indexOf('google') !== -1 && 
+                   voice.localService === true;
+        });
+        // 2. If not found, try to find any local voice with preferred language ( Samsung TTS / Offline )
+        if (!preferredVoice) {
+            preferredVoice = voices.find(function(voice) { 
+                return voice && voice.lang && typeof voice.lang === 'string' &&
+                       voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+                       voice.localService === true;
+            });
+        }
+        // 3. If not found, try any voice with "google" in its name (online network voice)
+        if (!preferredVoice) {
+            preferredVoice = voices.find(function(voice) { 
+                return voice && voice.lang && voice.name && 
+                       typeof voice.lang === 'string' && typeof voice.name === 'string' &&
+                       voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1 && 
+                       voice.name.toLowerCase().indexOf('google') !== -1; 
+            });
+        }
+        // 4. Finally, fallback to any voice with matching language prefix
+        if (!preferredVoice) {
+            preferredVoice = voices.find(function(voice) { 
+                return voice && voice.lang && typeof voice.lang === 'string' &&
+                       voice.lang.toLowerCase().indexOf(preferredLangPrefix) !== -1; 
+            });
+        }
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+        }
+    }
+    
+    // Prioritize user gesture transient activation on Android/Chrome by calling speak synchronously.
+    // We only use setTimeout (150ms) on iOS/Safari where it's needed to clear the queue without breaking speech.
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+        setTimeout(function() {
+            try {
+                synth.speak(utterance);
+            } catch(e) {
+                console.error('Erro ao chamar speak(): ', e);
+            }
+        }, 150);
+    } else {
+        try {
+            synth.speak(utterance);
+        } catch(e) {
+            console.error('Erro ao chamar speak(): ', e);
+        }
+    }
+}
+
+// Play recorded card voice or fall back to system speech synthesis
+function playCardVoice(card) {
+    if (!card) return;
+    if (card.audio) {
+        try {
+            if (synth) synth.cancel();
+            var audio = new Audio(card.audio);
+            audio.play().catch(function(err) {
+                console.warn('Falha ao reproduzir áudio gravado, usando síntese:', err);
+                speakText(getCardText(card));
+            });
+        } catch(e) {
+            console.error('Erro ao tocar áudio:', e);
+            speakText(getCardText(card));
+        }
+    } else {
+        speakText(getCardText(card));
+    }
+}
+
+// Handle Theme Change (Support Light, Dark, High Contrast)
+function updateThemeIcon(theme) {
+    var headerBtn = document.getElementById('btn-toggle-theme');
+    var modalBtn = document.getElementById('btn-toggle-theme-modal');
+    
+    var sunSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+    var moonSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12 3a6 6 0 0 0 9 9 9 0 1 1-9-9Z"/></svg>';
+    var eyeSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+    var currentSvg = sunSvg;
+    var label = '☀️ Claro';
+    if (theme === 'dark') {
+        currentSvg = moonSvg;
+        label = '🌙 Escuro';
+    } else if (theme === 'high-contrast') {
+        currentSvg = eyeSvg;
+        label = '👁️ Alto Contraste';
+    }
+
+    if (headerBtn) {
+        headerBtn.innerHTML = currentSvg;
+        headerBtn.title = 'Tema: ' + label + ' (Clique para alternar)';
+    }
+    if (modalBtn) {
+        modalBtn.innerHTML = label;
+    }
+}
+
+function toggleTheme() {
+    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    var newTheme = 'light';
+    if (currentTheme === 'light') {
+        newTheme = 'dark';
+    } else if (currentTheme === 'dark') {
+        newTheme = 'high-contrast';
+    } else {
+        newTheme = 'light';
+    }
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('caa_theme_' + currentProfileId, newTheme);
+    updateThemeIcon(newTheme);
+}
+
+// Funções de Gerenciamento da Grade de Figuras
+function setGridCols(cols) {
+    var cardsGrid = document.getElementById('cards-grid');
+    if (!cardsGrid) return;
+    cardsGrid.classList.remove('cols-2', 'cols-3', 'cols-4', 'cols-5', 'cols-6');
+    if (cols && cols !== 'auto') {
+        cardsGrid.classList.add('cols-' + cols);
+    }
+    if (typeof currentProfileId !== 'undefined') {
+        localStorage.setItem('caa_grid_cols_' + currentProfileId, cols);
+    }
+}
+
+function loadGridColsConfig() {
+    var selectGridCols = document.getElementById('select-grid-cols');
+    var savedCols = (typeof currentProfileId !== 'undefined' ? localStorage.getItem('caa_grid_cols_' + currentProfileId) : null) || 'auto';
+    if (selectGridCols) {
+        selectGridCols.value = savedCols;
+    }
+    setGridCols(savedCols);
+}
+
+// Funções do Sistema de Cores Fitzgerald (CAA)
+function updateFitzgeraldButtonUI(isEnhanced) {
+    var btn = document.getElementById('btn-toggle-fitzgerald');
+    if (btn) {
+        btn.innerHTML = isEnhanced ? '🎨 Cores CAA (Ativado ✅)' : '🎨 Cores CAA (Desativado ⚪)';
+        btn.style.borderColor = isEnhanced ? 'var(--color-primary)' : 'var(--border-color)';
+    }
+}
+
+function toggleFitzgerald() {
+    var cardsGrid = document.getElementById('cards-grid');
+    if (!cardsGrid) return;
+    var isEnhanced = cardsGrid.classList.toggle('fitzgerald-enhanced');
+    if (typeof currentProfileId !== 'undefined') {
+        localStorage.setItem('caa_fitzgerald_' + currentProfileId, isEnhanced ? '1' : '0');
+    }
+    updateFitzgeraldButtonUI(isEnhanced);
+}
+
+function loadFitzgeraldConfig() {
+    var cardsGrid = document.getElementById('cards-grid');
+    if (!cardsGrid) return;
+    var saved = typeof currentProfileId !== 'undefined' ? localStorage.getItem('caa_fitzgerald_' + currentProfileId) : null;
+    var isEnhanced = (saved === '1');
+    if (isEnhanced) {
+        cardsGrid.classList.add('fitzgerald-enhanced');
+    } else {
+        cardsGrid.classList.remove('fitzgerald-enhanced');
+    }
+    updateFitzgeraldButtonUI(isEnhanced);
+}
