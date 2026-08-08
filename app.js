@@ -1650,6 +1650,61 @@ function switchProfile(profileId) {
 window.switchProfile = switchProfile;
 
 // Load app data
+
+// Layout Mode & Grid Column Functions
+function carregarLayoutModeConfig() {
+    var savedMode = localStorage.getItem('caa_layout_mode_' + currentProfileId);
+    currentLayoutMode = savedMode || 'grid';
+    updateLayoutModeIcon();
+}
+
+function updateLayoutModeIcon() {
+    if (!btnToggleLayout) btnToggleLayout = document.getElementById('btn-toggle-layout');
+    if (!btnToggleLayout) return;
+    if (currentLayoutMode === 'folder') {
+        btnToggleLayout.setAttribute('title', 'Modo Atual: Pastas (Clique para Modo Grade)');
+        btnToggleLayout.style.color = 'var(--color-primary)';
+    } else {
+        btnToggleLayout.setAttribute('title', 'Modo Atual: Grade (Clique para Modo Pastas)');
+        btnToggleLayout.style.color = 'var(--text-secondary)';
+    }
+}
+
+function toggleLayoutMode() {
+    if (currentLayoutMode === 'folder') {
+        currentLayoutMode = 'grid';
+        showCustomAlert('Modo Grade Ativado! 📑\nTodas as figuras agora estão organizadas por categorias na tela.');
+    } else {
+        currentLayoutMode = 'folder';
+        currentFolder = 'root';
+        showCustomAlert('Modo Pastas Ativado! 📁\nToque em uma pasta para navegar pelas categorias.');
+    }
+    localStorage.setItem('caa_layout_mode_' + currentProfileId, currentLayoutMode);
+    updateLayoutModeIcon();
+    renderCards();
+}
+
+function loadGridColsConfig() {
+    if (!cardsGrid) cardsGrid = document.getElementById('cards-grid');
+    if (!cardsGrid) return;
+    
+    var savedCols = localStorage.getItem('caa_grid_cols_' + currentProfileId) || 'auto';
+    cardsGrid.classList.remove('cols-2', 'cols-3', 'cols-4', 'cols-5', 'cols-6');
+    if (savedCols !== 'auto' && savedCols !== '') {
+        cardsGrid.classList.add('cols-' + savedCols);
+    }
+}
+
+function loadFitzgeraldConfig() {
+    var isFitzgeraldActive = localStorage.getItem('caa_fitzgerald_' + currentProfileId) !== 'false';
+    if (isFitzgeraldActive) {
+        document.body.classList.add('fitzgerald-active');
+    } else {
+        document.body.classList.remove('fitzgerald-active');
+    }
+}
+
+
 function init() {
     // Refresh DOM element references
     cardsGrid = document.getElementById('cards-grid');
@@ -2737,6 +2792,11 @@ function setupEventListeners() {
 
     // Theme toggle
     if (btnToggleTheme) btnToggleTheme.addEventListener('click', toggleTheme);
+
+    if (btnToggleLayout) {
+        btnToggleLayout.addEventListener('click', toggleLayoutMode);
+    }
+
 
     // Low Vision toggle
     if (btnToggleLowVision) {
