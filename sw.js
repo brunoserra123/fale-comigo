@@ -1,9 +1,9 @@
-const CACHE_NAME = 'caa-comunicador-v73';
+const CACHE_NAME = 'caa-comunicador-v74';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=73',
-  './app.js?v=73',
+  './styles.css?v=74',
+  './app.js?v=74',
   './manifest.json',
   './icon.png',
   './pix_qr.png'
@@ -14,7 +14,6 @@ self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('Instalando Service Worker: Fazendo cache dos recursos essenciais...');
-      // Mapeia os assets para requests com cache: 'reload' para contornar o cache HTTP do navegador
       const cacheRequests = ASSETS.map(url => new Request(url, { cache: 'reload' }));
       return cache.addAll(cacheRequests);
     })
