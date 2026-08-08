@@ -2612,6 +2612,1394 @@ function showChangelogModal(addedCards, removedCards) {
     modalChangelog.classList.add('open');
 }
 
+function setupEventListeners() {
+
+    // Search input listener
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            if (searchInput.value.trim() !== '') {
+                if (btnClearSearch) btnClearSearch.classList.remove('d-none');
+            } else {
+                if (btnClearSearch) btnClearSearch.classList.add('d-none');
+            }
+            renderCards();
+        });
+    }
+
+    // Clear search button listener
+    if (btnClearSearch) {
+        btnClearSearch.addEventListener('click', function() {
+            searchInput.value = '';
+            btnClearSearch.classList.add('d-none');
+            renderCards();
+            searchInput.focus();
+        });
+    }
+
+    // Card click (add to sentence and speak immediately, or toggle favorite)
+    cardsGrid.addEventListener('click', function(e) {
+        if (isReorderModeActive) {
+            return; // Bloqueia clicks se estiver organizando figuras
+        }
+        // Toggle favorite if star button clicked
+        var favBtn = e.target.closest('.card-favorite-btn');
+        if (favBtn) {
+            e.stopPropagation();
+            var cardIndex = parseInt(favBtn.dataset.index, 10);
+            toggleFavorite(cardIndex);
+            return;
+        }
+
+        var cardEl = e.target.closest('.aac-card');
+        if (!cardEl) return;
+
+        var text = cardEl.dataset.text;
+        var index = cards.findIndex(function(c) { return c.text === text; });
+        
+        if (index !== -1) {
+            var clickedCard = cards[index];
+            selectedCards.push(clickedCard);
+            updateSentenceBuilder();
+            playCardVoice(clickedCard);
+            registrarUsoFigura(clickedCard.text);
+
+            // Automatic sub-choice modal if card has goToCategory defined (abrir por cima)
+            if (clickedCard.goToCategory) {
+                openSubChoiceModal(clickedCard.text, clickedCard.goToCategory);
+            }
+        }
+    });
+
+    // Sentence builder card click (click to remove)
+    sentenceList.addEventListener('click', function(e) {
+        var sentCard = e.target.closest('.sentence-card');
+        if (!sentCard) return;
+        
+        var idx = parseInt(sentCard.dataset.idx, 10);
+        selectedCards.splice(idx, 1);
+        updateSentenceBuilder();
+    });
+
+    // Speak sentence
+    btnSpeak.addEventListener('click', function() {
+        if (selectedCards.length === 0) return;
+        
+        // Combine text of all selected cards
+        var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
+        speakText(fullSentence);
+        adicionarFraseRecente(selectedCards);
+    });
+
+    // Clear all
+    btnClearAll.addEventListener('click', function() {
+        selectedCards = [];
+        updateSentenceBuilder();
+    });
+
+    // Theme toggle
+    btnToggleTheme.addEventListener('click', toggleTheme);
+
+    // Low Vision toggle
+    if (btnToggleLowVision) {
+        btnToggleLowVision.addEventListener('click', toggleLowVision);
+    }
+
+    // Voice selector change
+    if (seletorVozes) {
+        seletorVozes.addEventListener('change', function() {
+            localStorage.setItem('caa_selected_voice_' + currentProfileId, seletorVozes.value);
+        });
+    }
+
+    // Language selector change
+    if (seletorIdioma) {
+        seletorIdioma.addEventListener('change', function() {
+            var selectedLang = seletorIdioma.value;
+            localStorage.setItem('caa_lang_' + currentProfileId, selectedLang);
+            translatePage();
+            carregarVozes();
+            renderCards();
+            updateSentenceBuilder();
+        });
+    }
+
+    // Controle de velocidade e tom da voz
+    if (inputVoiceRate) {
+        inputVoiceRate.addEventListener('input', function() {
+            var val = parseFloat(inputVoiceRate.value).toFixed(1);
+            if (valVoiceRate) valVoiceRate.textContent = val;
+            localStorage.setItem('caa_voice_rate_' + currentProfileId, val);
+        });
+    }
+
+    if (inputVoicePitch) {
+        inputVoicePitch.addEventListener('input', function() {
+            var val = parseFloat(inputVoicePitch.value).toFixed(1);
+            if (valVoicePitch) valVoicePitch.textContent = val;
+            localStorage.setItem('caa_voice_pitch_' + currentProfileId, val);
+        });
+    }
+
+    // Compartilhamento / Envio de frases
+    if (btnShareWhatsapp) {
+        btnShareWhatsapp.addEventListener('click', function() {
+            if (selectedCards.length === 0) {
+                showCustomAlert('Por favor, monte uma frase primeiro tocando nas figuras! 😊');
+                return;
+            }
+            var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
+            showShareOptions(fullSentence);
+        });
+    }
+
+    if (btnShareFloat) {
+        btnShareFloat.addEventListener('click', function() {
+            if (selectedCards.length === 0) {
+                showCustomAlert('Por favor, monte uma frase primeiro tocando nas figuras! 😊');
+                return;
+            }
+            var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
+            showShareOptions(fullSentence);
+        });
+    }
+
+    // Settings Modal controls
+    btnSettings.addEventListener('click', function() {
+        modalSettings.classList.add('open');
+        renderManageCustomCards();
+        carregarEstatisticas();
+    });
+
+    // Limpar Estatísticas
+    var btnClearStats = document.getElementById('btn-clear-stats');
+    if (btnClearStats) {
+        btnClearStats.addEventListener('click', function() {
+            showCustomConfirm('Deseja realmente apagar o histórico de toques das figuras? 📊').then(function(confirmed) {
+                if (confirmed) {
+                    localStorage.removeItem('caa_stats_' + currentProfileId);
+                    carregarEstatisticas();
+                    showCustomAlert('Estatísticas apagadas com sucesso! 🗑️');
+                }
+            });
+        });
+    }
+
+    // Delete custom card event listener
+    var customCardsList = document.getElementById('custom-cards-list');
+    if (customCardsList) {
+        customCardsList.addEventListener('click', function(e) {
+            var deleteBtn = e.target.closest('.btn-delete-card');
+            if (!deleteBtn) return;
+
+            var cardText = deleteBtn.dataset.text;
+            showCustomConfirm('Deseja realmente excluir a figura "' + cardText + '"?').then(function(confirmed) {
+                if (confirmed) {
+                    cards = cards.filter(function(c) { return c.text !== cardText; });
+                    saveCardsToStorage();
+                    renderCards();
+                    renderManageCustomCards();
+                    showCustomAlert('Figura "' + cardText + '" excluída com sucesso! 🗑️');
+                }
+            });
+        });
+    }
+
+    var closeSettingsModal = function() {
+        modalSettings.classList.remove('open');
+        formAddCard.reset();
+        imagePreview.innerHTML = '<span>Nenhuma imagem selecionada</span>';
+        uploadedImageBase64 = null;
+        recordedAudioBase64 = null;
+        selectedArasaacBase64 = null;
+        if (arasaacResultsContainer) {
+            arasaacResultsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center; display: block; margin: auto;">Digite um termo e clique em Buscar para ver os desenhos...</span>';
+        }
+        if (arasaacSearchInput) arasaacSearchInput.value = '';
+        if (selectedArasaacIdInput) selectedArasaacIdInput.value = '';
+        
+        if (audioPreview) {
+            audioPreview.src = '';
+            audioPreview.classList.add('d-none');
+        }
+        if (recordStatus) {
+            recordStatus.textContent = '';
+        }
+        if (groupAudioRecord) {
+            groupAudioRecord.classList.add('d-none');
+        }
+        groupEmoji.classList.remove('d-none');
+        if (groupArasaac) groupArasaac.classList.add('d-none');
+        groupUpload.classList.add('d-none');
+    };
+
+    btnCloseSettings.addEventListener('click', closeSettingsModal);
+
+    // Close modal if clicking outside the card content
+    modalSettings.addEventListener('click', function(e) {
+        if (e.target === modalSettings) {
+            closeSettingsModal();
+        }
+    });
+
+    // Support Modal controls
+    var btnSupport = document.getElementById('btn-support');
+    var modalSupport = document.getElementById('modal-support');
+    var btnCloseSupport = document.getElementById('btn-close-support');
+    var btnCopyPix = document.getElementById('btn-copy-pix');
+    var pixKeyInput = document.getElementById('pix-key-input');
+
+    if (btnSupport && modalSupport && btnCloseSupport) {
+        btnSupport.addEventListener('click', function() {
+            modalSupport.classList.add('open');
+        });
+
+        var closeSupportModal = function() {
+            modalSupport.classList.remove('open');
+        };
+
+        btnCloseSupport.addEventListener('click', closeSupportModal);
+
+        modalSupport.addEventListener('click', function(e) {
+            if (e.target === modalSupport) {
+                closeSupportModal();
+            }
+        });
+    }
+
+
+    if (btnCopyPix && pixKeyInput) {
+        btnCopyPix.addEventListener('click', function() {
+            var keyText = pixKeyInput.getAttribute('data-payload') || pixKeyInput.value.trim();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(keyText)
+                    .then(function() {
+                        showCustomAlert('Chave Pix copiada com sucesso! 💸\nMuito obrigado pelo seu apoio.');
+                    })
+                    .catch(function(err) {
+                        console.error('Erro ao copiar Pix: ', err);
+                        fallbackCopyPix(keyText);
+                    });
+            } else {
+                fallbackCopyPix(keyText);
+            }
+        });
+    }
+
+    function fallbackCopyPix(text) {
+        var tempTextarea = document.createElement('textarea');
+        tempTextarea.value = text;
+        document.body.appendChild(tempTextarea);
+        tempTextarea.select();
+        try {
+            document.execCommand('copy');
+            showCustomAlert('Chave Pix copiada com sucesso! 💸\nMuito obrigado pelo seu apoio.');
+        } catch (e) {
+            showCustomAlert('Não foi possível copiar automaticamente. A chave é:\n\n' + text);
+        }
+        document.body.removeChild(tempTextarea);
+    }
+
+    // Form inputs radio changes inside settings
+    for (var i_radio = 0; i_radio < imageTypeRadios.length; i_radio++) { var radio = imageTypeRadios[i_radio];
+        radio.addEventListener('change', function(e) {
+            var val = e.target.value;
+            if (val === 'emoji') {
+                groupEmoji.classList.remove('d-none');
+                if (groupArasaac) groupArasaac.classList.add('d-none');
+                groupUpload.classList.add('d-none');
+            } else if (val === 'arasaac') {
+                groupEmoji.classList.add('d-none');
+                if (groupArasaac) groupArasaac.classList.remove('d-none');
+                groupUpload.classList.add('d-none');
+            } else {
+                groupEmoji.classList.add('d-none');
+                if (groupArasaac) groupArasaac.classList.add('d-none');
+                groupUpload.classList.remove('d-none');
+            }
+        });
+    }
+
+    // Image file selection inside settings
+    cardImageFileInput.addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onload = function(event) {
+            uploadedImageBase64 = event.target.result;
+            imagePreview.innerHTML = '<img src="' + uploadedImageBase64 + '" alt="Preview">';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Audio type radio changes inside settings
+    var audioTypeRadios = document.getElementsByName('audio-type');
+    for (var i_audio = 0; i_audio < audioTypeRadios.length; i_audio++) {
+        audioTypeRadios[i_audio].addEventListener('change', function(e) {
+            if (e.target.value === 'record') {
+                groupAudioRecord.classList.remove('d-none');
+            } else {
+                groupAudioRecord.classList.add('d-none');
+            }
+        });
+    }
+
+    // Audio recording logic
+    if (btnRecordAudio) {
+        btnRecordAudio.addEventListener('click', function() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                // Parar gravação
+                mediaRecorder.stop();
+                btnRecordAudio.classList.remove('record-btn-active');
+                btnRecordAudio.innerHTML = '🎤 Iniciar Gravação';
+                recordStatus.textContent = 'Processando gravação...';
+            } else {
+                // Iniciar gravação
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    showCustomAlert('Seu navegador ou dispositivo não suporta gravação de áudio.');
+                    return;
+                }
+
+                audioChunks = [];
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(function(stream) {
+                        mediaRecorder = new MediaRecorder(stream);
+                        mediaRecorder.addEventListener('dataavailable', function(event) {
+                            audioChunks.push(event.data);
+                        });
+
+                        mediaRecorder.addEventListener('stop', function() {
+                            var audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                            var reader = new FileReader();
+                            reader.onload = function(e) {
+                                recordedAudioBase64 = e.target.result;
+                                if (audioPreview) {
+                                    audioPreview.src = recordedAudioBase64;
+                                    audioPreview.classList.remove('d-none');
+                                }
+                                recordStatus.textContent = 'Gravação concluída! 🎧';
+                            };
+                            reader.readAsDataURL(audioBlob);
+
+                            // Parar todas as faixas do stream para liberar o microfone
+                            stream.getTracks().forEach(function(track) { track.stop(); });
+                        });
+
+                        mediaRecorder.start();
+                        btnRecordAudio.classList.add('record-btn-active');
+                        btnRecordAudio.innerHTML = '🛑 Parar Gravação';
+                        recordStatus.textContent = 'Gravando... fale agora!';
+                    })
+                    .catch(function(err) {
+                        console.error('Erro ao acessar microfone:', err);
+                        showCustomAlert('Erro ao acessar o microfone. Certifique-se de dar permissão.');
+                    });
+            }
+        });
+    }
+
+    // Auto-suggest emoji while typing card text
+    var emojiDebounceTimer = null;
+    if (cardTextInput && cardEmojiInput) {
+        cardEmojiInput.addEventListener('input', function() {
+            cardEmojiInput.dataset.fromApi = 'false';
+        });
+
+        cardTextInput.addEventListener('input', function() {
+            var text = cardTextInput.value.trim();
+            if (!text) return;
+            var fullNormalized = normalizeText(text);
+            
+            // 1. Match exato da frase inteira na lista local
+            if (EMOJI_DICTIONARY[fullNormalized]) {
+                cardEmojiInput.value = EMOJI_DICTIONARY[fullNormalized];
+                cardEmojiInput.dataset.fromApi = 'false';
+                return;
+            }
+            
+            // 2. Match palavra por palavra local
+            var words = text.split(/\s+/).map(normalizeText);
+            var foundLocal = false;
+            for (var i = words.length - 1; i >= 0; i--) {
+                var word = words[i];
+                if (word && EMOJI_DICTIONARY[word]) {
+                    cardEmojiInput.value = EMOJI_DICTIONARY[word];
+                    cardEmojiInput.dataset.fromApi = 'false';
+                    foundLocal = true;
+                    break;
+                }
+            }
+            
+            if (foundLocal) return;
+
+            // 3. Se não achou na lista local, busca na API dinamicamente (com debounce)
+            if (text.length >= 3) {
+                if (emojiDebounceTimer) clearTimeout(emojiDebounceTimer);
+                emojiDebounceTimer = setTimeout(function() {
+                    var apiKey = 'd2de36964848b8e14e2b16a7ba69449635f4bb38';
+                    var searchWord = words[words.length - 1];
+                    var url = 'https://emoji-api.com/emojis?search=' + encodeURIComponent(searchWord) + '&access_key=' + apiKey;
+                    
+                    ajaxRequest(url)
+                        .then(function(data) {
+                            if (Array.isArray(data) && data.length > 0) {
+                                var emojiCharacter = data[0].character;
+                                if (emojiCharacter) {
+                                    cardEmojiInput.value = emojiCharacter;
+                                    cardEmojiInput.dataset.fromApi = 'true';
+                                }
+                            }
+                        })
+                        .catch(function(e) {
+                            console.warn('Erro ao buscar emoji na API:', e);
+                        });
+                }, 600);
+            }
+        });
+    }
+
+    // Add card submission inside settings
+    formAddCard.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (!checkPremiumStatus()) {
+            showCustomAlert("Recurso Premium! 🌟\n\nCriar cartões personalizados é um recurso exclusivo da versão Premium.\n\nPara liberar esse recurso, insira o seu código de ativação no campo 'Ativação Premium' dentro das Opções Avançadas de Configurações.");
+            return;
+        }
+        
+        var text = document.getElementById('card-text').value.trim();
+        var category = detectCategory(text);
+        var imageType = document.querySelector('input[name="image-type"]:checked').value;
+        
+        var value = '';
+        var finalType = imageType;
+        if (imageType === 'emoji') {
+            value = document.getElementById('card-emoji').value.trim() || '✨';
+        } else if (imageType === 'arasaac') {
+            var selectedId = selectedArasaacIdInput ? selectedArasaacIdInput.value : '';
+            if (!selectedId) {
+                showCustomAlert('Por favor, busque e selecione um desenho do ARASAAC. 🎨');
+                return;
+            }
+            if (!selectedArasaacBase64) {
+                showCustomAlert('Aguarde o download do desenho para uso offline... ⏳');
+                return;
+            }
+            value = selectedArasaacBase64;
+            finalType = 'image'; // Salvar como imagem para carregar via tag img
+        } else {
+            if (!uploadedImageBase64) {
+                showCustomAlert('Por favor, envie ou selecione uma imagem.');
+                return;
+            }
+            value = uploadedImageBase64;
+        }
+
+        var audioType = document.querySelector('input[name="audio-type"]:checked').value;
+        var audio = null;
+        if (audioType === 'record') {
+            if (!recordedAudioBase64) {
+                showCustomAlert('Por favor, grave um áudio ou selecione a voz do sistema.');
+                return;
+            }
+            audio = recordedAudioBase64;
+        }
+
+        var newCardObj = { text: text, category: category, type: finalType, value: value };
+        if (imageType === 'emoji' && cardEmojiInput.dataset.fromApi === 'true') {
+            newCardObj.fromApi = true;
+        }
+        if (audio) {
+            newCardObj.audio = audio;
+        }
+
+        // Prepend custom card
+        cards.unshift(newCardObj);
+        saveCardsToStorage();
+        renderCards();
+        showCustomAlert('Figura "' + text + '" criada e salva com sucesso! 🎨').then(function() {
+            closeSettingsModal();
+        });
+    });
+
+    // Lógica de busca do ARASAAC
+    if (btnArasaacSearch && arasaacSearchInput) {
+        var executarBuscaArasaac = function() {
+            var term = arasaacSearchInput.value.trim();
+            if (!term) {
+                showCustomAlert('Por favor, digite um termo para buscar. 🔍');
+                return;
+            }
+            if (arasaacResultsContainer) {
+                arasaacResultsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center; display: block; margin: auto;">Buscando desenhos... 🔍</span>';
+            }
+            selectedArasaacBase64 = null;
+            if (selectedArasaacIdInput) selectedArasaacIdInput.value = '';
+            
+            ajaxRequest('https://api.arasaac.org/api/pictograms/pt/search/' + encodeURIComponent(term))
+                .then(function(data) {
+                    if (!arasaacResultsContainer) return;
+                    if (!Array.isArray(data) || data.length === 0) {
+                        arasaacResultsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--color-danger); width: 100%; text-align: center; display: block; margin: auto;">Nenhum desenho encontrado para essa palavra. 😢</span>';
+                        return;
+                    }
+                    
+                    var results = data.slice(0, 15);
+                    var html = '';
+                    results.forEach(function(item) {
+                        var id = item._id;
+                        html += 
+                            '<div class="arasaac-item" data-id="' + id + '" style="width: 60px; height: 60px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: white; padding: 4px; position: relative; transition: all 0.2s; flex-shrink: 0; box-sizing: border-box;">' +
+                                '<img src="https://api.arasaac.org/api/pictograms/' + id + '" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="' + term + '">' +
+                            '</div>';
+                    });
+                    arasaacResultsContainer.innerHTML = html;
+                    
+                    var items = arasaacResultsContainer.querySelectorAll('.arasaac-item');
+                    items.forEach(function(item) {
+                        item.addEventListener('click', function() {
+                            // Desmarcar anteriores
+                            items.forEach(function(el) {
+                                el.style.borderColor = 'var(--border-color)';
+                                el.style.boxShadow = 'none';
+                            });
+                            
+                            // Selecionar atual
+                            item.style.borderColor = 'var(--color-primary)';
+                            item.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.4)';
+                            
+                            var id = item.dataset.id;
+                            if (selectedArasaacIdInput) selectedArasaacIdInput.value = id;
+                            
+                            selectedArasaacBase64 = null;
+                            item.style.opacity = '0.5';
+                            
+                            var imgUrl = 'https://api.arasaac.org/api/pictograms/' + id;
+                            convertImageUrlToBase64(imgUrl)
+                                .then(function(base64) {
+                                    selectedArasaacBase64 = base64;
+                                    item.style.opacity = '1';
+                                })
+                                .catch(function(err) {
+                                    console.warn('Erro ao baixar pictograma para base64, usando URL direta:', err);
+                                    // Fallback para link direto
+                                    selectedArasaacBase64 = imgUrl;
+                                    item.style.opacity = '1';
+                                });
+                        });
+                    });
+                })
+                .catch(function(err) {
+                    console.error(err);
+                    if (arasaacResultsContainer) {
+                        arasaacResultsContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--color-danger); width: 100%; text-align: center; display: block; margin: auto;">Erro ao carregar desenhos. Verifique sua conexão. 🌐</span>';
+                    }
+                });
+        };
+        
+        btnArasaacSearch.addEventListener('click', executarBuscaArasaac);
+        arasaacSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                executarBuscaArasaac();
+            }
+        });
+    }
+
+    // Reset default cards button inside settings
+    btnResetCards.addEventListener('click', function() {
+        showCustomConfirm('Deseja realmente apagar todos os cartões personalizados e restaurar o padrão original?').then(function(confirmed) {
+            if (confirmed) {
+                localStorage.removeItem('caa_custom_cards_' + currentProfileId);
+                cards = DEFAULT_CARDS.slice();
+                renderCards();
+                closeSettingsModal();
+            }
+        });
+    });
+
+    // Download full backup as JSON file
+    if (btnDownloadBackup) {
+        btnDownloadBackup.addEventListener('click', function() {
+            if (cards.length === 0) {
+                showCustomAlert('Nenhum cartão para exportar!');
+                return;
+            }
+            var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
+            var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
+            var jsonStr = JSON.stringify(cards, null, 2);
+            var blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
+            var url = URL.createObjectURL(blob);
+            var downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", url);
+            downloadAnchor.setAttribute("download", "backup_comunicador_caa_" + profileName.toLowerCase().replace(/\s+/g, '_') + ".json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    // Trigger file input for importing backup
+    if (btnImportBackupTrigger && inputImportBackup) {
+        btnImportBackupTrigger.addEventListener('click', function() {
+            inputImportBackup.click();
+        });
+    }
+
+    // Handle importing the file
+    if (inputImportBackup) {
+        inputImportBackup.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    var importedCards = JSON.parse(event.target.result);
+                    
+                    // Basic validation
+                    if (!Array.isArray(importedCards)) {
+                        throw new Error("O arquivo não contém uma lista válida de figuras.");
+                    }
+                    
+                    var isValid = importedCards.every(function(card) {
+                        return card && typeof card.text === 'string' && typeof card.type === 'string' && typeof card.value === 'string';
+                    });
+
+                    if (!isValid) {
+                        throw new Error("Alguns cartões no arquivo estão inválidos ou corrompidos.");
+                    }
+
+                    showCustomConfirm('Deseja importar os ' + importedCards.length + ' cartões deste arquivo? Isso substituirá todas as figuras personalizadas configuradas neste dispositivo.').then(function(confirmed) {
+                        if (confirmed) {
+                            setAndCleanCards(importedCards);
+                            saveCardsToStorage();
+                            renderCards();
+                            showCustomAlert("Backup importado com sucesso!").then(function() {
+                                closeSettingsModal();
+                            });
+                        }
+                    });
+                } catch (error) {
+                    showCustomAlert("Erro ao ler o arquivo de backup: " + error.message);
+                }
+                // Clear input value so same file can be selected again
+                inputImportBackup.value = '';
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    // Export custom cards button inside settings
+    if (btnExportCards) {
+        btnExportCards.addEventListener('click', function() {
+            // Filter only custom cards (which are not part of the initial DEFAULT_CARDS)
+            var customCardsOnly = cards.filter(function(card) {
+                return !DEFAULT_CARDS.some(function(defaultCard) { return defaultCard.text === card.text; });
+            });
+
+            if (customCardsOnly.length === 0) {
+                showCustomAlert('Nenhum cartão personalizado criado para exportar!');
+                return;
+            }
+
+            var jsonStr = JSON.stringify(customCardsOnly, null, 2);
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(jsonStr)
+                    .then(function() {
+                        showCustomAlert('Lista de cartões personalizados copiada com sucesso!\n\nAgora você só precisa colar (Ctrl+V ou "Colar" no celular) na conversa do WhatsApp ou e-mail e enviar para o desenvolvedor.');
+                    })
+                    .catch(function(err) {
+                        console.error('Erro ao copiar para a área de transferência: ', err);
+                        fallbackCopy(jsonStr);
+                    });
+            } else {
+                fallbackCopy(jsonStr);
+            }
+        });
+    }
+
+    function fallbackCopy(jsonStr) {
+        // Fallback to prompting user to select and copy text
+        var exportTextarea = document.createElement('textarea');
+        exportTextarea.value = jsonStr;
+        document.body.appendChild(exportTextarea);
+        exportTextarea.select();
+        try {
+            document.execCommand('copy');
+            showCustomAlert('Lista de cartões personalizados copiada com sucesso!\n\nAgora você só precisa colar na conversa do WhatsApp ou e-mail e enviar para o desenvolvedor.');
+        } catch (e) {
+            showCustomAlert('Não foi possível copiar automaticamente. Por favor, copie o texto abaixo:\n\n' + jsonStr);
+        }
+        document.body.removeChild(exportTextarea);
+    }
+
+    // Quick Add button inside subchoice modal
+    btnAddSubChoice.addEventListener('click', function() {
+        modalSubChoice.classList.remove('open');
+        modalSettings.classList.add('open');
+        
+        // Focus text input
+        setTimeout(function() {
+            document.getElementById('card-text').focus();
+        }, 150);
+    });
+
+    // Sub-choice grid item click
+    subChoiceGrid.addEventListener('click', function(e) {
+        var cardEl = e.target.closest('.aac-card');
+        if (!cardEl) return;
+
+        var text = cardEl.dataset.text;
+        var index = cards.findIndex(function(c) { return c.text === text; });
+        
+        if (index !== -1) {
+            var clickedCard = cards[index];
+            selectedCards.push(clickedCard);
+            updateSentenceBuilder();
+            playCardVoice(clickedCard);
+            registrarUsoFigura(clickedCard.text);
+            modalSubChoice.classList.remove('open');
+        }
+    });
+
+    // Close sub-choice modal
+    btnCloseSubChoice.addEventListener('click', function() {
+        modalSubChoice.classList.remove('open');
+    });
+
+    modalSubChoice.addEventListener('click', function(e) {
+        if (e.target === modalSubChoice) {
+            modalSubChoice.classList.remove('open');
+        }
+    });
+
+    // Floating bottom bar buttons
+    if (btnSpeakFloat) {
+        btnSpeakFloat.addEventListener('click', function() {
+            if (selectedCards.length === 0) return;
+            var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
+            speakText(fullSentence);
+            adicionarFraseRecente(selectedCards);
+        });
+    }
+
+    if (btnClearFloat) {
+        btnClearFloat.addEventListener('click', function() {
+            selectedCards = [];
+            updateSentenceBuilder();
+        });
+    }
+
+    // Google Drive & Apps Script Sync button
+    if (btnSyncNow) {
+        btnSyncNow.addEventListener('click', function() {
+            var fileId = syncDriveIdInput.value.trim();
+            var scriptUrl = syncAppsScriptUrlInput.value.trim();
+
+            if (scriptUrl) {
+                localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, scriptUrl);
+                syncWithAppsScript(scriptUrl, true);
+            } else if (fileId) {
+                localStorage.setItem('caa_sync_drive_id_' + currentProfileId, fileId);
+                syncWithGoogleDrive(fileId, true);
+            } else {
+                showCustomAlert('Por favor, insira uma URL de Apps Script ou ID do Google Drive para sincronizar.');
+            }
+        });
+    }
+
+    // Save Apps Script URL dynamically
+    if (syncAppsScriptUrlInput) {
+        syncAppsScriptUrlInput.addEventListener('input', function() {
+            var val = syncAppsScriptUrlInput.value.trim();
+            // Evita que o link seja colado duplicado
+            if (val.indexOf('https://') !== -1 && val.indexOf('https://') !== val.lastIndexOf('https://')) {
+                val = val.substring(0, val.lastIndexOf('https://')).trim();
+                syncAppsScriptUrlInput.value = val;
+            }
+            localStorage.setItem('caa_sync_apps_script_url_' + currentProfileId, val);
+        });
+    }
+
+    // Save Google Drive ID dynamically
+    if (syncDriveIdInput) {
+        syncDriveIdInput.addEventListener('input', function() {
+            var val = syncDriveIdInput.value.trim();
+            localStorage.setItem('caa_sync_drive_id_' + currentProfileId, val);
+        });
+    }
+
+    // Save Auto Backup setting dynamically
+    if (checkAutoBackup) {
+        checkAutoBackup.addEventListener('change', function() {
+            localStorage.setItem('caa_auto_backup_' + currentProfileId, checkAutoBackup.checked);
+            if (checkAutoBackup.checked) {
+                uploadBackupToCloud();
+            }
+        });
+    }
+
+    // Profile Modal Event Listeners
+    if (btnManageProfiles && modalProfiles && btnCloseProfiles) {
+        btnManageProfiles.addEventListener('click', function() {
+            renderProfilesList();
+            modalProfiles.classList.add('open');
+        });
+        
+        btnCloseProfiles.addEventListener('click', function() {
+            modalProfiles.classList.remove('open');
+        });
+        
+        modalProfiles.addEventListener('click', function(e) {
+            if (e.target === modalProfiles) {
+                modalProfiles.classList.remove('open');
+            }
+        });
+    }
+
+    if (selectProfile) {
+        selectProfile.addEventListener('change', function(e) {
+            switchProfile(e.target.value);
+        });
+    }
+
+    if (btnCreateProfile && inputNewProfileName) {
+        btnCreateProfile.addEventListener('click', function() {
+            var name = inputNewProfileName.value.trim();
+            if (!name) return;
+            
+            if (!checkPremiumStatus() && profiles.length >= MAX_FREE_PROFILES) {
+                showCustomAlert("Limite de perfis atingido! 👥\n\nNa versão gratuita você pode ter no máximo " + MAX_FREE_PROFILES + " perfis.\n\nAtive a versão Premium para criar perfis ilimitados.");
+                return;
+            }
+            
+            var id = 'profile_' + new Date().getTime();
+            profiles.push({ id: id, name: name });
+            saveProfiles();
+            renderProfileSelector();
+            renderProfilesList();
+            
+            inputNewProfileName.value = '';
+            showCustomAlert('Perfil "' + name + '" criado com sucesso!');
+        });
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === null || bytes === undefined) return 'Sem dados';
+        if (bytes === 0) return '0 Bytes';
+        var k = 1024;
+        var dm = 1;
+        var sizes = ['Bytes', 'KB', 'MB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    if (btnSyncProfilesCloud) {
+        btnSyncProfilesCloud.addEventListener('click', function() {
+            var syncAppsScriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
+            if (!syncAppsScriptUrl) {
+                showCustomAlert('Por favor, configure a URL do Apps Script primeiro nas Configurações Avançadas.');
+                return;
+            }
+            
+            btnSyncProfilesCloud.disabled = true;
+            var originalText = btnSyncProfilesCloud.innerHTML;
+            btnSyncProfilesCloud.innerHTML = '<span>🔄</span> Buscando perfis...';
+            
+            var connector = syncAppsScriptUrl.indexOf('?') >= 0 ? '&' : '?';
+            var url = syncAppsScriptUrl + connector + 'action=listProfiles';
+            
+            fetchSyncData(url)
+                .then(function(cloudProfiles) {
+                    btnSyncProfilesCloud.disabled = false;
+                    btnSyncProfilesCloud.innerHTML = originalText;
+                    
+                    if (!Array.isArray(cloudProfiles)) {
+                        throw new Error('Lista de perfis inválida recebida da nuvem.');
+                    }
+                    
+                    if (cloudProfilesList) {
+                        cloudProfilesList.classList.remove('d-none');
+                        
+                        var validCloudProfiles = cloudProfiles.filter(function(cp) {
+                            var isDefault = cp.name.toLowerCase() === 'padrao' || cp.name.toLowerCase() === 'padrão';
+                            return !isDefault;
+                        });
+                        
+                        if (validCloudProfiles.length === 0) {
+                            cloudProfilesList.innerHTML = '<div style="text-align: center; padding: 10px; color: var(--text-secondary); font-size: 0.85rem;">Nenhum perfil encontrado no Drive.</div>';
+                            return;
+                        }
+                        
+                        cloudProfilesList.innerHTML = validCloudProfiles.map(function(cp) {
+                            var exists = profiles.some(function(p) {
+                                return p.name.toLowerCase() === cp.name.toLowerCase();
+                            });
+                            
+                            var dateText = cp.lastUpdated ? cp.lastUpdated.split(' ')[0] : 'Sem data';
+                            var sizeText = cp.size ? formatBytes(cp.size) : 'Vazio';
+                            
+                            var btnHtml = '';
+                            if (exists) {
+                                btnHtml = '<span style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary);">Já Importado ✅</span>';
+                            } else {
+                                btnHtml = '<button type="button" class="btn-import-cloud-profile" data-name="' + cp.name + '" style="background-color: var(--color-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Importar 📥</button>';
+                            }
+                            
+                            return 
+                                '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; gap: 8px;">' +
+                                    '<div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">' +
+                                        '<strong style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">' + cp.name + '</strong>' +
+                                        '<span style="font-size: 0.75rem; color: var(--text-secondary);">' + dateText + ' • ' + sizeText + '</span>' +
+                                    '</div>' +
+                                    '<div style="flex-shrink: 0;">' +
+                                        btnHtml +
+                                    '</div>' +
+                                '</div>';
+                        }).join('');
+                        
+                        // Adicionar evento para os botões de importar recém-gerados
+                        var importBtns = cloudProfilesList.querySelectorAll('.btn-import-cloud-profile');
+                        importBtns.forEach(function(btn) {
+                            btn.addEventListener('click', function() {
+                                if (!checkPremiumStatus() && profiles.length >= MAX_FREE_PROFILES) {
+                                    showCustomAlert("Limite de perfis atingido! 👥\n\nNa versão gratuita você pode ter no máximo " + MAX_FREE_PROFILES + " perfis.\n\nAtive a versão Premium para importar perfis ilimitados.");
+                                    return;
+                                }
+                                var pName = btn.dataset.name;
+                                var id = 'profile_' + new Date().getTime() + Math.floor(Math.random() * 1000);
+                                profiles.push({ id: id, name: pName });
+                                localStorage.setItem('caa_sync_apps_script_url_' + id, syncAppsScriptUrl);
+                                saveProfiles();
+                                renderProfileSelector();
+                                renderProfilesList();
+                                
+                                // Substitui botão por "Já Importado ✅"
+                                var parentDiv = btn.parentNode;
+                                parentDiv.innerHTML = '<span style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary);">Já Importado ✅</span>';
+                                showCustomAlert('Perfil "' + pName + '" importado! Selecione-o no menu superior e clique em "Sincronizar Agora" nas opções avançadas para carregar suas figuras.');
+                            });
+                        });
+                    }
+                })
+                .catch(function(err) {
+                    btnSyncProfilesCloud.disabled = false;
+                    btnSyncProfilesCloud.innerHTML = originalText;
+                    console.error('Erro ao sincronizar perfis: ', err);
+                    showCustomAlert('Erro ao buscar perfis do Google Drive. Verifique a URL do Apps Script.');
+                });
+        });
+    }
+
+    if (profilesList) {
+        profilesList.addEventListener('click', function(e) {
+            var renameBtn = e.target.closest('.btn-rename-profile');
+            var deleteBtn = e.target.closest('.btn-delete-profile');
+            
+            if (renameBtn) {
+                var pId = renameBtn.dataset.id;
+                var currentName = renameBtn.dataset.name;
+                var newName = prompt('Digite o novo nome para o perfil:', currentName);
+                if (newName && newName.trim()) {
+                    var idx = profiles.findIndex(function(p) { return p.id === pId; });
+                    if (idx !== -1) {
+                        profiles[idx].name = newName.trim();
+                        saveProfiles();
+                        renderProfileSelector();
+                        renderProfilesList();
+                    }
+                }
+            }
+            
+            if (deleteBtn) {
+                var pId = deleteBtn.dataset.id;
+                var idx = profiles.findIndex(function(p) { return p.id === pId; });
+                if (idx !== -1) {
+                    var name = profiles[idx].name;
+                    showCustomConfirm('Deseja realmente excluir o perfil "' + name + '"? Todos os cartões personalizados desse perfil serão excluídos permanentemente.').then(function(confirmed) {
+                        if (confirmed) {
+                            profiles.splice(idx, 1);
+                            // Clear items from localStorage
+                            localStorage.removeItem('caa_custom_cards_' + pId);
+                            localStorage.removeItem('caa_theme_' + pId);
+                            localStorage.removeItem('caa_sync_drive_id_' + pId);
+                            localStorage.removeItem('caa_sync_apps_script_url_' + pId);
+                            localStorage.removeItem('caa_auto_backup_' + pId);
+                            
+                            if (currentProfileId === pId) {
+                                currentProfileId = 'default';
+                            }
+                            saveProfiles();
+                            switchProfile(currentProfileId);
+                            renderProfileSelector();
+                            renderProfilesList();
+                            showCustomAlert('Perfil "' + name + '" excluído.');
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    // Changelog Modal controls
+    if (btnOkChangelog) {
+        btnOkChangelog.addEventListener('click', function() {
+            modalChangelog.classList.remove('open');
+        });
+    }
+
+    if (btnCloseChangelog) {
+        btnCloseChangelog.addEventListener('click', function() {
+            modalChangelog.classList.remove('open');
+        });
+    }
+
+    if (modalChangelog) {
+        modalChangelog.addEventListener('click', function(e) {
+            if (e.target === modalChangelog) {
+                modalChangelog.classList.remove('open');
+            }
+        });
+    }
+
+    // Lock app controls & Modal challenge handlers
+    if (btnLockApp) {
+        btnLockApp.addEventListener('click', function() {
+            if (isAppLocked) {
+                // Open modal challenge
+                generateLockChallenge();
+                if (modalLockChallenge) {
+                    modalLockChallenge.classList.add('open');
+                }
+                if (lockMathAnswer) {
+                    setTimeout(function() { lockMathAnswer.focus(); }, 150);
+                }
+            } else {
+                // Lock app immediately
+                isAppLocked = true;
+                localStorage.setItem('caa_app_locked', 'true');
+                updateLockUI();
+                showCustomAlert("Configurações bloqueadas! 🔒\nO menu do tutor e seletor de perfil estão ocultos.");
+            }
+        });
+    }
+
+    if (btnLockCancel && modalLockChallenge) {
+        btnLockCancel.addEventListener('click', function() {
+            modalLockChallenge.classList.remove('open');
+        });
+    }
+
+    var submitUnlockAnswer = function() {
+        if (!lockMathAnswer) return;
+        var userAnswer = parseInt(lockMathAnswer.value, 10);
+        if (userAnswer === currentLockAnswer) {
+            isAppLocked = false;
+            localStorage.setItem('caa_app_locked', 'false');
+            updateLockUI();
+            if (modalLockChallenge) {
+                modalLockChallenge.classList.remove('open');
+            }
+            showCustomAlert("Configurações desbloqueadas! 🔓");
+        } else {
+            showCustomAlert("Resposta incorreta! Tente novamente. ❌");
+            generateLockChallenge();
+            if (lockMathAnswer) {
+                lockMathAnswer.focus();
+            }
+        }
+    };
+
+    if (btnLockSubmit) {
+        btnLockSubmit.addEventListener('click', submitUnlockAnswer);
+    }
+
+    if (lockMathAnswer) {
+        lockMathAnswer.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                submitUnlockAnswer();
+            }
+        });
+    }
+
+    // Reorder Mode toggle
+    if (btnToggleReorder) {
+        btnToggleReorder.addEventListener('click', function() {
+            if (!checkPremiumStatus()) {
+                showCustomAlert("Recurso Premium! 🌟\n\nOrganizar e reordenar as figuras é um recurso exclusivo da versão Premium.\n\nPara liberar esse recurso, insira o seu código de ativação no campo 'Ativação Premium' dentro das Opções Avançadas de Configurações.");
+                return;
+            }
+
+            isReorderModeActive = !isReorderModeActive;
+            if (isReorderModeActive) {
+                document.body.classList.add('is-reordering');
+                showCustomAlert("Modo de Organização Ativo! ⇄\nArraste as figuras para mudar a ordem.");
+            } else {
+                document.body.classList.remove('is-reordering');
+            }
+            renderCards();
+        });
+    }
+
+    // License key input listener
+    if (premiumCodeInput) {
+        premiumCodeInput.addEventListener('input', function() {
+            var val = premiumCodeInput.value.trim().toLowerCase().replace(/\s+/g, '');
+            if (val === 'vip99') {
+                localStorage.setItem('caa_premium_active', 'true');
+                localStorage.removeItem('caa_dev_mode');
+                updatePremiumUI();
+                showCustomAlert("Premium Ativado! 🌟\n\nMuito obrigado por apoiar o projeto. Os recursos exclusivos estão liberados.");
+            } else if (val === 'dev99' || val === 'mimidev') {
+                localStorage.setItem('caa_premium_active', 'true');
+                localStorage.setItem('caa_dev_mode', 'true');
+                updatePremiumUI();
+                showCustomAlert("Modo Desenvolvedor Ativado! 🛠️\n\nPremium liberado para testes. Você pode desativar este modo a qualquer momento no painel de configurações para testar a versão gratuita.");
+            }
+        });
+    }
+
+    // Drag & Drop HTML5 Events
+    var dragStartIndex = null;
+
+    cardsGrid.addEventListener('dragstart', function(e) {
+        if (!isReorderModeActive) return;
+        var card = e.target.closest('.aac-card');
+        if (!card) return;
+        
+        dragStartIndex = parseInt(card.dataset.index, 10);
+        card.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', dragStartIndex);
+    });
+
+    cardsGrid.addEventListener('dragover', function(e) {
+        if (!isReorderModeActive) return;
+        e.preventDefault();
+        var card = e.target.closest('.aac-card');
+        if (card) {
+            card.classList.add('drag-over');
+        }
+    });
+
+    cardsGrid.addEventListener('dragleave', function(e) {
+        if (!isReorderModeActive) return;
+        var card = e.target.closest('.aac-card');
+        if (card) {
+            card.classList.remove('drag-over');
+        }
+    });
+
+    cardsGrid.addEventListener('drop', function(e) {
+        if (!isReorderModeActive) return;
+        e.preventDefault();
+        
+        var targetCard = e.target.closest('.aac-card');
+        if (targetCard) {
+            targetCard.classList.remove('drag-over');
+            var dragEndIndex = parseInt(targetCard.dataset.index, 10);
+            
+            if (dragStartIndex !== null && dragStartIndex !== dragEndIndex) {
+                // Swap cards
+                var temp = cards[dragStartIndex];
+                cards[dragStartIndex] = cards[dragEndIndex];
+                cards[dragEndIndex] = temp;
+                
+                saveCardsToStorage();
+                renderCards();
+            }
+        }
+        dragStartIndex = null;
+    });
+
+    cardsGrid.addEventListener('dragend', function(e) {
+        if (!isReorderModeActive) return;
+        var card = e.target.closest('.aac-card');
+        if (card) {
+            card.classList.remove('is-dragging');
+        }
+        
+        // Clean up any remaining hover states
+        var overs = cardsGrid.querySelectorAll('.drag-over');
+        overs.forEach(function(o) { o.classList.remove('drag-over'); });
+    });
+
+    // Touch Reordering Events (Mobile/Tablet Support)
+    var touchStartIndex = null;
+    var currentTouchTarget = null;
+
+    cardsGrid.addEventListener('touchstart', function(e) {
+        if (!isReorderModeActive) return;
+        
+        var card = e.target.closest('.aac-card');
+        if (!card) return;
+        
+        touchStartIndex = parseInt(card.dataset.index, 10);
+        card.classList.add('is-dragging');
+        currentTouchTarget = card;
+    }, { passive: true });
+
+    cardsGrid.addEventListener('touchmove', function(e) {
+        if (!isReorderModeActive) return;
+        if (touchStartIndex === null) return;
+        
+        // Prevent scrolling while dragging
+        if (e.cancelable) e.preventDefault();
+        
+        var touch = e.touches[0];
+        var element = document.elementFromPoint(touch.clientX, touch.clientY);
+        var targetCard = element ? element.closest('.aac-card') : null;
+        
+        // Remove hover from previous target
+        var previousOvers = cardsGrid.querySelectorAll('.drag-over');
+        previousOvers.forEach(function(o) { 
+            if (o !== targetCard) o.classList.remove('drag-over'); 
+        });
+        
+        if (targetCard && targetCard !== currentTouchTarget) {
+            targetCard.classList.add('drag-over');
+        }
+    }, { passive: false });
+
+    cardsGrid.addEventListener('touchend', function(e) {
+        if (!isReorderModeActive) return;
+        if (touchStartIndex === null) return;
+        
+        var previousOvers = cardsGrid.querySelectorAll('.drag-over');
+        previousOvers.forEach(function(o) { o.classList.remove('drag-over'); });
+        
+        if (currentTouchTarget) {
+            currentTouchTarget.classList.remove('is-dragging');
+        }
+        
+        // We look at the last touch position to find the target card
+        var touch = e.changedTouches[0];
+        var element = document.elementFromPoint(touch.clientX, touch.clientY);
+        var targetCard = element ? element.closest('.aac-card') : null;
+        
+        if (targetCard) {
+            var touchEndIndex = parseInt(targetCard.dataset.index, 10);
+            if (touchStartIndex !== touchEndIndex) {
+                // Swap
+                var temp = cards[touchStartIndex];
+                cards[touchStartIndex] = cards[touchEndIndex];
+                cards[touchEndIndex] = temp;
+                
+                saveCardsToStorage();
+                renderCards();
+            }
+        }
+        
+        touchStartIndex = null;
+        currentTouchTarget = null;
+    });
+
+    // Keyboard shortcuts for favorites (keys 1 to 9)
+    document.addEventListener('keydown', function(e) {
+        var activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag === 'input' || activeTag === 'textarea') {
+            return;
+        }
+
+        if (e.key >= '1' && e.key <= '9') {
+            var shortcutNum = parseInt(e.key, 10);
+            var favoriteCards = cards.filter(function(c) { return c.favorite === true; });
+            if (favoriteCards.length >= shortcutNum) {
+                var card = favoriteCards[shortcutNum - 1];
+                selectedCards.push(card);
+                updateSentenceBuilder();
+                playCardVoice(card);
+                
+                if (card.goToCategory) {
+                    openSubChoiceModal(card.text, card.goToCategory);
+                }
+            }
+        }
+    });
+
+    // Lógica do formulário de feedback (Web3Forms)
+    var feedbackForm = document.getElementById('form');
+    if (feedbackForm) {
+        var feedbackSubmitBtn = feedbackForm.querySelector('button[type="submit"]');
+        feedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var formData = new FormData(feedbackForm);
+            formData.append("access_key", "4f2eccbe-593a-4c25-871b-103e3931b8ff");
+
+            var originalText = feedbackSubmitBtn.innerHTML;
+            feedbackSubmitBtn.innerHTML = "<span>Carregando... ⏳</span>";
+            feedbackSubmitBtn.disabled = true;
+
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "https://api.web3forms.com/submit", true);
+            xhr.onload = function() {
+                var data;
+                try {
+                    data = JSON.parse(xhr.responseText);
+                } catch(e) {
+                    data = {};
+                }
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    feedbackForm.reset();
+                    
+                    var oldMsg = feedbackForm.querySelector('.feedback-success-msg');
+                    if (oldMsg) oldMsg.remove();
+
+                    var successMsg = document.createElement('div');
+                    successMsg.className = 'feedback-success-msg';
+                    successMsg.textContent = 'Ideia enviada! Obrigado por ajudar a construir o projeto.';
+                    successMsg.style.backgroundColor = 'var(--color-primary)';
+                    successMsg.style.color = '#ffffff';
+                    successMsg.style.padding = '12px';
+                    successMsg.style.borderRadius = 'var(--radius-sm)';
+                    successMsg.style.marginTop = '10px';
+                    successMsg.style.fontWeight = 'bold';
+                    successMsg.style.textAlign = 'center';
+                    successMsg.style.opacity = '0';
+                    successMsg.style.transition = 'opacity 0.3s ease';
+                    
+                    feedbackForm.appendChild(successMsg);
+                    
+                    setTimeout(function() {
+                        successMsg.style.opacity = '1';
+                    }, 50);
+                    
+                    setTimeout(function() {
+                        successMsg.style.opacity = '0';
+                        setTimeout(function() {
+                            if (successMsg.parentNode) {
+                                successMsg.parentNode.removeChild(successMsg);
+                            }
+                        }, 300);
+                    }, 4000);
+                } else {
+                    showCustomAlert("Erro: " + (data.message || "Não foi possível enviar no momento."));
+                }
+            };
+            xhr.onerror = function() {
+                showCustomAlert("Algo deu errado. Por favor, tente novamente.");
+            };
+            xhr.onloadend = function() {
+                feedbackSubmitBtn.innerHTML = originalText;
+                feedbackSubmitBtn.disabled = false;
+            };
+            xhr.send(formData);
+        });
+    }
+}
+
+// Ensure voice synth is ready on page load
+if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+    speechSynthesis.onvoiceschanged = function() {};
+}
+
+// Launch application
+
+
 // Listen to scroll to show/hide bottom bar
 window.addEventListener('scroll', function() {
     updateFloatingBar();
