@@ -2642,7 +2642,7 @@ function setupEventListeners() {
     }
 
     // Card click (add to sentence and speak immediately, or toggle favorite)
-    cardsGrid.addEventListener('click', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('click', function(e) {
         if (isReorderModeActive) {
             return; // Bloqueia clicks se estiver organizando figuras
         }
@@ -2687,7 +2687,7 @@ function setupEventListeners() {
     });
 
     // Sentence builder card click (click to remove)
-    sentenceList.addEventListener('click', function(e) {
+    if (sentenceList) sentenceList.addEventListener('click', function(e) {
         var sentCard = e.target.closest('.sentence-card');
         if (!sentCard) return;
         
@@ -2697,7 +2697,7 @@ function setupEventListeners() {
     });
 
     // Speak sentence
-    btnSpeak.addEventListener('click', function() {
+    if (btnSpeak) btnSpeak.addEventListener('click', function() {
         if (selectedCards.length === 0) return;
         
         // Combine text of all selected cards
@@ -2707,13 +2707,13 @@ function setupEventListeners() {
     });
 
     // Clear all
-    btnClearAll.addEventListener('click', function() {
+    if (btnClearAll) btnClearAll.addEventListener('click', function() {
         selectedCards = [];
         updateSentenceBuilder();
     });
 
     // Theme toggle
-    btnToggleTheme.addEventListener('click', toggleTheme);
+    if (btnToggleTheme) btnToggleTheme.addEventListener('click', toggleTheme);
 
     // Low Vision toggle
     if (btnToggleLowVision) {
@@ -2780,7 +2780,7 @@ function setupEventListeners() {
     }
 
     // Settings Modal controls
-    btnSettings.addEventListener('click', function() {
+    if (btnSettings) btnSettings.addEventListener('click', function() {
         modalSettings.classList.add('open');
         renderManageCustomCards();
         carregarEstatisticas();
@@ -2848,10 +2848,10 @@ function setupEventListeners() {
         groupUpload.classList.add('d-none');
     };
 
-    btnCloseSettings.addEventListener('click', closeSettingsModal);
+    if (btnCloseSettings) btnCloseSettings.addEventListener('click', closeSettingsModal);
 
     // Close modal if clicking outside the card content
-    modalSettings.addEventListener('click', function(e) {
+    if (modalSettings) modalSettings.addEventListener('click', function(e) {
         if (e.target === modalSettings) {
             closeSettingsModal();
         }
@@ -2936,7 +2936,7 @@ function setupEventListeners() {
     }
 
     // Image file selection inside settings
-    cardImageFileInput.addEventListener('change', function(e) {
+    if (cardImageFileInput) cardImageFileInput.addEventListener('change', function(e) {
         var file = e.target.files[0];
         if (!file) return;
 
@@ -3075,7 +3075,7 @@ function setupEventListeners() {
     }
 
     // Add card submission inside settings
-    formAddCard.addEventListener('submit', function(e) {
+    if (formAddCard) formAddCard.addEventListener('submit', function(e) {
         e.preventDefault();
         
         if (!checkPremiumStatus()) {
@@ -3223,7 +3223,7 @@ function setupEventListeners() {
     }
 
     // Reset default cards button inside settings
-    btnResetCards.addEventListener('click', function() {
+    if (btnResetCards) btnResetCards.addEventListener('click', function() {
         showCustomConfirm('Deseja realmente apagar todos os cartões personalizados e restaurar o padrão original?').then(function(confirmed) {
             if (confirmed) {
                 localStorage.removeItem('caa_custom_cards_' + currentProfileId);
@@ -3353,7 +3353,7 @@ function setupEventListeners() {
     }
 
     // Quick Add button inside subchoice modal
-    btnAddSubChoice.addEventListener('click', function() {
+    if (btnAddSubChoice) btnAddSubChoice.addEventListener('click', function() {
         modalSubChoice.classList.remove('open');
         modalSettings.classList.add('open');
         
@@ -3364,7 +3364,7 @@ function setupEventListeners() {
     });
 
     // Sub-choice grid item click
-    subChoiceGrid.addEventListener('click', function(e) {
+    if (subChoiceGrid) subChoiceGrid.addEventListener('click', function(e) {
         var cardEl = e.target.closest('.aac-card');
         if (!cardEl) return;
 
@@ -3382,11 +3382,11 @@ function setupEventListeners() {
     });
 
     // Close sub-choice modal
-    btnCloseSubChoice.addEventListener('click', function() {
+    if (btnCloseSubChoice) btnCloseSubChoice.addEventListener('click', function() {
         modalSubChoice.classList.remove('open');
     });
 
-    modalSubChoice.addEventListener('click', function(e) {
+    if (modalSubChoice) modalSubChoice.addEventListener('click', function(e) {
         if (e.target === modalSubChoice) {
             modalSubChoice.classList.remove('open');
         }
@@ -3781,7 +3781,7 @@ function setupEventListeners() {
     // Drag & Drop HTML5 Events
     var dragStartIndex = null;
 
-    cardsGrid.addEventListener('dragstart', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('dragstart', function(e) {
         if (!isReorderModeActive) return;
         var card = e.target.closest('.aac-card');
         if (!card) return;
@@ -3792,7 +3792,7 @@ function setupEventListeners() {
         e.dataTransfer.setData('text/plain', dragStartIndex);
     });
 
-    cardsGrid.addEventListener('dragover', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('dragover', function(e) {
         if (!isReorderModeActive) return;
         e.preventDefault();
         var card = e.target.closest('.aac-card');
@@ -3801,7 +3801,7 @@ function setupEventListeners() {
         }
     });
 
-    cardsGrid.addEventListener('dragleave', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('dragleave', function(e) {
         if (!isReorderModeActive) return;
         var card = e.target.closest('.aac-card');
         if (card) {
@@ -3809,7 +3809,7 @@ function setupEventListeners() {
         }
     });
 
-    cardsGrid.addEventListener('drop', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('drop', function(e) {
         if (!isReorderModeActive) return;
         e.preventDefault();
         
@@ -3831,7 +3831,7 @@ function setupEventListeners() {
         dragStartIndex = null;
     });
 
-    cardsGrid.addEventListener('dragend', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('dragend', function(e) {
         if (!isReorderModeActive) return;
         var card = e.target.closest('.aac-card');
         if (card) {
@@ -3847,7 +3847,7 @@ function setupEventListeners() {
     var touchStartIndex = null;
     var currentTouchTarget = null;
 
-    cardsGrid.addEventListener('touchstart', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('touchstart', function(e) {
         if (!isReorderModeActive) return;
         
         var card = e.target.closest('.aac-card');
@@ -3858,7 +3858,7 @@ function setupEventListeners() {
         currentTouchTarget = card;
     }, { passive: true });
 
-    cardsGrid.addEventListener('touchmove', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('touchmove', function(e) {
         if (!isReorderModeActive) return;
         if (touchStartIndex === null) return;
         
@@ -3880,7 +3880,7 @@ function setupEventListeners() {
         }
     }, { passive: false });
 
-    cardsGrid.addEventListener('touchend', function(e) {
+    if (cardsGrid) cardsGrid.addEventListener('touchend', function(e) {
         if (!isReorderModeActive) return;
         if (touchStartIndex === null) return;
         
