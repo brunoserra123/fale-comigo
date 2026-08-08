@@ -7,7 +7,7 @@
     <meta name="description" content="Aplicativo offline, moderno e simplificado de Comunicação Alternativa e Ampliada (CAA).">
     
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="styles.css?v=72">
+    <link rel="stylesheet" href="styles.css?v=73">
     
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -15,33 +15,6 @@
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="icon.png?v=2">
-    
-    <!-- Automatic PWA Cache Purge for Version Updates -->
-    <script>
-        (function() {
-            var CURRENT_VER = 'v72';
-            if (localStorage.getItem('caa_app_version') !== CURRENT_VER) {
-                localStorage.setItem('caa_app_version', CURRENT_VER);
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(function(regs) {
-                        for (var i = 0; i < regs.length; i++) {
-                            regs[i].unregister();
-                        }
-                        if ('caches' in window) {
-                            caches.keys().then(function(keys) {
-                                for (var j = 0; j < keys.length; j++) {
-                                    caches.delete(keys[j]);
-                                }
-                                window.location.reload(true);
-                            });
-                        } else {
-                            window.location.reload(true);
-                        }
-                    });
-                }
-            }
-        })();
-    </script>
 
     <!-- iOS / Android PWA Settings -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -215,7 +188,7 @@
                 <div class="brand-text">
                     <p class="brand-signature" data-i18n="brand_signature">Desenvolvido por <strong>Bruno Serra de Oliveira</strong></p>
                     <p class="brand-purpose" data-i18n="brand_purpose">Criado com carinho para ajudar as pessoas a se comunicarem.</p>
-                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 2.0.0 (v72) <strong>(BETA)</strong></p>
+                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 2.0.0 (v73) <strong>(BETA)</strong></p>
                 </div>
             </div>
             <button id="btn-support" class="btn btn-secondary btn-support" style="margin-left: auto; gap: 6px; font-weight: 700; font-size: 0.9rem; padding: 10px 18px; border-radius: var(--radius-sm);">
@@ -749,6 +722,6 @@
     </button>
 
     <!-- App Logic -->
-    <script src="app.js?v=72"></script>
+    <script src="app.js?v=73"></script>
 </body>
 </html>
