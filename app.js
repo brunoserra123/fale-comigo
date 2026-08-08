@@ -1371,8 +1371,8 @@ function showCustomConfirm(message) {
 }
 
 function setAndCleanCards(newCards) {
-    if (!newCards || !Array.isArray(newCards)) {
-        newCards = [];
+    if (!newCards || !Array.isArray(newCards) || newCards.length === 0) {
+        newCards = DEFAULT_CARDS.slice();
     }
     var cleaned = newCards.slice();
     // Remove obsolete cards

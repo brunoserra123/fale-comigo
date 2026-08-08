@@ -7,7 +7,7 @@
     <meta name="description" content="Aplicativo offline, moderno e simplificado de Comunicação Alternativa e Ampliada (CAA).">
     
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="styles.css?v=65">
+    <link rel="stylesheet" href="styles.css?v=66">
     
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -24,7 +24,7 @@
     <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon.png?v=2">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
     <script>
-        if ('serviceWorker' in navigator) {
+        if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
             // Armazena se já havia um Service Worker controlando a página
             const hadController = !!navigator.serviceWorker.controller;
 
@@ -188,7 +188,7 @@
                 <div class="brand-text">
                     <p class="brand-signature" data-i18n="brand_signature">Desenvolvido por <strong>Bruno Serra de Oliveira</strong></p>
                     <p class="brand-purpose" data-i18n="brand_purpose">Criado com carinho para ajudar as pessoas a se comunicarem.</p>
-                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 2.0.0 (v65) <strong>(BETA)</strong></p>
+                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 2.0.0 (v66) <strong>(BETA)</strong></p>
                 </div>
             </div>
             <button id="btn-support" class="btn btn-secondary btn-support" style="margin-left: auto; gap: 6px; font-weight: 700; font-size: 0.9rem; padding: 10px 18px; border-radius: var(--radius-sm);">
@@ -722,6 +722,6 @@
     </button>
 
     <!-- App Logic -->
-    <script src="app.js?v=65"></script>
+    <script src="app.js?v=66"></script>
 </body>
 </html>
