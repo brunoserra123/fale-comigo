@@ -1670,58 +1670,70 @@ function init() {
         localStorage.setItem('caa_auto_backup_default', oldAutoBackup);
     }
 
+    // Synchronous initial load with localStorage / DEFAULT_CARDS
+    var savedCardsStr = localStorage.getItem('caa_custom_cards_' + currentProfileId);
+    var savedCards = null;
+    if (savedCardsStr) {
+        try { savedCards = JSON.parse(savedCardsStr); } catch(e) {}
+    }
+    setAndCleanCards(savedCards);
+
+    // Set Theme
+    var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+    loadGridColsConfig();
+    loadFitzgeraldConfig();
+
+    // Set Low Vision Mode
+    var lowVision = localStorage.getItem('caa_low_vision_' + currentProfileId) === 'true';
+    if (lowVision) {
+        document.body.classList.add('low-vision');
+    } else {
+        document.body.classList.remove('low-vision');
+    }
+    updateLowVisionIcon(lowVision);
+
+    // Load profile language
+    loadProfileLanguage();
+
+    // Load system voices & configs
+    carregarVozes();
+    carregarVozConfig();
+    carregarLayoutModeConfig();
+    carregarRecentes();
+    carregarEstatisticas();
+
+    // Increment Access Counter
+    var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
+    accesses++;
+    localStorage.setItem('caa_access_count', accesses.toString());
+    if (accessCounterVal) {
+        accessCounterVal.textContent = accesses;
+    }
+
+    // Render interface elements IMMEDIATELY
+    renderCards();
+    updateSentenceBuilder();
+
+    // Setup event listeners IMMEDIATELY
+    setupEventListeners();
+
+    // Load TelepatiX configurations
+    loadTelepatixConfig();
+
+    // Asynchronous IndexedDB & Cloud Sync (Secondary background update)
     dbHelper.init().then(function() {
         return loadProfileCards(currentProfileId);
     }).then(function(loadedCards) {
-        setAndCleanCards(loadedCards);
-        // Force save to IndexedDB just in case it was migrated from localStorage
-        saveCardsToStorage(false);
-
-        // Set Theme
-        var savedTheme = localStorage.getItem('caa_theme_' + currentProfileId) || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        updateThemeIcon(savedTheme);
-        loadGridColsConfig();
-        loadFitzgeraldConfig();
-        loadGridColsConfig();
-        loadFitzgeraldConfig();
-
-        // Set Low Vision Mode
-        var lowVision = localStorage.getItem('caa_low_vision_' + currentProfileId) === 'true';
-        if (lowVision) {
-            document.body.classList.add('low-vision');
-        } else {
-            document.body.classList.remove('low-vision');
+        if (loadedCards && loadedCards.length > 0) {
+            setAndCleanCards(loadedCards);
+            saveCardsToStorage(false);
+            renderCards();
         }
-        updateLowVisionIcon(lowVision);
-
-        // Load profile language
-        loadProfileLanguage();
-
-        // Load system voices
-        carregarVozes();
-        carregarVozConfig();
-        carregarLayoutModeConfig();
-        carregarRecentes();
-        carregarEstatisticas();
-
-        // Increment Access Counter
-        var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
-        accesses++;
-        localStorage.setItem('caa_access_count', accesses.toString());
-        if (accessCounterVal) {
-            accessCounterVal.textContent = accesses;
-        }
-
-        // Render interface elements
-        renderCards();
-        updateSentenceBuilder();
-
-        // Setup event listeners
-        setupEventListeners();
-
-        // Load TelepatiX configurations
-        loadTelepatixConfig();
+    }).catch(function(e) {
+        console.warn('Carga secundária IndexedDB: ', e);
+    });
 
         // Check Google Drive & Apps Script Sync on Startup
         var syncDriveId = localStorage.getItem('caa_sync_drive_id_' + currentProfileId);
