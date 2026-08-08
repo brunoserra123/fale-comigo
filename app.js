@@ -1778,7 +1778,6 @@ function init() {
         }
         
         checkInAppBrowser();
-    });
 }
 
 // Check if app is open inside Instagram or Facebook WebViews to warn the user
