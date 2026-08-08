@@ -1,9 +1,9 @@
-const CACHE_NAME = 'caa-comunicador-v70';
+const CACHE_NAME = 'caa-comunicador-v71';
 const ASSETS = [
   './',
   './index.html',
-  './styles.css?v=70',
-  './app.js?v=70',
+  './styles.css?v=71',
+  './app.js?v=71',
   './manifest.json',
   './icon.png',
   './pix_qr.png'
@@ -50,25 +50,24 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Estratégia Stale-While-Revalidate para recursos locais
+  // Estratégia Network-First com Fallback para Cache
   e.respondWith(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.match(e.request).then((cachedResponse) => {
-        const fetchPromise = fetch(e.request).then((networkResponse) => {
-          // Salva a cópia mais recente no cache
-          if (networkResponse.status === 200) {
-            cache.put(e.request, networkResponse.clone());
-          }
-          return networkResponse;
-        }).catch(() => {
-          // Retorna index.html como fallback em falhas de rede se o recurso for um documento
-          if (e.request.mode === 'navigate') {
-            return cache.match('./index.html');
-          }
+    fetch(e.request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(e.request, responseToCache);
         });
-
-        // Retorna o cache imediatamente se houver, ou espera pela rede
-        return cachedResponse || fetchPromise;
+      }
+      return networkResponse;
+    }).catch(() => {
+      return caches.match(e.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        if (e.request.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
       });
     })
   );
