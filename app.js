@@ -1705,6 +1705,59 @@ function loadFitzgeraldConfig() {
 }
 
 
+
+// Settings & Child Lock Modal Controls
+function openSettingsModal() {
+    if (!modalSettings) modalSettings = document.getElementById('modal-settings');
+    if (modalSettings) {
+        modalSettings.classList.add('open');
+        if (typeof renderManageCustomCards === 'function') renderManageCustomCards();
+        if (typeof carregarEstatisticas === 'function') carregarEstatisticas();
+
+    // Settings Button & Modal Controls
+    var btnSettingsEl = document.getElementById('btn-settings');
+    var modalSettingsEl = document.getElementById('modal-settings');
+    var btnCloseSettingsEl = document.getElementById('btn-close-settings');
+
+    if (btnSettingsEl) {
+        btnSettingsEl.addEventListener('click', function() {
+            if (isAppLocked) {
+                var modalLock = document.getElementById('modal-lock-challenge');
+                if (modalLock) {
+                    if (typeof generateLockChallenge === 'function') generateLockChallenge();
+                    modalLock.classList.add('open');
+                    var lockInput = document.getElementById('lock-math-answer');
+                    if (lockInput) setTimeout(function() { lockInput.focus(); }, 150);
+                } else {
+                    openSettingsModal();
+                }
+            } else {
+                openSettingsModal();
+            }
+        });
+    }
+
+    if (btnCloseSettingsEl) {
+        btnCloseSettingsEl.addEventListener('click', closeSettingsModal);
+    }
+
+    if (modalSettingsEl) {
+        modalSettingsEl.addEventListener('click', function(e) {
+            if (e.target === modalSettingsEl) {
+                closeSettingsModal();
+            }
+        });
+    }
+
+    }
+}
+
+function closeSettingsModal() {
+    if (!modalSettings) modalSettings = document.getElementById('modal-settings');
+    if (modalSettings) modalSettings.classList.remove('open');
+}
+
+
 function init() {
     // Refresh DOM element references
     cardsGrid = document.getElementById('cards-grid');
@@ -1785,6 +1838,42 @@ function init() {
     if (typeof carregarLayoutModeConfig === 'function') carregarLayoutModeConfig();
     if (typeof carregarRecentes === 'function') carregarRecentes();
     if (typeof carregarEstatisticas === 'function') carregarEstatisticas();
+
+    // Settings Button & Modal Controls
+    var btnSettingsEl = document.getElementById('btn-settings');
+    var modalSettingsEl = document.getElementById('modal-settings');
+    var btnCloseSettingsEl = document.getElementById('btn-close-settings');
+
+    if (btnSettingsEl) {
+        btnSettingsEl.addEventListener('click', function() {
+            if (isAppLocked) {
+                var modalLock = document.getElementById('modal-lock-challenge');
+                if (modalLock) {
+                    if (typeof generateLockChallenge === 'function') generateLockChallenge();
+                    modalLock.classList.add('open');
+                    var lockInput = document.getElementById('lock-math-answer');
+                    if (lockInput) setTimeout(function() { lockInput.focus(); }, 150);
+                } else {
+                    openSettingsModal();
+                }
+            } else {
+                openSettingsModal();
+            }
+        });
+    }
+
+    if (btnCloseSettingsEl) {
+        btnCloseSettingsEl.addEventListener('click', closeSettingsModal);
+    }
+
+    if (modalSettingsEl) {
+        modalSettingsEl.addEventListener('click', function(e) {
+            if (e.target === modalSettingsEl) {
+                closeSettingsModal();
+            }
+        });
+    }
+
 
     // Increment Access Counter
     var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
