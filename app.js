@@ -1555,6 +1555,25 @@ function loadProfileCards(profileId) {
         if (cardsLoaded && cardsLoaded.length > 0) {
             return cardsLoaded;
         }
+        // Handle Low Vision Mode Change
+        function updateLowVisionIcon(active) {
+            if (!btnToggleLowVision) return;
+            btnToggleLowVision.innerHTML = '<span>' + (active ? 'Ativado 👁️' : 'Desativado ❌') + '</span>';
+        }
+
+        function toggleLowVision() {
+            var active = document.body.classList.contains('low-vision');
+            var newStatus = !active;
+            
+            if (newStatus) {
+                document.body.classList.add('low-vision');
+            } else {
+                document.body.classList.remove('low-vision');
+            }
+            
+            localStorage.setItem('caa_low_vision_' + currentProfileId, newStatus ? 'true' : 'false');
+            updateLowVisionIcon(newStatus);
+        }
         return loadSpecialProfileBackup(profileName);
     });
 }
@@ -1698,17 +1717,19 @@ function init() {
     } else {
         document.body.classList.remove('low-vision');
     }
-    updateLowVisionIcon(lowVision);
+    if (typeof updateLowVisionIcon === 'function') {
+        updateLowVisionIcon(lowVision);
+    }
 
     // Load profile language
     loadProfileLanguage();
 
     // Load system voices & configs
-    carregarVozes();
-    carregarVozConfig();
-    carregarLayoutModeConfig();
-    carregarRecentes();
-    carregarEstatisticas();
+    if (typeof carregarVozes === 'function') carregarVozes();
+    if (typeof carregarVozConfig === 'function') carregarVozConfig();
+    if (typeof carregarLayoutModeConfig === 'function') carregarLayoutModeConfig();
+    if (typeof carregarRecentes === 'function') carregarRecentes();
+    if (typeof carregarEstatisticas === 'function') carregarEstatisticas();
 
     // Increment Access Counter
     var accesses = parseInt(localStorage.getItem('caa_access_count') || '0', 10);
@@ -1726,7 +1747,9 @@ function init() {
     setupEventListeners();
 
     // Load TelepatiX configurations
-    loadTelepatixConfig();
+    if (typeof loadTelepatixConfig === 'function') {
+        loadTelepatixConfig();
+    }
 
     // Asynchronous IndexedDB & Cloud Sync (Secondary background update)
     dbHelper.init().then(function() {
