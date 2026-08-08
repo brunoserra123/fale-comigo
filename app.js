@@ -2880,3 +2880,10 @@ function loadFitzgeraldConfig() {
     }
     updateFitzgeraldButtonUI(isEnhanced);
 }
+
+// Start app initialization on load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
