@@ -443,7 +443,13 @@ function getCategoryName(catId) {
 var cards = [];
 var selectedCards = [];
 var currentFolder = 'root';
-var currentLayoutMode = 'folder'; // 'folder' or 'grid'
+var currentLayoutMode = 'grid'; // 'grid' shows all categories and cards directly
+
+function switchFolder(folderId) {
+    currentFolder = folderId || 'root';
+    renderCards();
+}
+window.switchFolder = switchFolder;
 
 // TelepatiX Accessibility Scanning State
 var isTelepatixActive = false;
@@ -2651,6 +2657,17 @@ function setupEventListeners() {
 
         var cardEl = e.target.closest('.aac-card');
         if (!cardEl) return;
+
+        // Folder click support
+        var folderId = cardEl.dataset.folderId;
+        if (folderId) {
+            switchFolder(folderId);
+            return;
+        }
+        if (cardEl.classList.contains('back-card')) {
+            switchFolder('root');
+            return;
+        }
 
         var text = cardEl.dataset.text;
         var index = cards.findIndex(function(c) { return c.text === text; });
