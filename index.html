@@ -7,7 +7,7 @@
     <meta name="description" content="Aplicativo offline, moderno e simplificado de Comunicação Alternativa e Ampliada (CAA).">
     
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="styles.css?v=78">
+    <link rel="stylesheet" href="styles.css?v=79">
     
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -141,6 +141,9 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
                         <span data-i18n="btn_speak">FALAR</span>
                     </button>
+                    <button id="btn-save-phrase" class="btn btn-secondary" title="Salvar como Frase Pronta" disabled style="padding: 10px 14px;">
+                        ⭐
+                    </button>
                     <button id="btn-share-whatsapp" class="btn btn-secondary btn-share" title="Enviar / Copiar Frase" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                         <span data-i18n="btn_send">ENVIAR</span>
@@ -158,6 +161,16 @@
             <div class="search-container">
                 <input type="text" id="search-input" placeholder="Buscar figura... 🔍" aria-label="Buscar figura" data-i18n-placeholder="search_placeholder">
                 <button id="btn-clear-search" class="btn-clear-search d-none" title="Limpar busca">&times;</button>
+            </div>
+        </section>
+
+        <!-- QUICK PHRASES BAR -->
+        <section class="quick-phrases-section" id="quick-phrases-section" style="width: 100%; margin-top: 10px; margin-bottom: 5px; display: none;">
+            <div class="recent-sentences-container" style="display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 10px 14px; background-color: var(--bg-card); border: 2px solid var(--color-warning); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); scrollbar-width: none;">
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--color-warning); white-space: nowrap; display: flex; align-items: center; gap: 4px; user-select: none;">⭐ Prontas:</span>
+                <div id="quick-phrases-list" style="display: flex; gap: 8px; overflow-x: auto; flex-grow: 1; padding: 2px 0; scrollbar-width: none;">
+                    <!-- Quick phrase chips will be generated here -->
+                </div>
             </div>
         </section>
 
@@ -270,6 +283,14 @@
                         <button id="btn-toggle-theme-modal" class="btn btn-secondary">
                             ☀️ Claro / 🌙 Escuro / 👁️ Alto Contraste
                         </button>
+                    </div>
+
+                    <div class="settings-row">
+                        <label>Modo Visual:</label>
+                        <select id="select-visual-mode" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); font-family: var(--font-primary); font-size: 0.9rem; background-color: var(--bg-card); color: var(--text-primary); outline: none; max-width: 180px; width: 100%;">
+                            <option value="child">Infantil (Colorido/Arredondado)</option>
+                            <option value="adult">Adulto (Neutro/Sério)</option>
+                        </select>
                     </div>
 
                     <div class="settings-row">
@@ -473,6 +494,22 @@
                             <span id="record-status" style="font-size: 0.85rem; font-weight: 600; text-align: center; color: var(--text-secondary);"></span>
                             <audio id="audio-preview" controls class="d-none" style="width: 100%; margin-top: 8px;"></audio>
                         </div>
+                        
+                        <div class="form-group" style="margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px;">
+                            <label for="card-pronunciation" style="display: flex; align-items: center; gap: 6px;">
+                                🗣️ Pronúncia (Opcional):
+                            </label>
+                            <input type="text" id="card-pronunciation" placeholder="Ex: Uatzap (para corrigir leitura)">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">Apenas para casos em que o robô fala a palavra errado.</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="card-sound-effect" style="display: flex; align-items: center; gap: 6px;">
+                                🎵 Som ao Clicar (Opcional):
+                            </label>
+                            <input type="file" id="card-sound-effect" accept="audio/*">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">Um som curto para tocar antes da voz (ex: latido de cachorro).</span>
+                        </div>
+
                         <div style="margin-top: 15px; display: flex; gap: 10px;">
                             <button type="submit" class="btn btn-primary" style="flex-grow: 1;">Salvar Novo Cartão</button>
                         </div>
@@ -722,6 +759,6 @@
     </button>
 
     <!-- App Logic -->
-    <script src="app.js?v=78"></script>
+    <script src="app.js?v=80"></script>
 </body>
 </html>

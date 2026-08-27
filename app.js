@@ -422,8 +422,9 @@ function translatePage() {
     updateLayoutButtonUI();
 }
 
-function getCardText(card) {
+function getCardText(card, usePronunciation) {
     if (!card) return '';
+    if (usePronunciation && card.pronunciation) return card.pronunciation;
     var lang = getProfileLanguage();
     if (lang === 'pt') return card.text;
     var translations = CARD_TRANSLATIONS[lang];
@@ -586,6 +587,13 @@ function convertImageUrlToBase64(url) {
     });
 }
 
+function carregarVisualModeConfig() {
+    var visualMode = localStorage.getItem('caa_visual_mode_' + currentProfileId) || 'child';
+    document.body.setAttribute('data-visual-mode', visualMode);
+    var selectVisualMode = document.getElementById('select-visual-mode');
+    if (selectVisualMode) selectVisualMode.value = visualMode;
+}
+
 function carregarVozConfig() {
     var voiceRate = localStorage.getItem('caa_voice_rate_' + currentProfileId) || '1.0';
     var voicePitch = localStorage.getItem('caa_voice_pitch_' + currentProfileId) || '1.0';
@@ -670,7 +678,7 @@ function carregarRecentes() {
                 selectedCards = selectedList.slice();
                 updateSentenceBuilder();
                 
-                var fullSentence = selectedCards.map(function(c) { return getCardText(c); }).join(' ');
+                var fullSentence = selectedCards.map(function(c) { return getCardText(c, true); }).join(' ');
                 speakText(fullSentence);
             }
         });
@@ -1615,6 +1623,8 @@ function switchProfile(profileId) {
         // Load voices for this profile
         carregarVozes();
         carregarVozConfig();
+        carregarVisualModeConfig();
+        loadQuickPhrases();
         carregarLayoutModeConfig();
         carregarRecentes();
         carregarEstatisticas();
@@ -1835,6 +1845,8 @@ function init() {
     // Load system voices & configs
     if (typeof carregarVozes === 'function') carregarVozes();
     if (typeof carregarVozConfig === 'function') carregarVozConfig();
+    if (typeof carregarVisualModeConfig === 'function') carregarVisualModeConfig();
+    if (typeof loadQuickPhrases === 'function') loadQuickPhrases();
     if (typeof carregarLayoutModeConfig === 'function') carregarLayoutModeConfig();
     if (typeof carregarRecentes === 'function') carregarRecentes();
     if (typeof carregarEstatisticas === 'function') carregarEstatisticas();
@@ -2366,6 +2378,8 @@ function updateSentenceBuilder() {
     if (btnSpeak) btnSpeak.disabled = isEmpty;
     if (btnShareWhatsapp) btnShareWhatsapp.disabled = isEmpty;
     if (btnClearAll) btnClearAll.disabled = isEmpty;
+    var btnSavePhrase = document.getElementById('btn-save-phrase');
+    if (btnSavePhrase) btnSavePhrase.disabled = isEmpty;
 
     // Update sentence counter
     var counterEl = document.getElementById('sentence-counter');
@@ -2837,6 +2851,17 @@ function setupEventListeners() {
         }
 
         var text = cardEl.dataset.text;
+        
+        // Filtro Anti-tremor (Bloqueio de 1.5s no mesmo cartão)
+        var now = Date.now();
+        if (typeof window.lastCardClickTime === 'undefined') window.lastCardClickTime = 0;
+        if (typeof window.lastClickedCardText === 'undefined') window.lastClickedCardText = '';
+        if (text === window.lastClickedCardText && (now - window.lastCardClickTime < 1500)) {
+            return; // Ignorar toque acidental (duplo)
+        }
+        window.lastClickedCardText = text;
+        window.lastCardClickTime = now;
+
         var index = cards.findIndex(function(c) { return c.text === text; });
         
         if (index !== -1) {
@@ -2884,6 +2909,37 @@ function setupEventListeners() {
 
     if (btnToggleLayout) {
         btnToggleLayout.addEventListener('click', toggleLayoutMode);
+    }
+
+    var btnSavePhrase = document.getElementById('btn-save-phrase');
+    if (btnSavePhrase) {
+        btnSavePhrase.addEventListener('click', saveQuickPhrase);
+    }
+
+    var quickPhrasesList = document.getElementById('quick-phrases-list');
+    if (quickPhrasesList) {
+        quickPhrasesList.addEventListener('click', function(e) {
+            var deleteBtn = e.target.closest('.quick-phrase-delete');
+            if (deleteBtn) {
+                e.stopPropagation();
+                var index = parseInt(deleteBtn.dataset.index, 10);
+                quickPhrases.splice(index, 1);
+                localStorage.setItem('caa_quick_phrases_' + currentProfileId, JSON.stringify(quickPhrases));
+                renderQuickPhrases();
+                return;
+            }
+            
+            var chip = e.target.closest('.quick-phrase-chip');
+            if (chip) {
+                var index = parseInt(chip.dataset.index, 10);
+                var phrase = quickPhrases[index];
+                if (phrase) {
+                    selectedCards = JSON.parse(JSON.stringify(phrase.cards));
+                    updateSentenceBuilder();
+                    speakText(phrase.text);
+                }
+            }
+        });
     }
 
 
@@ -3246,6 +3302,29 @@ function setupEventListeners() {
         });
     }
 
+    var uploadedSoundBase64 = null;
+    var cardSoundEffectInput = document.getElementById('card-sound-effect');
+    if (cardSoundEffectInput) {
+        cardSoundEffectInput.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                if (file.size > 500000) { // Limite 500kb
+                    showCustomAlert("O arquivo de som é muito grande. Escolha um arquivo menor (até 500KB).");
+                    this.value = '';
+                    uploadedSoundBase64 = null;
+                    return;
+                }
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    uploadedSoundBase64 = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                uploadedSoundBase64 = null;
+            }
+        });
+    }
+
     // Add card submission inside settings
     if (formAddCard) formAddCard.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -3300,6 +3379,19 @@ function setupEventListeners() {
         if (audio) {
             newCardObj.audio = audio;
         }
+        
+        var pron = document.getElementById('card-pronunciation') ? document.getElementById('card-pronunciation').value.trim() : '';
+        if (pron) {
+            newCardObj.pronunciation = pron;
+        }
+        if (uploadedSoundBase64) {
+            newCardObj.soundEffect = uploadedSoundBase64;
+        }
+
+        // Resetar campos extras
+        if (document.getElementById('card-pronunciation')) document.getElementById('card-pronunciation').value = '';
+        if (cardSoundEffectInput) cardSoundEffectInput.value = '';
+        uploadedSoundBase64 = null;
 
         // Prepend custom card
         cards.unshift(newCardObj);
@@ -4355,20 +4447,50 @@ function speakText(text) {
 // Play recorded card voice or fall back to system speech synthesis
 function playCardVoice(card) {
     if (!card) return;
+    
+    var textToSpeak = card.pronunciation ? card.pronunciation : getCardText(card);
+
+    if (card.soundEffect) {
+        try {
+            if (synth) synth.cancel();
+            var seAudio = new Audio(card.soundEffect);
+            seAudio.onended = function() {
+                if (card.audio) {
+                    var audio = new Audio(card.audio);
+                    audio.play().catch(function() { speakText(textToSpeak); });
+                } else {
+                    speakText(textToSpeak);
+                }
+            };
+            seAudio.play().catch(function(err) {
+                console.warn('Falha ao reproduzir efeito sonoro:', err);
+                if (card.audio) {
+                    var audio = new Audio(card.audio);
+                    audio.play().catch(function() { speakText(textToSpeak); });
+                } else {
+                    speakText(textToSpeak);
+                }
+            });
+            return; // We wait for sound effect to finish
+        } catch(e) {
+            console.error('Erro ao tocar efeito sonoro:', e);
+        }
+    }
+    
     if (card.audio) {
         try {
             if (synth) synth.cancel();
             var audio = new Audio(card.audio);
             audio.play().catch(function(err) {
                 console.warn('Falha ao reproduzir áudio gravado, usando síntese:', err);
-                speakText(getCardText(card));
+                speakText(textToSpeak);
             });
         } catch(e) {
             console.error('Erro ao tocar áudio:', e);
-            speakText(getCardText(card));
+            speakText(textToSpeak);
         }
     } else {
-        speakText(getCardText(card));
+        speakText(textToSpeak);
     }
 }
 
@@ -4467,6 +4589,65 @@ function loadFitzgeraldConfig() {
         cardsGrid.classList.remove('fitzgerald-enhanced');
     }
     updateFitzgeraldButtonUI(isEnhanced);
+}
+
+// Funcionalidade de Frases Prontas
+var quickPhrases = [];
+
+function loadQuickPhrases() {
+    try {
+        var stored = localStorage.getItem('caa_quick_phrases_' + currentProfileId);
+        if (stored) {
+            quickPhrases = JSON.parse(stored);
+        } else {
+            quickPhrases = [];
+        }
+    } catch(e) {
+        quickPhrases = [];
+    }
+    renderQuickPhrases();
+}
+
+function saveQuickPhrase() {
+    if (selectedCards.length === 0) return;
+    var fullSentence = selectedCards.map(function(c) { return getCardText(c, true); }).join(' ');
+    
+    if (quickPhrases.some(function(p) { return p.text === fullSentence; })) {
+        showCustomAlert("Essa frase já está salva nos atalhos!");
+        return;
+    }
+
+    quickPhrases.push({
+        id: Date.now().toString(),
+        text: fullSentence,
+        cards: JSON.parse(JSON.stringify(selectedCards))
+    });
+    
+    localStorage.setItem('caa_quick_phrases_' + currentProfileId, JSON.stringify(quickPhrases));
+    renderQuickPhrases();
+    showCustomAlert("Frase salva com sucesso! ⭐");
+}
+
+function renderQuickPhrases() {
+    var section = document.getElementById('quick-phrases-section');
+    var list = document.getElementById('quick-phrases-list');
+    if (!section || !list) return;
+
+    if (quickPhrases.length === 0) {
+        section.style.display = 'none';
+        list.innerHTML = '';
+        return;
+    }
+
+    section.style.display = 'block';
+    var html = '';
+    quickPhrases.forEach(function(phrase, index) {
+        html += '<div class="quick-phrase-chip" data-index="' + index + '">' +
+                    '<span>' + phrase.text + '</span>' +
+                    '<span class="quick-phrase-delete" data-index="' + index + '" title="Remover Frase">&times;</span>' +
+                '</div>';
+    });
+    list.innerHTML = html;
 }
 
 // Start app initialization on load
