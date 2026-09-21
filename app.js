@@ -2014,42 +2014,46 @@ function checkWhatsNew() {
     var currentVersion = 'v82';
     var savedVersion = localStorage.getItem('caa_last_seen_version');
     
-    // Se for a primeira vez usando o app, salva v82 e não mostra novidades (ou se for novo usuário)
-    if (!savedVersion && !localStorage.getItem('caa_custom_cards_default')) {
-        localStorage.setItem('caa_last_seen_version', currentVersion);
-        return;
-    }
+    var modalWhatsNew = document.getElementById('modal-whats-new');
     
-    if (savedVersion !== currentVersion) {
-        var modalWhatsNew = document.getElementById('modal-whats-new');
-        if (modalWhatsNew) {
-            modalWhatsNew.classList.add('open');
-            
-            var btnClose = document.getElementById('btn-close-whats-new');
-            var btnOk = document.getElementById('btn-whats-new-ok');
-            
-            var closeWhatsNew = function() {
-                modalWhatsNew.classList.remove('open');
-                localStorage.setItem('caa_last_seen_version', currentVersion);
-            };
-            
-            if (btnClose) btnClose.addEventListener('click', closeWhatsNew);
-            if (btnOk) btnOk.addEventListener('click', closeWhatsNew);
-            
-            // Permitir fechar clicando fora
-            modalWhatsNew.addEventListener('click', function(e) {
-                if (e.target === modalWhatsNew) closeWhatsNew();
-            });
-        }
+    // Sempre configurar os eventos do modal, quer ele abra automaticamente ou não
+    if (modalWhatsNew) {
+        var btnClose = document.getElementById('btn-close-whats-new');
+        var btnOk = document.getElementById('btn-whats-new-ok');
+        
+        var closeWhatsNew = function() {
+            modalWhatsNew.classList.remove('open');
+            localStorage.setItem('caa_last_seen_version', currentVersion);
+        };
+        
+        if (btnClose) btnClose.addEventListener('click', closeWhatsNew);
+        if (btnOk) btnOk.addEventListener('click', closeWhatsNew);
+        
+        // Permitir fechar clicando fora
+        modalWhatsNew.addEventListener('click', function(e) {
+            if (e.target === modalWhatsNew) closeWhatsNew();
+        });
     }
     
     // Configurar botão de novidades no rodapé
     var btnShowWhatsNew = document.getElementById('btn-show-whats-new');
     if (btnShowWhatsNew) {
         btnShowWhatsNew.addEventListener('click', function() {
-            var modalWhatsNew = document.getElementById('modal-whats-new');
             if (modalWhatsNew) modalWhatsNew.classList.add('open');
         });
+    }
+    
+    // Se for a primeira vez usando o app, salva v82 e não mostra novidades (novo usuário)
+    if (!savedVersion && !localStorage.getItem('caa_custom_cards_default')) {
+        localStorage.setItem('caa_last_seen_version', currentVersion);
+        return;
+    }
+    
+    // Se tem uma versão anterior salva e ela é diferente da atual, mostra o modal
+    if (savedVersion !== currentVersion) {
+        if (modalWhatsNew) {
+            modalWhatsNew.classList.add('open');
+        }
     }
 }
 
