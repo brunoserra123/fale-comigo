@@ -2932,6 +2932,28 @@ function setupEventListeners() {
         });
     }
 
+    // Custom TTS Input Event Listeners
+    var ttsCustomInput = document.getElementById('tts-custom-input');
+    var btnSpeakCustomText = document.getElementById('btn-speak-custom-text');
+
+    if (ttsCustomInput && btnSpeakCustomText) {
+        var speakCustomText = function() {
+            var text = ttsCustomInput.value.trim();
+            if (text) {
+                speakText(text);
+            }
+        };
+
+        btnSpeakCustomText.addEventListener('click', speakCustomText);
+
+        ttsCustomInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                speakCustomText();
+            }
+        });
+    }
+
     // Card click (add to sentence and speak immediately, or toggle favorite)
     // Acessibilidade: cartões viram "botões" focáveis e acionáveis por Enter/Espaço (teclado e switch)
     if (cardsGrid) {
