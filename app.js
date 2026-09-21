@@ -34,6 +34,17 @@ if (!Array.prototype.findIndex) {
     };
 }
 
+// Escapa texto para uso seguro dentro de HTML (conteúdo e atributos). Compatível com navegadores antigos (ES5).
+function esc(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Polyfill for NodeList.prototype.forEach (missing in older browsers like iOS 9 Safari)
 if (window.NodeList && !NodeList.prototype.forEach) {
     NodeList.prototype.forEach = Array.prototype.forEach;
@@ -654,16 +665,16 @@ function carregarRecentes() {
         var iconHtml = '';
         if (firstCard) {
             if (firstCard.type === 'emoji') {
-                iconHtml = '<span style="font-size: 1rem; flex-shrink: 0;">' + firstCard.value + '</span>';
+                iconHtml = '<span style="font-size: 1rem; flex-shrink: 0;">' + esc(firstCard.value) + '</span>';
             } else {
-                iconHtml = '<img src="' + firstCard.value + '" style="width: 16px; height: 16px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">';
+                iconHtml = '<img src="' + esc(firstCard.value) + '" style="width: 16px; height: 16px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">';
             }
         }
         
         html += 
             '<button type="button" class="recent-chip" data-idx="' + idx + '">' +
                 iconHtml +
-                '<span style="overflow: hidden; text-overflow: ellipsis; max-width: 140px; white-space: nowrap;">' + textLabel + '</span>' +
+                '<span style="overflow: hidden; text-overflow: ellipsis; max-width: 140px; white-space: nowrap;">' + esc(textLabel) + '</span>' +
             '</button>';
     });
     
@@ -744,9 +755,9 @@ function carregarEstatisticas() {
         var iconHtml = '🖼️';
         if (card) {
             if (card.type === 'emoji') {
-                iconHtml = card.value;
+                iconHtml = esc(card.value);
             } else {
-                iconHtml = '<img src="' + card.value + '" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">';
+                iconHtml = '<img src="' + esc(card.value) + '" style="width: 18px; height: 18px; object-fit: contain; border-radius: 4px; flex-shrink: 0;" alt="">';
             }
         }
         
@@ -754,7 +765,7 @@ function carregarEstatisticas() {
             '<div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem; padding: 6px 0; border-bottom: 1px solid var(--border-color);">' +
                 '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
                     '<span style="font-size: 1.1rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;">' + iconHtml + '</span>' +
-                    '<span style="font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis;">' + item.text + '</span>' +
+                    '<span style="font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis;">' + esc(item.text) + '</span>' +
                 '</div>' +
                 '<span style="font-weight: 700; color: var(--color-primary); flex-shrink: 0;">' + item.count + ' ' + (item.count === 1 ? 'toque' : 'toques') + '</span>' +
             '</div>';
@@ -827,7 +838,10 @@ function carregarVozes() {
     });
 }
 
-if (synth && synth.onvoiceschanged !== undefined) {
+if (synth && typeof synth.addEventListener === 'function') {
+    // addEventListener (em vez de onvoiceschanged) para que nenhum outro trecho sobrescreva este handler
+    synth.addEventListener('voiceschanged', carregarVozes);
+} else if (synth && synth.onvoiceschanged !== undefined) {
     synth.onvoiceschanged = carregarVozes;
 }
 
@@ -1275,7 +1289,7 @@ function showShareOptions(sentence) {
     }
 
     title.textContent = 'Enviar Frase 📤';
-    msg.innerHTML = 'O que deseja fazer com a frase:<br><strong style="font-size: 1.15rem; color: var(--text-primary); display: block; margin-top: 8px;">"' + sentence + '"</strong>';
+    msg.innerHTML = 'O que deseja fazer com a frase:<br><strong style="font-size: 1.15rem; color: var(--text-primary); display: block; margin-top: 8px;">"' + esc(sentence) + '"</strong>';
     
     buttonsContainer.innerHTML = 
         '<button id="btn-share-whatsapp-action" class="btn btn-secondary" style="flex-grow: 1; justify-content: center; font-size: 1rem; padding: 12px; background-color: var(--color-share); color: white; border: none; font-weight: 700; gap: 6px;">' +
@@ -1388,7 +1402,17 @@ function setAndCleanCards(newCards) {
     if (!newCards || !Array.isArray(newCards) || newCards.length === 0) {
         newCards = DEFAULT_CARDS.slice();
     }
-    var cleaned = newCards.slice();
+    // Descarta itens inválidos e cartões com texto repetido (o app identifica cartões pelo texto,
+    // então duplicados fazem editar/excluir/favoritar atingir o cartão errado).
+    var seenTexts = {};
+    var cleaned = newCards.filter(function(c) {
+        if (!c || typeof c.text !== 'string' || typeof c.value !== 'string') return false;
+        var key = c.text.trim().toLowerCase();
+        if (seenTexts[key]) return false;
+        seenTexts[key] = true;
+        return true;
+    });
+    if (cleaned.length === 0) cleaned = DEFAULT_CARDS.slice();
     // Remove obsolete cards
     cleaned = cleaned.filter(function(c) { return c.text !== 'Dor / Machucado'; });
     
@@ -1436,13 +1460,13 @@ function renderManageCustomCards() {
     }
 
     listContainer.innerHTML = customCards.map(function(card) {
-        var displayVal = card.type === 'emoji' ? card.value : '🖼️';
+        var displayVal = card.type === 'emoji' ? esc(card.value) : '🖼️';
         return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
                 '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
                     '<span style="font-size: 1.2rem; flex-shrink: 0;">' + displayVal + '</span>' +
-                    '<span style="font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis;">' + card.text + '</span>' +
+                    '<span style="font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis;">' + esc(card.text) + '</span>' +
                 '</div>' +
-                '<button type="button" class="btn-delete-card" data-text="' + card.text + '" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Cartão">' +
+                '<button type="button" class="btn-delete-card" data-text="' + esc(card.text) + '" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Cartão" aria-label="Excluir Cartão">' +
                     '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>' +
                 '</button>' +
             '</div>';
@@ -1477,7 +1501,7 @@ function renderProfileSelector() {
     if (!selectProfile) return;
     selectProfile.innerHTML = profiles.map(function(p) {
         var selected = p.id === currentProfileId ? 'selected' : '';
-        return '<option value="' + p.id + '" ' + selected + '>' + p.name + '</option>';
+        return '<option value="' + esc(p.id) + '" ' + selected + '>' + esc(p.name) + '</option>';
     }).join('');
 }
 
@@ -1488,7 +1512,7 @@ function renderProfilesList() {
         var deleteBtn = '';
         if (p.id !== 'default') {
             deleteBtn = 
-                '<button type="button" class="btn-delete-profile" data-id="' + p.id + '" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Perfil">' +
+                '<button type="button" class="btn-delete-profile" data-id="' + esc(p.id) + '" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Excluir Perfil" aria-label="Excluir Perfil">' +
                     '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg" style="color: var(--color-danger);"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>' +
                 '</button>';
         }
@@ -1496,11 +1520,11 @@ function renderProfilesList() {
         
         return '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background-color: var(--bg-card); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">' +
                 '<div style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">' +
-                    '<span style="font-weight: 600; font-size: 0.95rem; cursor: pointer;" onclick="switchProfile(\'' + p.id + '\')">' + p.name + '</span>' +
+                    '<span style="font-weight: 600; font-size: 0.95rem; cursor: pointer;" data-id="' + esc(p.id) + '" onclick="switchProfile(this.getAttribute(\'data-id\'))">' + esc(p.name) + '</span>' +
                     activeBadge +
                 '</div>' +
                 '<div style="display: flex; gap: 6px; align-items: center;">' +
-                    '<button type="button" class="btn-rename-profile" data-id="' + p.id + '" data-name="' + p.name + '" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Renomear Perfil">✏️</button>' +
+                    '<button type="button" class="btn-rename-profile" data-id="' + esc(p.id) + '" data-name="' + esc(p.name) + '" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px; display: flex; align-items: center;" title="Renomear Perfil" aria-label="Renomear Perfil">✏️</button>' +
                     deleteBtn +
                 '</div>' +
             '</div>';
@@ -1522,6 +1546,27 @@ function loadSpecialProfileBackup(profileName) {
             });
     }
     return Promise.resolve([]);
+}
+
+// Modo Baixa Visão (estas funções estavam aninhadas por engano dentro de loadProfileCards,
+// o que causava "toggleLowVision is not defined" e interrompia o registro dos eventos seguintes)
+function updateLowVisionIcon(active) {
+    if (!btnToggleLowVision) return;
+    btnToggleLowVision.innerHTML = '<span>' + (active ? 'Ativado 👁️' : 'Desativado ❌') + '</span>';
+}
+
+function toggleLowVision() {
+    var active = document.body.classList.contains('low-vision');
+    var newStatus = !active;
+
+    if (newStatus) {
+        document.body.classList.add('low-vision');
+    } else {
+        document.body.classList.remove('low-vision');
+    }
+
+    localStorage.setItem('caa_low_vision_' + currentProfileId, newStatus ? 'true' : 'false');
+    updateLowVisionIcon(newStatus);
 }
 
 function loadProfileCards(profileId) {
@@ -1562,25 +1607,6 @@ function loadProfileCards(profileId) {
     return fetchPromise.then(function(cardsLoaded) {
         if (cardsLoaded && cardsLoaded.length > 0) {
             return cardsLoaded;
-        }
-        // Handle Low Vision Mode Change
-        function updateLowVisionIcon(active) {
-            if (!btnToggleLowVision) return;
-            btnToggleLowVision.innerHTML = '<span>' + (active ? 'Ativado 👁️' : 'Desativado ❌') + '</span>';
-        }
-
-        function toggleLowVision() {
-            var active = document.body.classList.contains('low-vision');
-            var newStatus = !active;
-            
-            if (newStatus) {
-                document.body.classList.add('low-vision');
-            } else {
-                document.body.classList.remove('low-vision');
-            }
-            
-            localStorage.setItem('caa_low_vision_' + currentProfileId, newStatus ? 'true' : 'false');
-            updateLowVisionIcon(newStatus);
         }
         return loadSpecialProfileBackup(profileName);
     });
@@ -2122,9 +2148,9 @@ function renderCards() {
                     
                     var visualContent = '';
                     if (card.type === 'emoji') {
-                        visualContent = '<div class="card-emoji">' + card.value + '</div>';
+                        visualContent = '<div class="card-emoji">' + esc(card.value) + '</div>';
                     } else {
-                        visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+                        visualContent = '<img src="' + esc(card.value) + '" alt="' + esc(getCardText(card)) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
                     }
 
                     var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
@@ -2133,11 +2159,11 @@ function renderCards() {
                     var favStarSymbol = isFav ? '★' : '☆';
 
                     html += 
-                        '<div class="aac-card ' + catClass + '" data-index="' + indexInCards + '" data-text="' + card.text + '">' +
-                            '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                        '<div class="aac-card ' + catClass + '" data-index="' + indexInCards + '" data-text="' + esc(card.text) + '">' +
+                            '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '" aria-label="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '" aria-pressed="' + (isFav ? 'true' : 'false') + '">' + favStarSymbol + '</button>' +
                             '<span class="card-category-tag">' + catName + '</span>' +
                             visualContent +
-                            '<span>' + getCardText(card) + '</span>' +
+                            '<span>' + esc(getCardText(card)) + '</span>' +
                         '</div>';
                 });
             }
@@ -2185,9 +2211,9 @@ function renderCards() {
                     
                     var visualContent = '';
                     if (card.type === 'emoji') {
-                        visualContent = '<div class="card-emoji">' + card.value + '</div>';
+                        visualContent = '<div class="card-emoji">' + esc(card.value) + '</div>';
                     } else {
-                        visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+                        visualContent = '<img src="' + esc(card.value) + '" alt="' + esc(getCardText(card)) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
                     }
 
                     var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
@@ -2211,13 +2237,13 @@ function renderCards() {
                     }
 
                     html += 
-                        '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                        '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + esc(card.text) + '">' +
                             shortcutBadgeHtml +
                             apiBadgeHtml +
-                            '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                            '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '" aria-label="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '" aria-pressed="' + (isFav ? 'true' : 'false') + '">' + favStarSymbol + '</button>' +
                             '<span class="card-category-tag">' + catName + '</span>' +
                             visualContent +
-                            '<span>' + getCardText(card) + '</span>' +
+                            '<span>' + esc(getCardText(card)) + '</span>' +
                         '</div>';
                 });
             }
@@ -2293,9 +2319,9 @@ function renderCards() {
             
             var visualContent = '';
             if (card.type === 'emoji') {
-                visualContent = '<div class="card-emoji">' + card.value + '</div>';
+                visualContent = '<div class="card-emoji">' + esc(card.value) + '</div>';
             } else {
-                visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+                visualContent = '<img src="' + esc(card.value) + '" alt="' + esc(getCardText(card)) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
             }
 
             var indexInCards = cards.findIndex(function(c) { return c.text === card.text; });
@@ -2318,13 +2344,13 @@ function renderCards() {
             }
 
             html += 
-                '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + card.text + '">' +
+                '<div class="aac-card ' + catClass + '" ' + draggableAttr + ' data-index="' + indexInCards + '" data-text="' + esc(card.text) + '">' +
                     shortcutBadgeHtml +
                     apiBadgeHtml +
-                    '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '">' + favStarSymbol + '</button>' +
+                    '<button type="button" class="card-favorite-btn ' + favClass + '" data-index="' + indexInCards + '" title="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '" aria-label="' + (isFav ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos') + '" aria-pressed="' + (isFav ? 'true' : 'false') + '">' + favStarSymbol + '</button>' +
                     '<span class="card-category-tag">' + catName + '</span>' +
                     visualContent +
-                    '<span>' + getCardText(card) + '</span>' +
+                    '<span>' + esc(getCardText(card)) + '</span>' +
                 '</div>';
         });
     }
@@ -2354,13 +2380,13 @@ function updateSentenceBuilder() {
     sentenceList.innerHTML = selectedCards.map(function(card, idx) {
         var visualContent = '';
         if (card.type === 'emoji') {
-            visualContent = '<div class="card-emoji">' + card.value + '</div>';
+            visualContent = '<div class="card-emoji">' + esc(card.value) + '</div>';
         } else {
-            visualContent = '<img src="' + card.value + '" alt="' + getCardText(card) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
+            visualContent = '<img src="' + esc(card.value) + '" alt="' + esc(getCardText(card)) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
         }
         return '<div class="sentence-card" data-idx="' + idx + '">' +
                 visualContent +
-                '<span>' + getCardText(card) + '</span>' +
+                '<span>' + esc(getCardText(card)) + '</span>' +
             '</div>';
     }).join('');
 
@@ -2773,8 +2799,8 @@ function showChangelogModal(addedCards, removedCards) {
     if (addedCards.length > 0) {
         changelogAddedSection.classList.remove('d-none');
         changelogAddedList.innerHTML = addedCards.map(function(c) {
-            var displayVal = c.type === 'emoji' ? c.value + ' ' : '';
-            return '<li>' + displayVal + c.text + '</li>';
+            var displayVal = c.type === 'emoji' ? esc(c.value) + ' ' : '';
+            return '<li>' + displayVal + esc(c.text) + '</li>';
         }).join('');
     } else {
         changelogAddedSection.classList.add('d-none');
@@ -2784,8 +2810,8 @@ function showChangelogModal(addedCards, removedCards) {
     if (removedCards.length > 0) {
         changelogRemovedSection.classList.remove('d-none');
         changelogRemovedList.innerHTML = removedCards.map(function(c) {
-            var displayVal = c.type === 'emoji' ? c.value + ' ' : '';
-            return '<li>' + displayVal + c.text + '</li>';
+            var displayVal = c.type === 'emoji' ? esc(c.value) + ' ' : '';
+            return '<li>' + displayVal + esc(c.text) + '</li>';
         }).join('');
     } else {
         changelogRemovedSection.classList.add('d-none');
@@ -2823,6 +2849,28 @@ function setupEventListeners() {
     }
 
     // Card click (add to sentence and speak immediately, or toggle favorite)
+    // Acessibilidade: cartões viram "botões" focáveis e acionáveis por Enter/Espaço (teclado e switch)
+    if (cardsGrid) {
+        var markCardsAccessible = function() {
+            var els = cardsGrid.querySelectorAll('.aac-card:not([role])');
+            for (var i = 0; i < els.length; i++) {
+                els[i].setAttribute('role', 'button');
+                els[i].setAttribute('tabindex', '0');
+            }
+        };
+        markCardsAccessible();
+        if (typeof MutationObserver !== 'undefined') {
+            new MutationObserver(markCardsAccessible).observe(cardsGrid, { childList: true });
+        }
+        cardsGrid.addEventListener('keydown', function(e) {
+            var isActivateKey = e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar';
+            if (isActivateKey && e.target && e.target.classList && e.target.classList.contains('aac-card')) {
+                e.preventDefault();
+                e.target.click();
+            }
+        });
+    }
+
     if (cardsGrid) cardsGrid.addEventListener('click', function(e) {
         if (isReorderModeActive) {
             return; // Bloqueia clicks se estiver organizando figuras
@@ -3171,7 +3219,7 @@ function setupEventListeners() {
         var reader = new FileReader();
         reader.onload = function(event) {
             uploadedImageBase64 = event.target.result;
-            imagePreview.innerHTML = '<img src="' + uploadedImageBase64 + '" alt="Preview">';
+            imagePreview.innerHTML = '<img src="' + esc(uploadedImageBase64) + '" alt="Pré-visualização da imagem">';
         };
         reader.readAsDataURL(file);
     });
@@ -3372,6 +3420,13 @@ function setupEventListeners() {
             audio = recordedAudioBase64;
         }
 
+        var textKey = text.trim().toLowerCase();
+        var duplicateExists = cards.some(function(c) { return typeof c.text === 'string' && c.text.trim().toLowerCase() === textKey; });
+        if (duplicateExists) {
+            showCustomAlert('Já existe uma figura chamada "' + text + '". Escolha outro nome para não confundir os cartões. ✏️');
+            return;
+        }
+
         var newCardObj = { text: text, category: category, type: finalType, value: value };
         if (imageType === 'emoji' && cardEmojiInput.dataset.fromApi === 'true') {
             newCardObj.fromApi = true;
@@ -3429,8 +3484,8 @@ function setupEventListeners() {
                     results.forEach(function(item) {
                         var id = item._id;
                         html += 
-                            '<div class="arasaac-item" data-id="' + id + '" style="width: 60px; height: 60px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: white; padding: 4px; position: relative; transition: all 0.2s; flex-shrink: 0; box-sizing: border-box;">' +
-                                '<img src="https://api.arasaac.org/api/pictograms/' + id + '" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="' + term + '">' +
+                            '<div class="arasaac-item" data-id="' + esc(id) + '" style="width: 60px; height: 60px; border: 2px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: white; padding: 4px; position: relative; transition: all 0.2s; flex-shrink: 0; box-sizing: border-box;">' +
+                                '<img src="https://api.arasaac.org/api/pictograms/' + encodeURIComponent(id) + '" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="' + esc(term) + '">' +
                             '</div>';
                     });
                     arasaacResultsContainer.innerHTML = html;
@@ -3826,13 +3881,13 @@ function setupEventListeners() {
                             if (exists) {
                                 btnHtml = '<span style="font-size: 0.8rem; font-weight: 700; color: var(--color-primary);">Já Importado ✅</span>';
                             } else {
-                                btnHtml = '<button type="button" class="btn-import-cloud-profile" data-name="' + cp.name + '" style="background-color: var(--color-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Importar 📥</button>';
+                                btnHtml = '<button type="button" class="btn-import-cloud-profile" data-name="' + esc(cp.name) + '" style="background-color: var(--color-primary); color: white; border: none; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; cursor: pointer;">Importar 📥</button>';
                             }
                             
                             return 
                                 '<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; gap: 8px;">' +
                                     '<div style="display: flex; flex-direction: column; overflow: hidden; text-align: left;">' +
-                                        '<strong style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">' + cp.name + '</strong>' +
+                                        '<strong style="color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">' + esc(cp.name) + '</strong>' +
                                         '<span style="font-size: 0.75rem; color: var(--text-secondary);">' + dateText + ' • ' + sizeText + '</span>' +
                                     '</div>' +
                                     '<div style="flex-shrink: 0;">' +
@@ -4272,10 +4327,8 @@ function setupEventListeners() {
     }
 }
 
-// Ensure voice synth is ready on page load
-if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-    speechSynthesis.onvoiceschanged = function() {};
-}
+// (Removido: um handler vazio de onvoiceschanged aqui sobrescrevia o carregarVozes,
+// deixando a lista de vozes vazia quando o navegador carrega as vozes de forma assíncrona.)
 
 // Launch application
 
@@ -4311,6 +4364,27 @@ function unlockSpeech() {
 // Bind unlock to first interaction
 document.addEventListener('click', unlockSpeech, { once: true });
 document.addEventListener('touchstart', unlockSpeech, { once: true });
+
+// Aviso discreto (não bloqueante) quando o navegador não consegue falar
+var lastSpeechErrorAt = 0;
+function notifySpeechError(errCode) {
+    var now = new Date().getTime();
+    if (now - lastSpeechErrorAt < 6000) return;
+    lastSpeechErrorAt = now;
+
+    var old = document.getElementById('speech-error-toast');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+
+    var toast = document.createElement('div');
+    toast.id = 'speech-error-toast';
+    toast.setAttribute('role', 'alert');
+    toast.className = 'speech-error-toast';
+    toast.textContent = '🔇 Não consegui falar agora (' + errCode + '). Confira o volume do aparelho e a voz escolhida em Configurações.';
+    document.body.appendChild(toast);
+    setTimeout(function() {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 7000);
+}
 
 // Speak text using Web Speech Synthesis API
 function speakText(text) {
@@ -4364,7 +4438,14 @@ function speakText(text) {
     };
     
     utterance.onend = cleanup;
-    utterance.onerror = cleanup;
+    utterance.onerror = function(ev) {
+        cleanup();
+        var errCode = ev && ev.error ? ev.error : 'unknown';
+        // 'canceled' / 'interrupted' acontecem quando trocamos a frase de propósito: não é falha
+        if (errCode === 'canceled' || errCode === 'interrupted') return;
+        console.warn('Falha na síntese de voz: ' + errCode + ' | ' + navigator.userAgent);
+        notifySpeechError(errCode);
+    };
     
     // Choose voice based on language
     var voices = [];
@@ -4643,8 +4724,8 @@ function renderQuickPhrases() {
     var html = '';
     quickPhrases.forEach(function(phrase, index) {
         html += '<div class="quick-phrase-chip" data-index="' + index + '">' +
-                    '<span>' + phrase.text + '</span>' +
-                    '<span class="quick-phrase-delete" data-index="' + index + '" title="Remover Frase">&times;</span>' +
+                    '<span>' + esc(phrase.text) + '</span>' +
+                    '<span class="quick-phrase-delete" data-index="' + index + '" title="Remover Frase" role="button" aria-label="Remover Frase">&times;</span>' +
                 '</div>';
     });
     list.innerHTML = html;

@@ -7,7 +7,7 @@
     <meta name="description" content="Aplicativo offline, moderno e simplificado de Comunicação Alternativa e Ampliada (CAA).">
     
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="styles.css?v=79">
+    <link rel="stylesheet" href="styles.css?v=81">
     
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -88,39 +88,39 @@
                     <select id="select-profile" class="select-profile">
                         <!-- Opções preenchidas dinamicamente pelo JS -->
                     </select>
-                    <button id="btn-manage-profiles" class="btn-profile-manage" style="background: none; border: none; cursor: pointer; font-size: 1rem; padding: 2px; display: flex; align-items: center;" title="Gerenciar Perfis">⚙️</button>
+                    <button id="btn-manage-profiles" class="btn-profile-manage" style="background: none; border: none; cursor: pointer; font-size: 1rem; padding: 2px; display: flex; align-items: center;" title="Gerenciar Perfis" aria-label="Gerenciar Perfis">⚙️</button>
                 </div>
 
                 <!-- Botão de Bloqueio Infantil -->
-                <button id="btn-lock-app" class="btn btn-icon" title="Bloquear Configurações" style="color: var(--color-primary); border-color: rgba(16, 185, 129, 0.3);">
+                <button id="btn-lock-app" class="btn btn-icon" title="Bloquear Configurações" style="color: var(--color-primary); border-color: rgba(16, 185, 129, 0.3);" aria-label="Bloquear Configurações">
                     <!-- Ícone cadeado aberto por padrão -->
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
                 </button>
 
                 <!-- Botão de Reordenar Figuras -->
-                <button id="btn-toggle-reorder" class="btn btn-icon" title="Organizar Figuras" style="color: var(--text-secondary); border-color: var(--border-color);">
+                <button id="btn-toggle-reorder" class="btn btn-icon" title="Organizar Figuras" style="color: var(--text-secondary); border-color: var(--border-color);" aria-label="Organizar Figuras">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="m22 17-5 5-5-5"/><path d="M6 22V4"/><path d="m10 8-4-4-4 4"/><path d="M18 2V16"/></svg>
                 </button>
 
                 <!-- Botão Rápido TelepatiX (Acessibilidade) -->
-                <button id="btn-toggle-telepatix-header" class="btn btn-icon" title="Ligar TelepatiX (Acessibilidade por Varredura)" style="color: var(--text-secondary); border-color: var(--border-color);">
+                <button id="btn-toggle-telepatix-header" class="btn btn-icon" title="Ligar TelepatiX (Acessibilidade por Varredura)" style="color: var(--text-secondary); border-color: var(--border-color);" aria-label="Ligar TelepatiX (Acessibilidade por Varredura)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
 
                 <!-- Botão de Alternar Tema (Claro / Escuro / Alto Contraste) -->
-                <button id="btn-toggle-theme" class="btn btn-icon" title="Alternar Tema (Claro / Escuro / Alto Contraste)" style="color: var(--text-secondary); border-color: var(--border-color);">
+                <button id="btn-toggle-theme" class="btn btn-icon" title="Alternar Tema (Claro / Escuro / Alto Contraste)" style="color: var(--text-secondary); border-color: var(--border-color);" aria-label="Alternar Tema (Claro / Escuro / Alto Contraste)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                 </button>
 
                 <!-- Botão de Alternar Layout (Grade / Pastas) -->
-                <button id="btn-toggle-layout" class="btn btn-icon" title="Alternar Modo de Exibição" style="color: var(--text-secondary); border-color: var(--border-color);">
+                <button id="btn-toggle-layout" class="btn btn-icon" title="Alternar Modo de Exibição" style="color: var(--text-secondary); border-color: var(--border-color);" aria-label="Alternar Modo de Exibição">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                 </button>
 
-                <button id="btn-fullscreen" class="btn btn-icon" title="Tela Cheia" style="color: var(--text-secondary); border-color: var(--border-color);">
+                <button id="btn-fullscreen" class="btn btn-icon" title="Tela Cheia" style="color: var(--text-secondary); border-color: var(--border-color);" aria-label="Tela Cheia">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
                 </button>
-                <button id="btn-settings" class="btn btn-icon" title="Configurações (Tutor)">
+                <button id="btn-settings" class="btn btn-icon" title="Configurações (Tutor)" aria-label="Configurações (Tutor)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
             </div>
@@ -137,18 +137,18 @@
                     <!-- Cards will be added here dynamically -->
                 </div>
                 <div class="sentence-controls d-none">
-                    <button id="btn-speak" class="btn btn-primary btn-speak" title="Falar Frase" disabled>
+                    <button id="btn-speak" class="btn btn-primary btn-speak" title="Falar Frase" disabled aria-label="Falar Frase">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
                         <span data-i18n="btn_speak">FALAR</span>
                     </button>
-                    <button id="btn-save-phrase" class="btn btn-secondary" title="Salvar como Frase Pronta" disabled style="padding: 10px 14px;">
+                    <button id="btn-save-phrase" class="btn btn-secondary" title="Salvar como Frase Pronta" disabled style="padding: 10px 14px;" aria-label="Salvar como Frase Pronta">
                         ⭐
                     </button>
-                    <button id="btn-share-whatsapp" class="btn btn-secondary btn-share" title="Enviar / Copiar Frase" disabled>
+                    <button id="btn-share-whatsapp" class="btn btn-secondary btn-share" title="Enviar / Copiar Frase" disabled aria-label="Enviar / Copiar Frase">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                         <span data-i18n="btn_send">ENVIAR</span>
                     </button>
-                    <button id="btn-clear-all" class="btn btn-danger" title="Limpar tudo" disabled>
+                    <button id="btn-clear-all" class="btn btn-danger" title="Limpar tudo" disabled aria-label="Limpar tudo">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                         <span data-i18n="btn_clear">LIMPAR</span>
                     </button>
@@ -160,7 +160,7 @@
         <section class="search-section">
             <div class="search-container">
                 <input type="text" id="search-input" placeholder="Buscar figura... 🔍" aria-label="Buscar figura" data-i18n-placeholder="search_placeholder">
-                <button id="btn-clear-search" class="btn-clear-search d-none" title="Limpar busca">&times;</button>
+                <button id="btn-clear-search" class="btn-clear-search d-none" title="Limpar busca" aria-label="Limpar busca">&times;</button>
             </div>
         </section>
 
@@ -211,9 +211,9 @@
 
         <!-- MODAL: SUPPORT (APOIAR) -->
         <div id="modal-support" class="modal-overlay">
-            <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title-1" style="max-width: 450px;">
                 <div class="modal-header">
-                    <h2>Apoiar o Projeto 💖</h2>
+                    <h2 id="modal-title-1">Apoiar o Projeto 💖</h2>
                     <button id="btn-close-support" class="btn-close">&times;</button>
                 </div>
                 <div class="modal-body" style="text-align: center; gap: 20px; padding: 20px;">
@@ -272,9 +272,9 @@
 
         <!-- MODAL: SETTINGS (TUTOR MODE) -->
         <div id="modal-settings" class="modal-overlay">
-            <div class="modal-content">
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title-2">
                 <div class="modal-header">
-                    <h2 data-i18n="settings_title">Configurações do Tutor</h2>
+                    <h2 id="modal-title-2" data-i18n="settings_title">Configurações do Tutor</h2>
                     <button id="btn-close-settings" class="btn-close">&times;</button>
                 </div>
                 <div class="modal-body">
@@ -598,11 +598,11 @@
 
         <!-- MODAL: SUB CHOICE OVERLAY (ABRE POR CIMA) -->
         <div id="modal-sub-choice" class="modal-overlay">
-            <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="sub-choice-title" style="max-width: 600px;">
                 <div class="modal-header">
                     <h2 id="sub-choice-title">Escolha uma opção</h2>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <button id="btn-add-sub-choice" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem; font-weight: 600; border-radius: var(--radius-sm);" title="Adicionar Novo Item">
+                        <button id="btn-add-sub-choice" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem; font-weight: 600; border-radius: var(--radius-sm);" title="Adicionar Novo Item" aria-label="Adicionar Novo Item">
                             + Novo
                         </button>
                         <button id="btn-close-sub-choice" class="btn-close">&times;</button>
@@ -618,9 +618,9 @@
 
         <!-- MODAL: CHANGELOG OVERLAY (NOVIDADES DA ATUALIZAÇÃO) -->
         <div id="modal-changelog" class="modal-overlay">
-            <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title-4" style="max-width: 500px;">
                 <div class="modal-header">
-                    <h2>🎉 Novidades da Sincronização</h2>
+                    <h2 id="modal-title-4">🎉 Novidades da Sincronização</h2>
                     <button id="btn-close-changelog" class="btn-close">&times;</button>
                 </div>
                 <div class="modal-body" style="gap: 20px;">
@@ -660,14 +660,14 @@
     <div id="floating-bottom-bar" class="floating-bottom-bar d-none">
         <div class="floating-sentence-preview" id="floating-sentence-preview"></div>
         <div class="floating-actions">
-            <button id="btn-speak-float" class="btn btn-primary" title="Falar Frase">
+            <button id="btn-speak-float" class="btn btn-primary" title="Falar Frase" aria-label="Falar Frase">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
                 <span>FALAR</span>
             </button>
-            <button id="btn-share-float" class="btn btn-secondary btn-share-float" title="Enviar / Copiar Frase" style="background-color: var(--color-share); color: white; border: none; padding: 10px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); cursor: pointer;">
+            <button id="btn-share-float" class="btn btn-secondary btn-share-float" title="Enviar / Copiar Frase" style="background-color: var(--color-share); color: white; border: none; padding: 10px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); cursor: pointer;" aria-label="Enviar / Copiar Frase">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
-            <button id="btn-clear-float" class="btn btn-danger" title="Limpar tudo">
+            <button id="btn-clear-float" class="btn btn-danger" title="Limpar tudo" aria-label="Limpar tudo">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
             </button>
         </div>
@@ -675,9 +675,9 @@
 
     <!-- MODAL: PROFILES (GERENCIAR PERFIS) -->
     <div id="modal-profiles" class="modal-overlay">
-        <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title-5" style="max-width: 450px;">
             <div class="modal-header">
-                <h2>Gerenciar Perfis 👥</h2>
+                <h2 id="modal-title-5">Gerenciar Perfis 👥</h2>
                 <button id="btn-close-profiles" class="btn-close">&times;</button>
             </div>
             <div class="modal-body" style="gap: 16px;">
@@ -718,7 +718,7 @@
 
     <!-- MODAL: CUSTOM DIALOG (ALERT / CONFIRM) -->
     <div id="modal-custom-dialog" class="modal-overlay">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="custom-dialog-title" style="max-width: 400px; text-align: center;">
             <div class="modal-header" style="justify-content: center; padding: 12px; border-bottom: 1px solid var(--border-color);">
                 <h2 id="custom-dialog-title" style="font-size: 1.2rem;">Aviso</h2>
             </div>
@@ -732,9 +732,9 @@
     </div>
     <!-- MODAL: LOCK SCREEN (DESBLOQUEIO) -->
     <div id="modal-lock-challenge" class="modal-overlay">
-        <div class="modal-content" style="max-width: 360px; text-align: center;">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title-7" style="max-width: 360px; text-align: center;">
             <div class="modal-header" style="justify-content: center; border-bottom: 1px solid var(--border-color); padding: 12px;">
-                <h2 style="font-size: 1.25rem; font-weight: 700;">🔒 Controle do Tutor</h2>
+                <h2 id="modal-title-7" style="font-size: 1.25rem; font-weight: 700;">🔒 Controle do Tutor</h2>
             </div>
             <div class="modal-body" style="gap: 16px; padding: 20px; align-items: center;">
                 <p style="font-size: 0.95rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
@@ -759,6 +759,6 @@
     </button>
 
     <!-- App Logic -->
-    <script src="app.js?v=80"></script>
+    <script src="app.js?v=81"></script>
 </body>
 </html>
