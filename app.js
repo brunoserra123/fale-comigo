@@ -889,7 +889,7 @@ var premiumStatusLabel = document.getElementById('premium-status-label');
 var btnActivatePremium = document.getElementById('btn-activate-premium');
 
 function checkPremiumStatus() {
-    return localStorage.getItem('caa_premium_active') === 'true' || localStorage.getItem('caa_dev_mode') === 'true';
+    return true; // Funções premium liberadas para todos
 }
 
 function updatePremiumUI() {
