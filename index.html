@@ -752,6 +752,46 @@
         </div>
     </div>
 
+    <!-- MODAL: IN-APP BROWSER WARNING -->
+    <div id="modal-inapp-warning" class="modal-overlay">
+        <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 400px; text-align: center; border: 2px solid var(--color-danger);">
+            <div class="modal-header" style="justify-content: center; border-bottom: 1px solid var(--border-color); padding: 12px; background-color: rgba(239, 68, 68, 0.1);">
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--color-danger);">⚠️ Aviso Importante</h2>
+            </div>
+            <div class="modal-body" style="gap: 16px; padding: 20px; align-items: center;">
+                <p style="font-size: 1rem; color: var(--text-primary); margin: 0; line-height: 1.5; font-weight: 600;">
+                    Parece que você abriu o aplicativo pelo navegador do Instagram/Facebook.
+                </p>
+                <p style="font-size: 0.95rem; color: var(--text-secondary); margin: 0; line-height: 1.5;">
+                    Para que o aplicativo funcione corretamente (com voz e offline), você precisa abrir no seu navegador normal (Chrome ou Safari).
+                </p>
+                <div style="background-color: var(--bg-app); border-radius: var(--radius-sm); padding: 12px; border: 1px solid var(--border-color); width: 100%;">
+                    <strong>Como resolver:</strong><br>
+                    Toque nos <strong>3 pontinhos</strong> (⋮ ou ⋯) no canto da tela e escolha <strong>"Abrir no navegador"</strong> ou "Abrir no Chrome/Safari".
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: WHATS NEW -->
+    <div id="modal-whats-new" class="modal-overlay">
+        <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2 style="font-size: 1.25rem; font-weight: 700;">🎉 Novidades da Versão (v82)</h2>
+                <button id="btn-close-whats-new" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body" style="gap: 12px; padding: 20px;">
+                <ul style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; padding-left: 20px; margin: 0;">
+                    <li><strong>Novos Ícones:</strong> O aplicativo agora possui ícones atualizados na instalação.</li>
+                    <li><strong>Melhorias Visuais:</strong> Pequenos ajustes na interface e experiência de uso.</li>
+                    <li><strong>Correções de Cache:</strong> Agora as atualizações serão baixadas mais rápido quando você estiver conectado à internet.</li>
+                    <li><strong>Detecção de Navegador:</strong> Adicionado um aviso importante para quem abre o app via Instagram.</li>
+                </ul>
+                <button id="btn-whats-new-ok" type="button" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px;">Entendi!</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Floating Exit Fullscreen Button -->
     <button id="btn-exit-fullscreen-float" class="btn btn-primary d-none" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; border-radius: 50px; box-shadow: var(--shadow-lg); font-weight: 700;">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
@@ -759,6 +799,6 @@
     </button>
 
     <!-- App Logic -->
-    <script src="app.js?v=81"></script>
+    <script src="app.js?v=82"></script>
 </body>
 </html>

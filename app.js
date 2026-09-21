@@ -1989,6 +1989,7 @@ function init() {
         }
         
         checkInAppBrowser();
+        checkWhatsNew();
 }
 
 // Check if app is open inside Instagram or Facebook WebViews to warn the user
@@ -2002,23 +2003,42 @@ function checkInAppBrowser() {
     var isIOSWebView = /iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari/i.test(ua);
     
     if (isInstagram || isFB || isAndroidWebView || isIOSWebView) {
-        var lang = getProfileLanguage();
-        var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
-        var msg = dict.in_app_warning || '⚠️ Para o áudio funcionar, toque nos 3 pontinhos e escolha "Abrir no Navegador".';
-        
-        var banner = document.createElement('div');
-        banner.id = 'in-app-browser-banner';
-        banner.style.cssText = 'background-color: #f59e0b; color: #ffffff; padding: 12px 16px; text-align: center; font-family: var(--font-primary); font-size: 0.95rem; font-weight: 700; position: sticky; top: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-bottom: 2px solid #d97706; line-height: 1.4;';
-        
-        banner.innerHTML = '<span style="flex-grow: 1; text-align: left;">' + msg + '</span>' +
-                           '<button id="btn-close-inapp-banner" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem; font-weight: bold; padding: 0 10px; display: flex; align-items: center; line-height: 1;">&times;</button>';
-        
-        document.body.insertBefore(banner, document.body.firstChild);
-        
-        var closeBtn = document.getElementById('btn-close-inapp-banner');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                banner.style.display = 'none';
+        var modalInApp = document.getElementById('modal-inapp-warning');
+        if (modalInApp) {
+            modalInApp.classList.add('open');
+        }
+    }
+}
+
+function checkWhatsNew() {
+    var currentVersion = 'v82';
+    var savedVersion = localStorage.getItem('caa_last_seen_version');
+    
+    // Se for a primeira vez usando o app, salva v82 e não mostra novidades (ou se for novo usuário)
+    if (!savedVersion && !localStorage.getItem('caa_custom_cards_default')) {
+        localStorage.setItem('caa_last_seen_version', currentVersion);
+        return;
+    }
+    
+    if (savedVersion !== currentVersion) {
+        var modalWhatsNew = document.getElementById('modal-whats-new');
+        if (modalWhatsNew) {
+            modalWhatsNew.classList.add('open');
+            
+            var btnClose = document.getElementById('btn-close-whats-new');
+            var btnOk = document.getElementById('btn-whats-new-ok');
+            
+            var closeWhatsNew = function() {
+                modalWhatsNew.classList.remove('open');
+                localStorage.setItem('caa_last_seen_version', currentVersion);
+            };
+            
+            if (btnClose) btnClose.addEventListener('click', closeWhatsNew);
+            if (btnOk) btnOk.addEventListener('click', closeWhatsNew);
+            
+            // Permitir fechar clicando fora
+            modalWhatsNew.addEventListener('click', function(e) {
+                if (e.target === modalWhatsNew) closeWhatsNew();
             });
         }
     }
