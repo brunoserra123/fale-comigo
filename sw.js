@@ -1,5 +1,5 @@
 // Ao publicar uma nova versão, basta mudar este número (e o ?v= no index.html).
-const CACHE_NAME = 'caa-comunicador-v88';
+const CACHE_NAME = 'caa-comunicador-v89';
 
 // Arquivos guardados na instalação para o app abrir 100% offline.
 // Sem "?v=": o cache é consultado ignorando a query string, então a versão pedida
