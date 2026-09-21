@@ -2042,6 +2042,15 @@ function checkWhatsNew() {
             });
         }
     }
+    
+    // Configurar botão de novidades no rodapé
+    var btnShowWhatsNew = document.getElementById('btn-show-whats-new');
+    if (btnShowWhatsNew) {
+        btnShowWhatsNew.addEventListener('click', function() {
+            var modalWhatsNew = document.getElementById('modal-whats-new');
+            if (modalWhatsNew) modalWhatsNew.classList.add('open');
+        });
+    }
 }
 
 function saveCardsToStorage(triggerCloudUpload) {
