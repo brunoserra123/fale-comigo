@@ -2062,7 +2062,7 @@ function checkInAppBrowser() {
 }
 
 function checkWhatsNew() {
-    var currentVersion = 'v84';
+    var currentVersion = 'v85';
     var savedVersion = localStorage.getItem('caa_last_seen_version');
     
     var modalWhatsNew = document.getElementById('modal-whats-new');
@@ -2909,6 +2909,63 @@ function showChangelogModal(addedCards, removedCards) {
 }
 
 function setupEventListeners() {
+
+    // Dashboard & Game Listeners
+    var btnDashboard = document.getElementById('btn-dashboard');
+    if (btnDashboard) {
+        btnDashboard.addEventListener('click', function() {
+            var modalDashboard = document.getElementById('modal-dashboard');
+            if (modalDashboard) modalDashboard.classList.add('open');
+            if (typeof renderizarGrafico === 'function') renderizarGrafico();
+        });
+    }
+
+    var btnCloseDashboard = document.getElementById('btn-close-dashboard');
+    if (btnCloseDashboard) {
+        btnCloseDashboard.addEventListener('click', function() {
+            document.getElementById('modal-dashboard').classList.remove('open');
+        });
+    }
+
+    var btnClearDashboard = document.getElementById('btn-clear-stats-dashboard');
+    if (btnClearDashboard) {
+        btnClearDashboard.addEventListener('click', function() {
+            if(confirm("Tem certeza que deseja limpar as estatísticas?")) {
+                localStorage.removeItem('caa_stats_' + currentProfileId);
+                if (typeof renderizarGrafico === 'function') renderizarGrafico();
+            }
+        });
+    }
+
+    var btnPlayGame = document.getElementById('btn-play-game');
+    if (btnPlayGame) {
+        btnPlayGame.addEventListener('click', function() {
+            if (typeof iniciarJogo === 'function') iniciarJogo();
+        });
+    }
+
+    var btnCloseGame = document.getElementById('btn-close-game');
+    if (btnCloseGame) {
+        btnCloseGame.addEventListener('click', function() {
+            document.getElementById('modal-game').classList.remove('open');
+        });
+    }
+
+    // OpenAI Config Setup
+    var selOpenAiVoice = document.getElementById('seletor-openai-voice');
+    var inputOpenAiKey = document.getElementById('input-openai-key');
+    if (selOpenAiVoice) {
+        selOpenAiVoice.value = localStorage.getItem('caa_openai_voice_' + currentProfileId) || '';
+        selOpenAiVoice.addEventListener('change', function(e) {
+            localStorage.setItem('caa_openai_voice_' + currentProfileId, e.target.value);
+        });
+    }
+    if (inputOpenAiKey) {
+        inputOpenAiKey.value = localStorage.getItem('caa_openai_key_' + currentProfileId) || '';
+        inputOpenAiKey.addEventListener('input', function(e) {
+            localStorage.setItem('caa_openai_key_' + currentProfileId, e.target.value.trim());
+        });
+    }
 
     // Search input listener
     if (searchInput) {
@@ -4492,8 +4549,59 @@ function notifySpeechError(errCode) {
     }, 7000);
 }
 
-// Speak text using Web Speech Synthesis API
+// Nova Função Principal: SpeakText (com suporte a OpenAI e Fallback nativo)
 function speakText(text) {
+    if (!text) return;
+    
+    var openAiVoice = localStorage.getItem('caa_openai_voice_' + currentProfileId);
+    var openAiKey = localStorage.getItem('caa_openai_key_' + currentProfileId);
+
+    if (openAiVoice && openAiVoice !== '' && openAiKey && openAiKey.trim() !== '') {
+        // Tenta usar OpenAI
+        var btnSpeak = document.getElementById('btn-speak');
+        if(btnSpeak) btnSpeak.style.opacity = '0.5';
+
+        fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + openAiKey.trim(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'tts-1',
+                input: text,
+                voice: openAiVoice
+            })
+        })
+        .then(function(response) {
+            if (!response.ok) throw new Error('API Falhou');
+            return response.blob();
+        })
+        .then(function(blob) {
+            if(btnSpeak) btnSpeak.style.opacity = '1';
+            var url = URL.createObjectURL(blob);
+            var audio = new Audio(url);
+            audio.play();
+            
+            // Clean up the object URL after playing
+            audio.onended = function() {
+                URL.revokeObjectURL(url);
+            };
+        })
+        .catch(function(err) {
+            console.error('Falha na OpenAI, usando voz nativa do sistema...', err);
+            if(btnSpeak) btnSpeak.style.opacity = '1';
+            speakTextLocal(text);
+        });
+        return;
+    }
+
+    // Fallback nativo
+    speakTextLocal(text);
+}
+
+// Speak text using Web Speech Synthesis API (Local Fallback)
+function speakTextLocal(text) {
     if (!text) return;
     
     if (synth) {
@@ -4842,4 +4950,184 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
     init();
+}
+// ==========================================
+// PAINEL DE ESTATISTICAS (DASHBOARD)
+// ==========================================
+var usageChartInstance = null;
+
+function renderizarGrafico() {
+    var canvas = document.getElementById('usageChart');
+    if (!canvas) return;
+    
+    var stored = localStorage.getItem('caa_stats_' + currentProfileId);
+    var stats = {};
+    if (stored) {
+        try { stats = JSON.parse(stored); } catch(e) {}
+    }
+    
+    var statsArray = [];
+    for (var key in stats) {
+        if (stats.hasOwnProperty(key)) {
+            statsArray.push({ text: key, count: stats[key] });
+        }
+    }
+    
+    statsArray.sort(function(a, b) { return b.count - a.count; });
+    var topStats = statsArray.slice(0, 7);
+    
+    var labels = topStats.map(function(item) { return esc(item.text); });
+    var data = topStats.map(function(item) { return item.count; });
+    
+    if (usageChartInstance) {
+        usageChartInstance.destroy();
+    }
+    
+    if (typeof Chart !== 'undefined') {
+        var ctx = canvas.getContext('2d');
+        usageChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Toques na Figura',
+                    data: data,
+                    backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                    borderColor: 'rgba(16, 185, 129, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    } else {
+        console.warn('Chart.js não carregado.');
+    }
+}
+
+// ==========================================
+// GAMIFICACAO (APRENDER BRINCANDO)
+// ==========================================
+var gameTargetCard = null;
+
+function iniciarJogo() {
+    var modalGame = document.getElementById('modal-game');
+    if (!modalGame) return;
+    modalGame.classList.add('open');
+    sortearCartaoJogo();
+}
+
+function sortearCartaoJogo() {
+    // Escolhe aleatoriamente da DEFAULT_CARDS
+    var available = DEFAULT_CARDS.filter(function(c) { return c.type === 'image' || c.type === 'emoji'; });
+    if (available.length < 3) return;
+    
+    // Embaralha para pegar 3 opcoes
+    var shuffled = available.sort(function() { return 0.5 - Math.random() });
+    var options = shuffled.slice(0, 3);
+    
+    // Escolhe 1 como alvo
+    gameTargetCard = options[Math.floor(Math.random() * options.length)];
+    
+    document.getElementById('game-subtitle').innerText = "Onde está... " + gameTargetCard.text.toUpperCase() + "?";
+    
+    var container = document.getElementById('game-cards-container');
+    container.innerHTML = '';
+    
+    options.forEach(function(card) {
+        var cardEl = document.createElement('div');
+        cardEl.className = 'aac-card';
+        cardEl.style.width = '160px';
+        cardEl.style.height = '180px';
+        cardEl.style.margin = '10px';
+        cardEl.style.borderWidth = '4px';
+        
+        var imgHtml = '';
+        if (card.type === 'emoji') {
+            imgHtml = '<div class="card-emoji" style="font-size: 5rem;">' + esc(card.value) + '</div>';
+        } else {
+            imgHtml = '<img src="' + esc(card.value) + '" alt="' + esc(card.text) + '" style="max-height: 60%; width: auto; object-fit: contain;">';
+        }
+        
+        var textHtml = '<div class="card-text" style="font-size: 1.2rem; font-weight: 700; margin-top: 10px;">' + esc(card.text) + '</div>';
+        
+        cardEl.innerHTML = imgHtml + textHtml;
+        
+        cardEl.onclick = function() {
+            verificarRespostaJogo(card, cardEl);
+        };
+        
+        container.appendChild(cardEl);
+    });
+    
+    // Fala o que procurar
+    setTimeout(function() {
+        speakTextLocal("Onde está a " + gameTargetCard.text); // Usando a voz nativa para ser mais rápido sem delay
+    }, 500);
+}
+
+function verificarRespostaJogo(card, cardEl) {
+    if (card.text === gameTargetCard.text) {
+        // Acertou
+        cardEl.style.borderColor = 'var(--color-primary)';
+        cardEl.style.backgroundColor = 'rgba(16, 185, 129, 0.2)';
+        speakTextLocal("Muito bem!");
+        soltarConfete();
+        setTimeout(sortearCartaoJogo, 2000);
+    } else {
+        // Errou
+        cardEl.style.borderColor = 'var(--color-danger)';
+        cardEl.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+        cardEl.style.transform = 'translateY(0) scale(0.95)';
+        speakTextLocal("Tente de novo.");
+        setTimeout(function() {
+            cardEl.style.borderColor = 'var(--border-color)';
+            cardEl.style.backgroundColor = 'var(--bg-card)';
+        }, 1000);
+    }
+}
+
+function soltarConfete() {
+    var canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    var pieces = [];
+    for (var i = 0; i < 100; i++) {
+        pieces.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height - canvas.height,
+            size: Math.random() * 10 + 5,
+            color: 'hsl(' + Math.random() * 360 + ', 100%, 50%)',
+            speed: Math.random() * 5 + 2
+        });
+    }
+    
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        var active = false;
+        pieces.forEach(function(p) {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+            p.y += p.speed;
+            if (p.y < canvas.height) active = true;
+        });
+        if (active) {
+            requestAnimationFrame(draw);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+    draw();
 }
