@@ -27,10 +27,21 @@ jobs:
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
 
+      # Publica SOMENTE os arquivos que o aplicativo usa.
+      # Assim anotações, senhas, chaves, capturas de tela e outros arquivos do repositório
+      # não ficam acessíveis pelo endereço público do site.
+      - name: Montar pasta pública (dist)
+        run: |
+          mkdir -p dist
+          cp index.html app.js styles.css sw.js manifest.json dist/
+          cp icon.png icon-192.png icon-512.png icon-512-maskable.png dist/
+          cp apple-touch-icon.png apple-touch-icon-precomposed.png pix_qr.png dist/
+          cp backup_comunicador_caa_mauro.json dist/
+
       - name: Carregar Arquivos do Site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: 'dist'
 
       - name: Publicar no GitHub Pages
         id: deployment
