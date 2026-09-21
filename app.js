@@ -98,9 +98,9 @@ var CATEGORIES = [
 // Initial default cards
 var DEFAULT_CARDS = [
     // Essential
-    { text: 'Sim', category: 'essential', type: 'image', value: 'assets/card_sim.jpg' },
-    { text: 'Não', category: 'essential', type: 'image', value: 'assets/card_nao.jpg' },
-    { text: 'Por Favor', category: 'essential', type: 'image', value: 'assets/card_porfavor.jpg' },
+    { text: 'Sim', category: 'essential', type: 'image', value: './assets/card_sim.jpg' },
+    { text: 'Não', category: 'essential', type: 'image', value: './assets/card_nao.jpg' },
+    { text: 'Por Favor', category: 'essential', type: 'image', value: './assets/card_porfavor.jpg' },
     { text: 'Obrigado', category: 'essential', type: 'emoji', value: '💖' },
     { text: 'Oi / Olá', category: 'essential', type: 'emoji', value: '👋' },
     { text: 'Tchau', category: 'essential', type: 'emoji', value: '👋' },
@@ -117,27 +117,27 @@ var DEFAULT_CARDS = [
     { text: 'Ruim', category: 'essential', type: 'emoji', value: '👎' },
     
     // Actions
-    { text: 'Eu', category: 'essential', type: 'image', value: 'assets/card_eu.jpg' },
-    { text: 'Você', category: 'essential', type: 'image', value: 'assets/card_voce.jpg' },
+    { text: 'Eu', category: 'essential', type: 'image', value: './assets/card_eu.jpg' },
+    { text: 'Você', category: 'essential', type: 'image', value: './assets/card_voce.jpg' },
     { text: 'Eu Quero', category: 'action', type: 'emoji', value: '👉' },
     { text: 'Não quero', category: 'action', type: 'emoji', value: '🙅‍♂️' },
-    { text: 'Comer', category: 'action', type: 'image', value: 'assets/card_comer.jpg', goToCategory: 'food' },
-    { text: 'Beber', category: 'action', type: 'image', value: 'assets/card_beber.jpg', goToCategory: 'drink' },
+    { text: 'Comer', category: 'action', type: 'image', value: './assets/card_comer.jpg', goToCategory: 'food' },
+    { text: 'Beber', category: 'action', type: 'image', value: './assets/card_beber.jpg', goToCategory: 'drink' },
     { text: 'Falar com', category: 'action', type: 'emoji', value: '🗣️', goToCategory: 'person' },
     { text: 'Ir', category: 'action', type: 'emoji', value: '🚶', goToCategory: 'place' },
     { text: 'Parar', category: 'action', type: 'emoji', value: '🛑' },
     { text: 'Ver / Olhar', category: 'action', type: 'emoji', value: '👀' },
     { text: 'Gostar', category: 'action', type: 'emoji', value: '❤️' },
     { text: 'Não gostar', category: 'action', type: 'emoji', value: '💔' },
-    { text: 'Brincar', category: 'action', type: 'image', value: 'assets/card_brincar.jpg' },
-    { text: 'Dormir', category: 'action', type: 'image', value: 'assets/card_dormir.jpg' },
+    { text: 'Brincar', category: 'action', type: 'image', value: './assets/card_brincar.jpg' },
+    { text: 'Dormir', category: 'action', type: 'image', value: './assets/card_dormir.jpg' },
     { text: 'Ouvir', category: 'action', type: 'emoji', value: '👂' },
     { text: 'Banho', category: 'action', type: 'emoji', value: '🚿' },
     { text: 'Assistir', category: 'action', type: 'emoji', value: '📺' },
     { text: 'Passear', category: 'action', type: 'emoji', value: '🚶‍♂️' },
 
     // Food
-    { text: 'Água', category: 'food', type: 'image', value: 'assets/card_agua.jpg' },
+    { text: 'Água', category: 'food', type: 'image', value: './assets/card_agua.jpg' },
     { text: 'Suco', category: 'food', type: 'emoji', value: '🧃' },
     { text: 'Fruta', category: 'food', type: 'emoji', value: '🍎' },
     { text: 'Pão', category: 'food', type: 'emoji', value: '🍞' },
@@ -149,8 +149,8 @@ var DEFAULT_CARDS = [
     { text: 'Banana', category: 'food', type: 'emoji', value: '🍌' },
 
     // Feelings
-    { text: 'Feliz', category: 'feeling', type: 'image', value: 'assets/card_feliz.jpg' },
-    { text: 'Triste', category: 'feeling', type: 'image', value: 'assets/card_triste.jpg' },
+    { text: 'Feliz', category: 'feeling', type: 'image', value: './assets/card_feliz.jpg' },
+    { text: 'Triste', category: 'feeling', type: 'image', value: './assets/card_triste.jpg' },
     { text: 'Cansado', category: 'feeling', type: 'emoji', value: '🥱' },
     { text: 'Dor', category: 'feeling', type: 'emoji', value: '🤕', goToCategory: 'pain' },
     { text: 'Machucado', category: 'feeling', type: 'emoji', value: '🩹' },
@@ -2064,7 +2064,7 @@ function checkInAppBrowser() {
 }
 
 function checkWhatsNew() {
-    var currentVersion = 'v87';
+    var currentVersion = 'v88';
     var savedVersion = localStorage.getItem('caa_last_seen_version');
     
     var modalWhatsNew = document.getElementById('modal-whats-new');

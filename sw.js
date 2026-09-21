@@ -1,5 +1,5 @@
 // Ao publicar uma nova versão, basta mudar este número (e o ?v= no index.html).
-const CACHE_NAME = 'caa-comunicador-v87';
+const CACHE_NAME = 'caa-comunicador-v88';
 
 // Arquivos guardados na instalação para o app abrir 100% offline.
 // Sem "?v=": o cache é consultado ignorando a query string, então a versão pedida
@@ -15,7 +15,20 @@ const ASSETS = [
   './icon-512.png',
   './apple-touch-icon.png',
   './pix_qr.png',
-  './backup_comunicador_caa_mauro.json'
+  './backup_comunicador_caa_mauro.json',
+  './assets/card_eu.jpg',
+  './assets/card_voce.jpg',
+  './assets/card_comer.jpg',
+  './assets/card_beber.jpg',
+  './assets/card_sim.jpg',
+  './assets/card_nao.jpg',
+  './assets/card_agua.jpg',
+  './assets/card_banheiro.jpg',
+  './assets/card_dormir.jpg',
+  './assets/card_brincar.jpg',
+  './assets/card_feliz.jpg',
+  './assets/card_triste.jpg',
+  './assets/card_porfavor.jpg'
 ];
 
 // Instalação: guarda os recursos essenciais
