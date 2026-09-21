@@ -98,7 +98,7 @@ var CATEGORIES = [
 // Initial default cards
 var DEFAULT_CARDS = [
     // Essential
-    { text: 'Sim', category: 'essential', type: 'emoji', value: '👍' },
+    { text: 'Sim', category: 'essential', type: 'image', value: 'assets/card_sim.jpg' },
     { text: 'Não', category: 'essential', type: 'emoji', value: '👎' },
     { text: 'Por Favor', category: 'essential', type: 'emoji', value: '🙏' },
     { text: 'Obrigado', category: 'essential', type: 'emoji', value: '💖' },
@@ -117,10 +117,12 @@ var DEFAULT_CARDS = [
     { text: 'Ruim', category: 'essential', type: 'emoji', value: '👎' },
     
     // Actions
+    { text: 'Eu', category: 'essential', type: 'image', value: 'assets/card_eu.jpg' },
+    { text: 'Você', category: 'essential', type: 'image', value: 'assets/card_voce.jpg' },
     { text: 'Eu Quero', category: 'action', type: 'emoji', value: '👉' },
     { text: 'Não quero', category: 'action', type: 'emoji', value: '🙅‍♂️' },
-    { text: 'Comer', category: 'action', type: 'emoji', value: '😋', goToCategory: 'food' },
-    { text: 'Beber', category: 'action', type: 'emoji', value: '🥛', goToCategory: 'drink' },
+    { text: 'Comer', category: 'action', type: 'image', value: 'assets/card_comer.jpg', goToCategory: 'food' },
+    { text: 'Beber', category: 'action', type: 'image', value: 'assets/card_beber.jpg', goToCategory: 'drink' },
     { text: 'Falar com', category: 'action', type: 'emoji', value: '🗣️', goToCategory: 'person' },
     { text: 'Ir', category: 'action', type: 'emoji', value: '🚶', goToCategory: 'place' },
     { text: 'Parar', category: 'action', type: 'emoji', value: '🛑' },
@@ -2062,7 +2064,7 @@ function checkInAppBrowser() {
 }
 
 function checkWhatsNew() {
-    var currentVersion = 'v85';
+    var currentVersion = 'v86';
     var savedVersion = localStorage.getItem('caa_last_seen_version');
     
     var modalWhatsNew = document.getElementById('modal-whats-new');
