@@ -2062,7 +2062,7 @@ function checkInAppBrowser() {
 }
 
 function checkWhatsNew() {
-    var currentVersion = 'v82';
+    var currentVersion = 'v84';
     var savedVersion = localStorage.getItem('caa_last_seen_version');
     
     var modalWhatsNew = document.getElementById('modal-whats-new');
