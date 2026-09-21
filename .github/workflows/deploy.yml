@@ -37,6 +37,8 @@ jobs:
           cp icon.png icon-192.png icon-512.png icon-512-maskable.png dist/
           cp apple-touch-icon.png apple-touch-icon-precomposed.png pix_qr.png dist/
           cp backup_comunicador_caa_mauro.json dist/
+          cp -r img dist/
+          cp .nojekyll dist/
 
       - name: Carregar Arquivos do Site
         uses: actions/upload-pages-artifact@v3
