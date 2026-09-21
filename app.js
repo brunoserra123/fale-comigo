@@ -111,6 +111,10 @@ var DEFAULT_CARDS = [
     { text: 'Acabou', category: 'essential', type: 'emoji', value: '🛑' },
     { text: 'Diferente', category: 'essential', type: 'emoji', value: '🔀' },
     { text: 'Igual', category: 'essential', type: 'emoji', value: '👥' },
+    { text: 'Esperar', category: 'essential', type: 'emoji', value: '✋' },
+    { text: 'Desculpa', category: 'essential', type: 'emoji', value: '🥺' },
+    { text: 'Bom', category: 'essential', type: 'emoji', value: '👍' },
+    { text: 'Ruim', category: 'essential', type: 'emoji', value: '👎' },
     
     // Actions
     { text: 'Eu Quero', category: 'action', type: 'emoji', value: '👉' },
@@ -126,6 +130,9 @@ var DEFAULT_CARDS = [
     { text: 'Brincar', category: 'action', type: 'emoji', value: '🧸' },
     { text: 'Dormir', category: 'action', type: 'emoji', value: '😴' },
     { text: 'Ouvir', category: 'action', type: 'emoji', value: '👂' },
+    { text: 'Banho', category: 'action', type: 'emoji', value: '🚿' },
+    { text: 'Assistir', category: 'action', type: 'emoji', value: '📺' },
+    { text: 'Passear', category: 'action', type: 'emoji', value: '🚶‍♂️' },
 
     // Food
     { text: 'Água', category: 'food', type: 'emoji', value: '💧' },
@@ -135,6 +142,9 @@ var DEFAULT_CARDS = [
     { text: 'Comida', category: 'food', type: 'emoji', value: '🍽️' },
     { text: 'Bolo', category: 'food', type: 'emoji', value: '🍰' },
     { text: 'Fome', category: 'food', type: 'emoji', value: '😋' },
+    { text: 'Leite', category: 'food', type: 'emoji', value: '🥛' },
+    { text: 'Biscoito', category: 'food', type: 'emoji', value: '🍪' },
+    { text: 'Banana', category: 'food', type: 'emoji', value: '🍌' },
 
     // Feelings
     { text: 'Feliz', category: 'feeling', type: 'emoji', value: '😊' },
@@ -144,6 +154,8 @@ var DEFAULT_CARDS = [
     { text: 'Machucado', category: 'feeling', type: 'emoji', value: '🩹' },
     { text: 'Bravo', category: 'feeling', type: 'emoji', value: '😡' },
     { text: 'Assustado', category: 'feeling', type: 'emoji', value: '😨' },
+    { text: 'Calor', category: 'feeling', type: 'emoji', value: '🥵' },
+    { text: 'Frio', category: 'feeling', type: 'emoji', value: '🥶' },
 
     // Places
     { text: 'Banheiro', category: 'place', type: 'emoji', value: '🚾' },
@@ -151,6 +163,8 @@ var DEFAULT_CARDS = [
     { text: 'Escola', category: 'place', type: 'emoji', value: '🏫' },
     { text: 'Parque / Rua', category: 'place', type: 'emoji', value: '🌳' },
     { text: 'Quarto', category: 'place', type: 'emoji', value: '🛏️' },
+    { text: 'Hospital', category: 'place', type: 'emoji', value: '🏥' },
+    { text: 'Loja', category: 'place', type: 'emoji', value: '🏪' },
 
     // People
     { text: 'Eu', category: 'person', type: 'emoji', value: '🙋' },
@@ -159,6 +173,9 @@ var DEFAULT_CARDS = [
     { text: 'Papai', category: 'person', type: 'emoji', value: '👨' },
     { text: 'Professor(a)', category: 'person', type: 'emoji', value: '👩‍🏫' },
     { text: 'Amigo', category: 'person', type: 'emoji', value: '👦' },
+    { text: 'Médico', category: 'person', type: 'emoji', value: '👨‍⚕️' },
+    { text: 'Irmão', category: 'person', type: 'emoji', value: '👦' },
+    { text: 'Irmã', category: 'person', type: 'emoji', value: '👧' },
 
     // Pain sub-choices
     { text: 'Dor de Cabeça', category: 'pain', type: 'emoji', value: '🤕' },
@@ -231,7 +248,24 @@ var CARD_TRANSLATIONS = {
         "Dor na Garganta": "Sore Throat",
         "Dor nas Costas": "Back Pain",
         "Dor no Braço": "Arm Pain",
-        "Dor na Perna": "Leg Pain"
+        "Dor na Perna": "Leg Pain",
+        "Esperar": "Wait",
+        "Desculpa": "Sorry",
+        "Bom": "Good",
+        "Ruim": "Bad",
+        "Banho": "Bath / Shower",
+        "Assistir": "Watch",
+        "Passear": "Walk / Go out",
+        "Leite": "Milk",
+        "Biscoito": "Cookie",
+        "Banana": "Banana",
+        "Calor": "Hot",
+        "Frio": "Cold",
+        "Hospital": "Hospital",
+        "Loja": "Store",
+        "Médico": "Doctor",
+        "Irmão": "Brother",
+        "Irmã": "Sister"
     },
     es: {
         "Sim": "Sí",
@@ -292,7 +326,24 @@ var CARD_TRANSLATIONS = {
         "Dor na Garganta": "Dolor de Garganta",
         "Dor nas Costas": "Dolor de Espalda",
         "Dor no Braço": "Dolor de Brazo",
-        "Dor na Perna": "Dolor de Pierna"
+        "Dor na Perna": "Dolor de Pierna",
+        "Esperar": "Esperar",
+        "Desculpa": "Perdón",
+        "Bom": "Bueno",
+        "Ruim": "Malo",
+        "Banho": "Baño / Ducha",
+        "Assistir": "Mirar / Ver",
+        "Passear": "Pasear",
+        "Leite": "Leche",
+        "Biscoito": "Galleta",
+        "Banana": "Plátano",
+        "Calor": "Calor",
+        "Frio": "Frío",
+        "Hospital": "Hospital",
+        "Loja": "Tienda",
+        "Médico": "Médico",
+        "Irmão": "Hermano",
+        "Irmã": "Hermana"
     }
 };
 
