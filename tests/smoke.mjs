@@ -6,11 +6,14 @@ import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 const root = fileURLToPath(new URL('../',import.meta.url));
 const done = Promise.withResolvers ? Promise.withResolvers() : (()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b});return {promise,resolve,reject};})();
+let upgraded = false;
 const server=http.createServer((req,res)=>{
     const pathname=new URL(req.url,'http://localhost').pathname;
     if(pathname==='/result' && req.method==='POST'){
         let body='';req.on('data',b=>body+=b);req.on('end',()=>{res.end('ok');const result=JSON.parse(body);result.error?done.reject(Error(result.error)):done.resolve(result.tests);});return;
     }
+    if(pathname==='/advance' && req.method==='POST'){upgraded=true;res.end('ok');return;}
+    if(pathname==='/sw.js' && upgraded){res.setHeader('Content-Type','text/javascript');res.end(fs.readFileSync(path.join(root,'sw.js'),'utf8')+'\n// next release');return;}
     if(pathname==='/mock') {res.setHeader('Content-Type','application/json');let body='';req.on('data',b=>body+=b);req.on('end',()=>{
         if(!body){res.end('[]');return;}const op=JSON.parse(body);res.end(JSON.stringify({status:'ok',uuid:op.uuid,revision:1}));});return;}
     const name=pathname==='/'?'index.html':pathname.slice(1);

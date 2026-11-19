@@ -7,6 +7,13 @@ const click=selector=>{const target=document.querySelector(selector);if(!target)
 const select=(id,value)=>{el(id).value=value;el(id).dispatchEvent(new Event('change',{bubbles:true}));};
 async function run(){
     if(document.readyState!=='complete') await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));
+    if (sessionStorage.getItem('upgrade-check')) {
+        const previous = JSON.parse(sessionStorage.getItem('upgrade-check'));
+        tests.push(...previous);
+        check(selectedCards.length===8 && selectedCards[0].text==='Não','Atualização automática recupera a frase de oito cartões');
+        check(el('tts-custom-input').value==='Continuando a conversa','Atualização recupera texto digitado');
+        return;
+    }
     // Silence this test without changing the real voice path for app users.
     window.speakTextLocal=()=>{};
     const word=name=>click('#core-words [data-text="'+name+'"]');
@@ -35,5 +42,11 @@ async function run(){
     const cache=await caches.open('caa-comunicador-3.0.0');
     for(const asset of ['index.html','conversation.js','storage.js','ui.js','img/card_nao.jpg'])check(!!await cache.match(new URL('../'+asset,import.meta.url)),'Cache instalado: '+asset);
     check(!!registration.active,'Service worker ativo');
+    if(!navigator.serviceWorker.controller) await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}));
+    el('tts-custom-input').value='Continuando a conversa';
+    sessionStorage.setItem('upgrade-check',JSON.stringify(tests));
+    await fetch('/advance',{method:'POST'});
+    await registration.update();
+    await new Promise(()=>{}); // The new worker must reload this tab to complete the test.
 }
 run().then(()=>fetch('/result',{method:'POST',body:JSON.stringify({tests})})).catch(e=>fetch('/result',{method:'POST',body:JSON.stringify({error:e.stack})}));
