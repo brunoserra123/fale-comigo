@@ -38,7 +38,7 @@ function queue(kind, payload) {
 }
 export function save() {
     if (localStorage.getItem(profileKey('auto_backup')) === 'false') return Promise.resolve();
-    return queue(pairCode() ? 'profile' : 'cards', pairCode() ? snapshot() : cards);
+    return queue(pairCode() ? 'profile' : 'cards', pairCode() ? snapshot() : cardsForBackup());
 }
 export const recordAccess = accesses => queue('access',accesses);
 async function request(url, options) {
@@ -119,7 +119,11 @@ export async function connect(code) {
     if (code && !result.data) throw Error('O código ainda não tem um perfil salvo.');
     if (code && !await showCustomConfirm('Restaurar este perfil do Drive sobre as configurações deste aparelho?')) return;
     if (currentProfileId !== id) return;
-    if (code) applyProfile(result.data);
+    if (code) {
+        const outstanding = (await pending()).filter(row => row.kind === 'profile' && row.profileId === id && row.token === token);
+        if (outstanding.length) throw Error('Há mudanças locais na fila. Exporte o perfil e gere um novo código para guardar esta cópia antes de restaurar.');
+        applyProfile(result.data);
+    }
     localStorage.setItem(profileKey('pair'),token);
     localStorage.setItem(revisionKey(id,token),String(result.revision || 0));
     if (!code) await queue('profile',snapshot());

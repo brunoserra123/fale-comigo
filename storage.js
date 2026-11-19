@@ -10,7 +10,7 @@ export function snapshot() {
         const value = localStorage.getItem(profileKey(name));
         if (value !== null) settings[name] = value;
     }
-    return {format:'fale-comigo', version:3, name:profiles.find(p => p.id === currentProfileId)?.name || 'Padrão', cards, settings};
+    return {format:'fale-comigo', version:3, name:profiles.find(p => p.id === currentProfileId)?.name || 'Padrão', cards:cardsForBackup(), settings};
 }
 export function checkProfile(data) {
     if (!data || data.format !== 'fale-comigo' || data.version !== 3 || !Array.isArray(data.cards) ||

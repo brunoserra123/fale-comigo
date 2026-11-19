@@ -1989,10 +1989,12 @@ function init() {
     }
 
     // Asynchronous IndexedDB & Cloud Sync (Secondary background update)
+    var initialProfile = currentProfileId;
+    var initialCards = cards;
     dbHelper.init().then(function() {
-        return loadProfileCards(currentProfileId);
+        return loadProfileCards(initialProfile);
     }).then(function(loadedCards) {
-        if (loadedCards && loadedCards.length > 0) {
+        if (currentProfileId === initialProfile && cards === initialCards && loadedCards && loadedCards.length > 0) {
             setAndCleanCards(loadedCards);
             saveCardsToStorage(false);
             renderCards();
@@ -2113,11 +2115,22 @@ function checkWhatsNew() {
     }
 }
 
+function cardsForBackup() {
+    if (checkPremiumStatus()) return cards;
+    var previous;
+    try { previous = JSON.parse(localStorage.getItem('caa_custom_cards_' + currentProfileId)); } catch (e) {}
+    if (!Array.isArray(previous)) return cards;
+    // Viewing a profile on another device must not discard cards hidden by its local license.
+    return cards.concat(previous.filter(function(card) {
+        return card && typeof card.text === 'string' && !cards.some(function(visible) { return visible.text === card.text; });
+    }));
+}
 function saveCardsToStorage(triggerCloudUpload) {
     if (triggerCloudUpload === undefined) triggerCloudUpload = true;
-    localStorage.setItem('caa_custom_cards_' + currentProfileId, JSON.stringify(cards));
+    var storedCards = cardsForBackup();
+    localStorage.setItem('caa_custom_cards_' + currentProfileId, JSON.stringify(storedCards));
     if (dbHelper.db) {
-        dbHelper.set('caa_custom_cards_' + currentProfileId, cards);
+        dbHelper.set('caa_custom_cards_' + currentProfileId, storedCards);
     }
     if (triggerCloudUpload) {
         uploadBackupToCloud();
