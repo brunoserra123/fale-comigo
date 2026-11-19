@@ -4,6 +4,7 @@
   "description": "Aplicativo offline de Comunicação Alternativa e Ampliada (CAA) por figuras.",
   "lang": "pt-BR",
   "dir": "ltr",
+  "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

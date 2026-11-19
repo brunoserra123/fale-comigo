@@ -21,7 +21,7 @@ var MAIN_FOLDER_NAME = "Fale Comigo - Backups";
 var BACKUP_FILE_NAME = "backup.json";
 
 // URL do Webhook do Discord para notificações (insira sua URL aqui)
-var DISCORD_WEBHOOK_URL = "https://discordapp.com/api/webhooks/1519354513163550801/tmk8MVBor8L7rgLh4Chx_i8BbxBrwoLH2iB1gl74edNlw0_6ivczS79FwLBm_wkxzPYs";
+var DISCORD_WEBHOOK_URL = PropertiesService.getScriptProperties().getProperty('DISCORD_WEBHOOK_URL');
 
 /**
  * Função para enviar notificações para o Discord via Webhook
@@ -47,6 +47,7 @@ function sendDiscordNotification(payload) {
  */
 function doGet(e) {
   var action = e.parameter.action;
+  if (action === "profileV3") return readPairedProfile(e.parameter.key);
   var callback = e.parameter.callback; // Suporte a JSONP
   
   if (action === "validateCoupon") {
@@ -139,6 +140,7 @@ function doPost(e) {
   
   try {
     var data = JSON.parse(postContent);
+    if (data && data.action === "deliverV3") return deliverV3(data);
     var profile = e.parameter.profile || (data && data.profile) || "Padrao";
     
     // Verifica se é uma chamada de registro de acesso
@@ -320,8 +322,6 @@ function validateCouponInSheet(code) {
       couponSheet = spreadsheet.insertSheet("Cupons");
       couponSheet.appendRow(["Cupom", "Ativo", "Limite de Acessos", "Total Acessos"]);
       couponSheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#e2e8f0");
-      // Insere cupom padrão ativo
-      couponSheet.appendRow(["VIP99", "SIM", "", "0"]);
     }
     
     var data = couponSheet.getDataRange().getValues();
@@ -366,4 +366,65 @@ function validateCouponInSheet(code) {
     console.error("Erro ao validar cupom: " + error.toString());
     return { status: "error", message: "Erro no servidor: " + error.toString() };
   }
+}
+
+// Private (unlisted) snapshots and receipts are separate from the legacy profile directory.
+function jsonV3(value) {
+  return ContentService.createTextOutput(JSON.stringify(value)).setMimeType(ContentService.MimeType.JSON);
+}
+function isV3Id(value) {
+  return typeof value === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);
+}
+function v3Name(value) {
+  return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, value, Utilities.Charset.UTF_8)).replace(/=/g, '') + '.json';
+}
+function v3State(key, create) {
+  var root = DriveApp.getRootFolder();
+  var folderName = 'Fale Comigo - Perfis 3.0';
+  var folders = root.getFoldersByName(folderName);
+  var folder = folders.hasNext() ? folders.next() : create ? root.createFolder(folderName) : null;
+  var files = folder && folder.getFilesByName(v3Name(key));
+  var file = files && files.hasNext() ? files.next() : null;
+  return {folder:folder,file:file,value:file ? JSON.parse(file.getBlob().getDataAsString()) : {revision:0,receipts:{}}};
+}
+function readPairedProfile(key) {
+  if (!isV3Id(key)) return jsonV3({status:'invalid'});
+  var state = v3State('paired/' + key, false).value;
+  return jsonV3({version:3,revision:state.revision,data:state.data || null});
+}
+function deliverV3(op) {
+  if (!isV3Id(op.uuid) || !isV3Id(op.client) || !Number.isSafeInteger(op.seq) || op.seq < 1 ||
+      ['access','cards','profile'].indexOf(op.kind) < 0) return jsonV3({status:'invalid'});
+  if (op.kind === 'profile' && (!isV3Id(op.token) || !op.payload || op.payload.format !== 'fale-comigo' ||
+      op.payload.version !== 3 || !Array.isArray(op.payload.cards))) return jsonV3({status:'invalid'});
+  if (op.kind === 'cards' && !Array.isArray(op.payload)) return jsonV3({status:'invalid'});
+  var name = String(op.profile || 'Padrão').slice(0,160);
+  var key = op.kind === 'profile' ? 'paired/' + op.token : op.kind + '/' + name;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var record = v3State(key, true);
+    var state = record.value;
+    var previous = state.receipts[op.client];
+    if (previous && (previous.uuid === op.uuid || previous.seq >= op.seq)) {
+      return jsonV3({status:'ok',uuid:op.uuid,revision:previous.revision});
+    }
+    if (op.kind === 'profile' && op.base !== state.revision) return jsonV3({status:'conflict',revision:state.revision});
+    if (op.kind === 'cards') {
+      var folder = getOrCreateFolder(getOrCreateFolder(DriveApp.getRootFolder(), MAIN_FOLDER_NAME),name);
+      var files = folder.getFilesByName(BACKUP_FILE_NAME);
+      var body = JSON.stringify(op.payload);
+      if (files.hasNext()) files.next().setContent(body);
+      else folder.createFile(BACKUP_FILE_NAME,body,'application/json');
+    } else if (op.kind === 'profile') {
+      state.data = op.payload;
+    }
+    state.revision++;
+    state.receipts[op.client] = {seq:op.seq,uuid:op.uuid,revision:state.revision};
+    if (op.kind === 'access') state.receipts[op.client].accesses = Number(op.payload) || 0;
+    var json = JSON.stringify(state);
+    if (record.file) record.file.setContent(json);
+    else record.folder.createFile(v3Name(key),json,'application/json');
+    return jsonV3({status:'ok',uuid:op.uuid,revision:state.revision});
+  } finally {lock.releaseLock();}
 }
