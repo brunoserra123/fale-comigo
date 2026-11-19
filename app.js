@@ -451,11 +451,11 @@ function loadProfileLanguage() {
 function translatePage() {
     var lang = getProfileLanguage();
     var dict = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS.pt;
-    
+    var extra = conversationLabels();
     var elements = document.querySelectorAll('[data-i18n]');
     elements.forEach(function(el) {
         var key = el.dataset.i18n;
-        var translation = dict[key];
+        var translation = extra[key] || dict[key];
         if (translation) {
             var span = el.querySelector('span');
             if (span) {
@@ -478,7 +478,7 @@ function translatePage() {
     var dataPlaceholders = document.querySelectorAll('[data-i18n-data-placeholder]');
     dataPlaceholders.forEach(function(el) {
         var key = el.dataset.i18nDataPlaceholder;
-        var translation = dict[key];
+        var translation = extra[key] || dict[key];
         if (translation) {
             el.setAttribute('data-placeholder', translation);
         }
@@ -739,6 +739,8 @@ function carregarRecentes() {
             var idx = parseInt(chip.dataset.idx, 10);
             var selectedList = recentSentences[idx];
             if (Array.isArray(selectedList)) {
+                editingWord = -1;
+                clearedSentence = null;
                 selectedCards = selectedList.slice();
                 updateSentenceBuilder();
                 
@@ -750,6 +752,7 @@ function carregarRecentes() {
 }
 
 function adicionarFraseRecente(cardsArray) {
+    if (window.recordHistory && cardsArray.length) window.recordHistory(cardsArray);
     if (!Array.isArray(cardsArray) || cardsArray.length === 0) return;
     
     var currentText = cardsArray.map(function(c) { return c.text; }).join(' ').trim();
@@ -1584,23 +1587,6 @@ function renderProfilesList() {
     }).join('');
 }
 
-function loadSpecialProfileBackup(profileName) {
-    if (!profileName) return Promise.resolve([]);
-    var normalizedName = normalizeText(profileName);
-    if (normalizedName === 'mauro') {
-        return ajaxRequest('backup_comunicador_caa_mauro.json')
-            .then(function(res) {
-                if (Array.isArray(res)) return res;
-                return [];
-            })
-            .catch(function(e) {
-                console.warn('Erro ao carregar backup do Mauro:', e);
-                return [];
-            });
-    }
-    return Promise.resolve([]);
-}
-
 // Modo Baixa Visão (estas funções estavam aninhadas por engano dentro de loadProfileCards,
 // o que causava "toggleLowVision is not defined" e interrompia o registro dos eventos seguintes)
 function updateLowVisionIcon(active) {
@@ -1623,8 +1609,6 @@ function toggleLowVision() {
 }
 
 function loadProfileCards(profileId) {
-    var profileObj = profiles.find(function(p) { return p.id === profileId; });
-    var profileName = profileObj ? profileObj.name : '';
 
     var fetchPromise;
     if (dbHelper.db) {
@@ -1661,7 +1645,7 @@ function loadProfileCards(profileId) {
         if (cardsLoaded && cardsLoaded.length > 0) {
             return cardsLoaded;
         }
-        return loadSpecialProfileBackup(profileName);
+        return [];
     });
 }
 
@@ -1670,12 +1654,19 @@ function switchProfile(profileId) {
     currentProfileId = profileId;
     saveProfiles();
     
-    // Clear selection
+    // Draft, undo and repeat belong to just one profile.
     selectedCards = [];
+    editingWord = -1;
+    clearedSentence = null;
+    lastSpeech = null;
+    byId('btn-repeat').disabled = true;
+    updateSentenceBuilder();
+    document.dispatchEvent(new Event('profilechange'));
     currentFolder = 'root';
     
     // Load and clean cards for this profile
-    loadProfileCards(currentProfileId).then(function(loadedCards) {
+    loadProfileCards(profileId).then(function(loadedCards) {
+        if (currentProfileId !== profileId) return;
         setAndCleanCards(loadedCards);
         
         // Set theme for this profile
@@ -1730,6 +1721,7 @@ function switchProfile(profileId) {
         updateSentenceBuilder();
         renderProfileSelector();
         renderProfilesList();
+        document.dispatchEvent(new Event('profile-ready'));
         
         loadTelepatixConfig();
         
@@ -1974,6 +1966,16 @@ function init() {
         accessCounterVal.textContent = accesses;
     }
 
+    try {
+        var draft = JSON.parse(sessionStorage.getItem('fale_update_draft'));
+        if (draft && draft.profile === currentProfileId && Array.isArray(draft.cards)) {
+            selectedCards = draft.cards;
+            clearedSentence = draft.undo || null;
+            byId('tts-custom-input').value = draft.typed || '';
+        }
+        sessionStorage.removeItem('fale_update_draft');
+    } catch (error) { console.warn('Rascunho indisponível',error); }
+
     // Render interface elements IMMEDIATELY
     renderCards();
     updateSentenceBuilder();
@@ -1987,10 +1989,12 @@ function init() {
     }
 
     // Asynchronous IndexedDB & Cloud Sync (Secondary background update)
+    var initialProfile = currentProfileId;
+    var initialCards = cards;
     dbHelper.init().then(function() {
-        return loadProfileCards(currentProfileId);
+        return loadProfileCards(initialProfile);
     }).then(function(loadedCards) {
-        if (loadedCards && loadedCards.length > 0) {
+        if (currentProfileId === initialProfile && cards === initialCards && loadedCards && loadedCards.length > 0) {
             setAndCleanCards(loadedCards);
             saveCardsToStorage(false);
             renderCards();
@@ -2021,8 +2025,9 @@ function init() {
         var currentProfileObj = profiles.find(function(p) { return p.id === currentProfileId; });
         var profileName = currentProfileObj ? currentProfileObj.name : 'Padrão';
 
-        // Record Access in Cloud synchronously if online
-        if (navigator.onLine && syncAppsScriptUrl) {
+        // Modern clients persist access records before delivery.
+        if (window.faleSync) window.faleSync.recordAccess(accesses);
+        else if (navigator.onLine && syncAppsScriptUrl) {
             ajaxRequest(syncAppsScriptUrl, 'POST', { action: 'recordAccess', profile: profileName, accesses: accesses }).catch(function(e) {
                 console.warn('Erro ao registrar acesso na nuvem:', e);
             });
@@ -2064,7 +2069,7 @@ function checkInAppBrowser() {
 }
 
 function checkWhatsNew() {
-    var currentVersion = 'v90';
+    var currentVersion = '3.0.0';
     var savedVersion = localStorage.getItem('caa_last_seen_version');
     
     var modalWhatsNew = document.getElementById('modal-whats-new');
@@ -2110,11 +2115,22 @@ function checkWhatsNew() {
     }
 }
 
+function cardsForBackup() {
+    if (checkPremiumStatus()) return cards;
+    var previous;
+    try { previous = JSON.parse(localStorage.getItem('caa_custom_cards_' + currentProfileId)); } catch (e) {}
+    if (!Array.isArray(previous)) return cards;
+    // Viewing a profile on another device must not discard cards hidden by its local license.
+    return cards.concat(previous.filter(function(card) {
+        return card && typeof card.text === 'string' && !cards.some(function(visible) { return visible.text === card.text; });
+    }));
+}
 function saveCardsToStorage(triggerCloudUpload) {
     if (triggerCloudUpload === undefined) triggerCloudUpload = true;
-    localStorage.setItem('caa_custom_cards_' + currentProfileId, JSON.stringify(cards));
+    var storedCards = cardsForBackup();
+    localStorage.setItem('caa_custom_cards_' + currentProfileId, JSON.stringify(storedCards));
     if (dbHelper.db) {
-        dbHelper.set('caa_custom_cards_' + currentProfileId, cards);
+        dbHelper.set('caa_custom_cards_' + currentProfileId, storedCards);
     }
     if (triggerCloudUpload) {
         uploadBackupToCloud();
@@ -2172,6 +2188,8 @@ function renderCards() {
     var cardsGrid = document.getElementById('cards-grid');
     if (!cardsGrid) return;
     var searchQuery = (searchInput && searchInput.value) ? searchInput.value.toLowerCase().trim() : '';
+
+    if (renderBoardChoice(searchQuery)) return;
 
     // Se houver busca ativa, mostra todas as figuras correspondentes sem estrutura de pasta
     if (searchQuery !== '') {
@@ -2450,12 +2468,12 @@ function renderCards() {
     }
 }
 
-// Add a card to the sentence with a maximum limit of 7 (rolling off the oldest card)
 function addCardToSentence(card) {
-    if (selectedCards.length >= 7) {
-        selectedCards.shift(); // Remove the oldest card
-    }
-    selectedCards.push(card);
+    if (!card) return;
+    clearedSentence = null;
+    if (editingWord >= 0) selectedCards[editingWord] = card;
+    else selectedCards.push(card);
+    editingWord = -1;
     updateSentenceBuilder();
     playCardVoice(card);
     registrarUsoFigura(card.text);
@@ -2470,10 +2488,10 @@ function updateSentenceBuilder() {
         } else {
             visualContent = '<img src="' + esc(card.value) + '" alt="' + esc(getCardText(card)) + '" onerror="this.onerror=null; this.src=FALLBACK_IMAGE_SVG;">';
         }
-        return '<div class="sentence-card" data-idx="' + idx + '">' +
+        return '<button type="button" class="sentence-card" aria-pressed="' + (idx === editingWord) + '" data-idx="' + idx + '">' +
                 visualContent +
                 '<span>' + esc(getCardText(card)) + '</span>' +
-            '</div>';
+            '</button>';
     }).join('');
 
     // Update disabled state and visibility of control buttons
@@ -2493,10 +2511,11 @@ function updateSentenceBuilder() {
     var btnSavePhrase = document.getElementById('btn-save-phrase');
     if (btnSavePhrase) btnSavePhrase.disabled = isEmpty;
 
+    renderEditState();
     // Update sentence counter
     var counterEl = document.getElementById('sentence-counter');
     if (counterEl) {
-        counterEl.textContent = selectedCards.length + ' / 7';
+        counterEl.textContent = String(selectedCards.length);
     }
 
     updateFloatingBar();
@@ -2668,6 +2687,11 @@ function fetchJSONP(url, callbackName) {
 
 // Sync figures list with Google Apps Script Web App (GET via JSONP)
 function syncWithAppsScript(scriptUrl, showFeedback) {
+    return window.faleSync ? window.faleSync.sync(scriptUrl, showFeedback) : legacySyncWithAppsScript(scriptUrl, showFeedback);
+}
+function legacySyncWithAppsScript(scriptUrl, showFeedback) {
+    var requestedId = currentProfileId;
+    var requestedGeneration = window.faleSync && window.faleSync.changed();
     if (showFeedback === undefined) showFeedback = false;
     var urlToUse = scriptUrl || localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
     if (!urlToUse) return Promise.resolve(false);
@@ -2688,6 +2712,7 @@ function syncWithAppsScript(scriptUrl, showFeedback) {
 
     return fetchSyncData(urlWithProfile)
         .then(function(remoteCards) {
+            if (currentProfileId !== requestedId || (window.faleSync && window.faleSync.changed() !== requestedGeneration)) return false;
             if (!Array.isArray(remoteCards)) {
                 throw new Error('O arquivo retornado não é uma lista JSON válida.');
             }
@@ -2843,6 +2868,7 @@ function syncWithGoogleDrive(fileId, showFeedback) {
 
 // Upload backup to Google Apps Script Web App (POST)
 function uploadBackupToCloud() {
+    if (window.faleSync) return window.faleSync.save();
     var scriptUrl = localStorage.getItem('caa_sync_apps_script_url_' + currentProfileId) || DEFAULT_APPS_SCRIPT_URL;
     var autoBackup = localStorage.getItem('caa_auto_backup_' + currentProfileId) !== 'false';
 
@@ -2868,11 +2894,11 @@ function uploadBackupToCloud() {
             }
         })
         .catch(function(error) {
-            console.log('Envio de backup concluído/processado');
-            setCloudStatus('success');
+            console.warn('Falha ao enviar backup', error);
+            setCloudStatus('error');
             if (syncStatusText) {
                 syncStatusText.className = 'sync-status-text success';
-                syncStatusText.textContent = 'Backup enviado! ✅';
+                syncStatusText.textContent = 'Falha ao enviar o backup.';
             }
         });
 }
@@ -2912,6 +2938,7 @@ function showChangelogModal(addedCards, removedCards) {
 
 function setupEventListeners() {
 
+    setupConversation();
     // Dashboard & Game Listeners
     var btnDashboard = document.getElementById('btn-dashboard');
     if (btnDashboard) {
@@ -3079,13 +3106,11 @@ function setupEventListeners() {
         
         if (index !== -1) {
             var clickedCard = cards[index];
-            selectedCards.push(clickedCard);
-            updateSentenceBuilder();
-            playCardVoice(clickedCard);
-            registrarUsoFigura(clickedCard.text);
+            var replacing = editingWord >= 0;
+            addCardToSentence(clickedCard);
 
             // Automatic sub-choice modal if card has goToCategory defined (abrir por cima)
-            if (clickedCard.goToCategory) {
+            if (!replacing && clickedCard.goToCategory) {
                 openSubChoiceModal(clickedCard.text, clickedCard.goToCategory);
             }
         }
@@ -3097,8 +3122,9 @@ function setupEventListeners() {
         if (!sentCard) return;
         
         var idx = parseInt(sentCard.dataset.idx, 10);
-        selectedCards.splice(idx, 1);
+        editingWord = editingWord === idx ? -1 : idx;
         updateSentenceBuilder();
+        sentenceList.children[idx].focus();
     });
 
     // Speak sentence
@@ -3112,10 +3138,7 @@ function setupEventListeners() {
     });
 
     // Clear all
-    if (btnClearAll) btnClearAll.addEventListener('click', function() {
-        selectedCards = [];
-        updateSentenceBuilder();
-    });
+    if (btnClearAll) btnClearAll.addEventListener('click', clearDraft);
 
     // Theme toggle
     if (btnToggleTheme) btnToggleTheme.addEventListener('click', toggleTheme);
@@ -3147,6 +3170,8 @@ function setupEventListeners() {
                 var index = parseInt(chip.dataset.index, 10);
                 var phrase = quickPhrases[index];
                 if (phrase) {
+                    editingWord = -1;
+                    clearedSentence = null;
                     selectedCards = JSON.parse(JSON.stringify(phrase.cards));
                     updateSentenceBuilder();
                     speakText(phrase.text);
@@ -3174,6 +3199,8 @@ function setupEventListeners() {
             var selectedLang = seletorIdioma.value;
             localStorage.setItem('caa_lang_' + currentProfileId, selectedLang);
             translatePage();
+            renderReplies();
+            carregarRecentes();
             carregarVozes();
             renderCards();
             updateSentenceBuilder();
@@ -3302,8 +3329,6 @@ function setupEventListeners() {
     var btnSupport = document.getElementById('btn-support');
     var modalSupport = document.getElementById('modal-support');
     var btnCloseSupport = document.getElementById('btn-close-support');
-    var btnCopyPix = document.getElementById('btn-copy-pix');
-    var pixKeyInput = document.getElementById('pix-key-input');
 
     if (btnSupport && modalSupport && btnCloseSupport) {
         btnSupport.addEventListener('click', function() {
@@ -3323,38 +3348,6 @@ function setupEventListeners() {
         });
     }
 
-
-    if (btnCopyPix && pixKeyInput) {
-        btnCopyPix.addEventListener('click', function() {
-            var keyText = pixKeyInput.getAttribute('data-payload') || pixKeyInput.value.trim();
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(keyText)
-                    .then(function() {
-                        showCustomAlert('Chave Pix copiada com sucesso! 💸\nMuito obrigado pelo seu apoio.');
-                    })
-                    .catch(function(err) {
-                        console.error('Erro ao copiar Pix: ', err);
-                        fallbackCopyPix(keyText);
-                    });
-            } else {
-                fallbackCopyPix(keyText);
-            }
-        });
-    }
-
-    function fallbackCopyPix(text) {
-        var tempTextarea = document.createElement('textarea');
-        tempTextarea.value = text;
-        document.body.appendChild(tempTextarea);
-        tempTextarea.select();
-        try {
-            document.execCommand('copy');
-            showCustomAlert('Chave Pix copiada com sucesso! 💸\nMuito obrigado pelo seu apoio.');
-        } catch (e) {
-            showCustomAlert('Não foi possível copiar automaticamente. A chave é:\n\n' + text);
-        }
-        document.body.removeChild(tempTextarea);
-    }
 
     // Form inputs radio changes inside settings
     for (var i_radio = 0; i_radio < imageTypeRadios.length; i_radio++) { var radio = imageTypeRadios[i_radio];
@@ -3456,7 +3449,6 @@ function setupEventListeners() {
     }
 
     // Auto-suggest emoji while typing card text
-    var emojiDebounceTimer = null;
     if (cardTextInput && cardEmojiInput) {
         cardEmojiInput.addEventListener('input', function() {
             cardEmojiInput.dataset.fromApi = 'false';
@@ -3476,42 +3468,15 @@ function setupEventListeners() {
             
             // 2. Match palavra por palavra local
             var words = text.split(/\s+/).map(normalizeText);
-            var foundLocal = false;
             for (var i = words.length - 1; i >= 0; i--) {
                 var word = words[i];
                 if (word && EMOJI_DICTIONARY[word]) {
                     cardEmojiInput.value = EMOJI_DICTIONARY[word];
                     cardEmojiInput.dataset.fromApi = 'false';
-                    foundLocal = true;
                     break;
                 }
             }
             
-            if (foundLocal) return;
-
-            // 3. Se não achou na lista local, busca na API dinamicamente (com debounce)
-            if (text.length >= 3) {
-                if (emojiDebounceTimer) clearTimeout(emojiDebounceTimer);
-                emojiDebounceTimer = setTimeout(function() {
-                    var apiKey = 'd2de36964848b8e14e2b16a7ba69449635f4bb38';
-                    var searchWord = words[words.length - 1];
-                    var url = 'https://emoji-api.com/emojis?search=' + encodeURIComponent(searchWord) + '&access_key=' + apiKey;
-                    
-                    ajaxRequest(url)
-                        .then(function(data) {
-                            if (Array.isArray(data) && data.length > 0) {
-                                var emojiCharacter = data[0].character;
-                                if (emojiCharacter) {
-                                    cardEmojiInput.value = emojiCharacter;
-                                    cardEmojiInput.dataset.fromApi = 'true';
-                                }
-                            }
-                        })
-                        .catch(function(e) {
-                            console.warn('Erro ao buscar emoji na API:', e);
-                        });
-                }, 600);
-            }
         });
     }
 
@@ -3857,10 +3822,7 @@ function setupEventListeners() {
         
         if (index !== -1) {
             var clickedCard = cards[index];
-            selectedCards.push(clickedCard);
-            updateSentenceBuilder();
-            playCardVoice(clickedCard);
-            registrarUsoFigura(clickedCard.text);
+            addCardToSentence(clickedCard);
             modalSubChoice.classList.remove('open');
         }
     });
@@ -3887,10 +3849,7 @@ function setupEventListeners() {
     }
 
     if (btnClearFloat) {
-        btnClearFloat.addEventListener('click', function() {
-            selectedCards = [];
-            updateSentenceBuilder();
-        });
+        btnClearFloat.addEventListener('click', clearDraft);
     }
 
     // Google Drive & Apps Script Sync button
@@ -4400,7 +4359,7 @@ function setupEventListeners() {
     // Keyboard shortcuts for favorites (keys 1 to 9)
     document.addEventListener('keydown', function(e) {
         var activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-        if (activeTag === 'input' || activeTag === 'textarea') {
+        if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select' || document.querySelector('.modal-overlay.open') || !byId('presentation').hidden) {
             return;
         }
 
@@ -4409,11 +4368,10 @@ function setupEventListeners() {
             var favoriteCards = cards.filter(function(c) { return c.favorite === true; });
             if (favoriteCards.length >= shortcutNum) {
                 var card = favoriteCards[shortcutNum - 1];
-                selectedCards.push(card);
-                updateSentenceBuilder();
-                playCardVoice(card);
+                var replacing = editingWord >= 0;
+                addCardToSentence(card);
                 
-                if (card.goToCategory) {
+                if (!replacing && card.goToCategory) {
                     openSubChoiceModal(card.text, card.goToCategory);
                 }
             }
@@ -4427,15 +4385,12 @@ function setupEventListeners() {
         feedbackForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
-            var formData = new FormData(feedbackForm);
-            formData.append("access_key", "4f2eccbe-593a-4c25-871b-103e3931b8ff");
-
             var originalText = feedbackSubmitBtn.innerHTML;
-            feedbackSubmitBtn.innerHTML = "<span>Carregando... ⏳</span>";
+            feedbackSubmitBtn.textContent = 'Enviando…';
             feedbackSubmitBtn.disabled = true;
-
             var xhr = new XMLHttpRequest();
-            xhr.open("POST", "https://api.web3forms.com/submit", true);
+            xhr.open('POST', DEFAULT_APPS_SCRIPT_URL, true);
+            xhr.setRequestHeader('Content-Type','text/plain;charset=UTF-8');
             xhr.onload = function() {
                 var data;
                 try {
@@ -4443,7 +4398,7 @@ function setupEventListeners() {
                 } catch(e) {
                     data = {};
                 }
-                if (xhr.status >= 200 && xhr.status < 300) {
+                if (xhr.status >= 200 && xhr.status < 300 && data.status === 'success') {
                     feedbackForm.reset();
                     
                     var oldMsg = feedbackForm.querySelector('.feedback-success-msg');
@@ -4487,7 +4442,7 @@ function setupEventListeners() {
                 feedbackSubmitBtn.innerHTML = originalText;
                 feedbackSubmitBtn.disabled = false;
             };
-            xhr.send(formData);
+            xhr.send(JSON.stringify({action:'submitFeedback',name:byId('feedback-name').value,message:byId('feedback-message').value}));
         });
     }
 }
@@ -4554,6 +4509,7 @@ function notifySpeechError(errCode) {
 // Nova Função Principal: SpeakText (com suporte a OpenAI e Fallback nativo)
 function speakText(text) {
     if (!text) return;
+    rememberSpeech(text, null);
     
     var openAiVoice = localStorage.getItem('caa_openai_voice_' + currentProfileId);
     var openAiKey = localStorage.getItem('caa_openai_key_' + currentProfileId);
@@ -4620,6 +4576,7 @@ function speakTextLocal(text) {
     }
 
     var lang = getProfileLanguage();
+    if (!synth || !window.SpeechSynthesisUtterance) { notifySpeechError('voz indisponível'); return; }
     var utterance = new SpeechSynthesisUtterance(text);
     if (lang === 'en') {
         utterance.lang = 'en-US';
@@ -4746,6 +4703,7 @@ function playCardVoice(card) {
     if (!card) return;
     
     var textToSpeak = card.pronunciation ? card.pronunciation : getCardText(card);
+    rememberSpeech(textToSpeak, card);
 
     if (card.soundEffect) {
         try {
@@ -4928,6 +4886,7 @@ function saveQuickPhrase() {
 function renderQuickPhrases() {
     var section = document.getElementById('quick-phrases-section');
     var list = document.getElementById('quick-phrases-list');
+    renderReplies();
     if (!section || !list) return;
 
     if (quickPhrases.length === 0) {
@@ -4956,7 +4915,6 @@ if (document.readyState === 'loading') {
 // ==========================================
 // PAINEL DE ESTATISTICAS (DASHBOARD)
 // ==========================================
-var usageChartInstance = null;
 
 function renderizarGrafico() {
     var canvas = document.getElementById('usageChart');
@@ -4978,42 +4936,25 @@ function renderizarGrafico() {
     statsArray.sort(function(a, b) { return b.count - a.count; });
     var topStats = statsArray.slice(0, 7);
     
-    var labels = topStats.map(function(item) { return esc(item.text); });
-    var data = topStats.map(function(item) { return item.count; });
-    
-    if (usageChartInstance) {
-        usageChartInstance.destroy();
+    canvas.textContent = '';
+    if (!topStats.length) {
+        canvas.textContent = 'Ainda não há figuras no histórico de uso.';
+        return;
     }
-    
-    if (typeof Chart !== 'undefined') {
-        var ctx = canvas.getContext('2d');
-        usageChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Toques na Figura',
-                    data: data,
-                    backgroundColor: 'rgba(16, 185, 129, 0.6)',
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0 } }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
-    } else {
-        console.warn('Chart.js não carregado.');
-    }
+    topStats.forEach(function(item) {
+        var row = document.createElement('div');
+        row.setAttribute('role','listitem');
+        var label = document.createElement('span');
+        label.textContent = item.text + ' · ' + item.count;
+        var bar = document.createElement('progress');
+        bar.max = topStats[0].count || 1;
+        bar.value = item.count;
+        bar.setAttribute('aria-label',item.text);
+        bar.style.cssText = 'display:block;width:100%;height:12px;margin:3px 0 8px;accent-color:var(--color-primary)';
+        row.appendChild(label);
+        row.appendChild(bar);
+        canvas.appendChild(row);
+    });
 }
 
 // ==========================================

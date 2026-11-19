@@ -33,10 +33,9 @@ jobs:
       - name: Montar pasta pública (dist)
         run: |
           mkdir -p dist
-          cp index.html app.js styles.css sw.js manifest.json dist/
+          cp index.html app.js conversation.js ui.js storage.js driveSync.js gestures.js styles.css sw.js manifest.json dist/
           cp icon.png icon-192.png icon-512.png icon-512-maskable.png dist/
-          cp apple-touch-icon.png apple-touch-icon-precomposed.png pix_qr.png dist/
-          cp backup_comunicador_caa_mauro.json dist/
+          cp apple-touch-icon.png apple-touch-icon-precomposed.png dist/
           cp -r img dist/
           cp .nojekyll dist/
 
@@ -48,3 +47,19 @@ jobs:
       - name: Publicar no GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  release:
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Registrar a versão publicada
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if ! gh release view "$version" >/dev/null 2>&1; then
+            gh release create "$version" --target "$GITHUB_SHA" --title "Fale Comigo ${version}" --notes-file CHANGELOG.md
+          fi

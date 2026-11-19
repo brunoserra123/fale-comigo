@@ -6,16 +6,9 @@
     <title>Comunicador CAA - Comunicação por Figuras</title>
     <meta name="description" content="Aplicativo offline, moderno e simplificado de Comunicação Alternativa e Ampliada (CAA).">
     
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="styles.css?v=85">
+    <link rel="stylesheet" href="styles.css?v=3.0">
 
-    <!-- Chart.js for Statistics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
@@ -32,46 +25,45 @@
     <link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon.png?v=2">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
     <script>
-        if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
-            // Armazena se já havia um Service Worker controlando a página
-            var hadController = !!navigator.serviceWorker.controller;
-
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js')
-                    .then(function(reg) { 
-                        console.log('Service Worker registrado com sucesso! Scope:', reg.scope); 
-                        // Força a checagem de atualizações a cada carregamento de página
-                        reg.update();
-                    })
-                    .catch(function(err) { console.error('Falha ao registrar Service Worker:', err); });
-            });
-
-            // Recarrega a página automaticamente quando um novo service worker assume o controle (atualização)
+        if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+            var controlled = !!navigator.serviceWorker.controller;
             var refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', function() {
-                if (hadController && !refreshing) {
-                    refreshing = true;
-                    var sentenceList = document.getElementById('sentence-list');
-                    var hasActiveSentence = sentenceList && sentenceList.children.length > 0;
-                    
-                    if (!hasActiveSentence) {
-                        window.location.reload();
-                    } else {
-                        // Se houver uma frase ativa, aguarda até que ela seja limpa para atualizar
-                        window.pendingUpdateReload = true;
-                        console.log('Nova versão ativada! Aguardando o usuário limpar a frase para atualizar.');
-                        
-                        if (sentenceList) {
-                            const observer = new MutationObserver(function() {
-                                if (sentenceList.children.length === 0) {
-                                    observer.disconnect();
-                                    window.location.reload();
-                                }
-                            });
-                            observer.observe(sentenceList, { childList: true });
-                        }
+                if (!controlled) { controlled = true; return; }
+                if (refreshing) return;
+                function refresh() {
+                    try {
+                        var draft = {
+                            profile: window.currentProfileId,
+                            cards: window.selectedCards || [],
+                            undo: window.clearedSentence,
+                            typed: (document.getElementById('tts-custom-input') || {}).value || ''
+                        };
+                        if (draft.cards.length || draft.undo || draft.typed) sessionStorage.setItem('fale_update_draft', JSON.stringify(draft));
+                    } catch (error) {
+                        // A full session store must never cost someone a message.
+                        if (draft && (draft.cards.length || draft.undo || draft.typed)) return false;
                     }
+                    refreshing = true; location.reload(); return true;
                 }
+                if (!refresh()) document.addEventListener('click',function retry() {
+                    if (refresh()) document.removeEventListener('click',retry);
+                });
+            });
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'}).then(function(reg) {
+                    var pending = false;
+                    function check() {
+                        if (!navigator.onLine || document.hidden || pending) return;
+                        pending = true;
+                        reg.update().then(function(){ pending = false; },function(){ pending = false; });
+                    }
+                    check();
+                    document.addEventListener('visibilitychange',check);
+                    window.addEventListener('online',check);
+                    window.addEventListener('focus',check);
+                    setInterval(check, 5 * 60 * 1000);
+                }).catch(function(error) { console.warn('Atualização indisponível',error); });
             });
         }
     </script>
@@ -86,8 +78,8 @@
             </div>
             <div class="header-actions">
                 <!-- Indicador de Status da Nuvem -->
-                <div id="cloud-status-indicator" class="cloud-status-indicator success" title="Status de Backup: Sincronizado">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.42-1.01-1.39-2.5-3.5-2.5a5.5 5.5 0 0 0-5.5 5.5c0 1.25.5 2.5 1.5 3.25"/><path d="M3 19h14"/></svg>
+                <div id="cloud-status-indicator" class="cloud-status-indicator" title="Estado da sincronização">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M17.5 19A3.5 3.5 0 0 0 21 15.5c0-2.79-2.54-4.5-5-4.5-.42-1.01-1.39-2.5-3.5-2.5a5.5 5.5 0 0 0-5.5 5.5c0 1.25.5 2.5 1.5 3.25"/><path d="M3 19h14"/></svg><span id="cloud-state-label" role="status" aria-live="polite">Local</span>
                 </div>
 
                 <!-- Seletor de Perfil -->
@@ -143,8 +135,8 @@
         <!-- SENTENCE BUILDER BAR -->
         <section class="sentence-section">
             <div class="sentence-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 6px; padding: 0 4px; user-select: none;">
-                <span id="sentence-title" data-i18n="sentence_title" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Últimas Usadas</span>
-                <span id="sentence-counter" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); background-color: var(--border-color); padding: 2px 8px; border-radius: 12px; opacity: 0.8;">0 / 7</span>
+                <span id="sentence-title" data-i18n="sentence_title" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Minha frase</span>
+                <span id="sentence-counter" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); background-color: var(--border-color); padding: 2px 8px; border-radius: 12px; opacity: 0.8;">0</span>
             </div>
             <div class="sentence-container">
                 <div id="sentence-list" class="sentence-list" data-placeholder="Toque nas figuras para montar a frase..." data-i18n-data-placeholder="sentence_placeholder">
@@ -155,6 +147,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-svg"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
                         <span data-i18n="btn_speak">FALAR</span>
                     </button>
+                    <button id="btn-present" class="btn btn-secondary" data-i18n="present" type="button">Mostrar</button>
                     <button id="btn-save-phrase" class="btn btn-secondary" title="Salvar como Frase Pronta" disabled style="padding: 10px 14px;" aria-label="Salvar como Frase Pronta">
                         ⭐
                     </button>
@@ -168,6 +161,19 @@
                     </button>
                 </div>
             </div>
+        </section>
+
+        <div class="conversation-tools">
+            <div id="edit-word-tools" class="conversation-row" hidden>
+                <span id="edit-word-hint" role="status"></span>
+                <button type="button" id="btn-remove-word" class="btn btn-secondary" data-i18n="removeWord">Remover palavra</button>
+                <button type="button" id="btn-cancel-word" class="btn btn-secondary" data-i18n="cancelEdit">Cancelar troca</button>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-undo-clear" data-i18n="undoClear" hidden>Desfazer limpeza</button>
+        </div>
+        <section class="reply-strip" aria-labelledby="reply-heading">
+            <h2 id="reply-heading" data-i18n="replyTitle">Respostas rápidas</h2>
+            <div class="conversation-row"><div id="pinned-replies" class="conversation-row"></div><button type="button" id="btn-repeat" class="btn btn-secondary" data-i18n="repeat" disabled>Repetir última fala</button></div>
         </section>
 
         <!-- TEXT TO SPEECH FIELD (FALAR O QUE ESCREVEU) -->
@@ -199,6 +205,16 @@
             </div>
         </section>
 
+        <details id="history-box" hidden>
+            <summary>Histórico de falas</summary>
+            <div class="conversation-row history-filters">
+                <label>Buscar no histórico <input type="search" id="history-query"></label>
+                <label>Data <input type="date" id="history-date"></label>
+                <label>Categoria <select id="history-category"></select></label>
+            </div>
+            <div class="conversation-row" id="history-results"></div>
+        </details>
+
         <!-- RECENT SENTENCES BAR -->
         <section class="recent-sentences-section d-none" id="recent-sentences-section" style="width: 100%; margin-top: 10px; margin-bottom: 5px;">
             <div class="recent-sentences-container" style="display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 10px 14px; background-color: var(--bg-card); border: 2px solid var(--border-color); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); scrollbar-width: none;">
@@ -211,6 +227,16 @@
 
         <!-- CARDS GRID -->
         <main class="main-content">
+            <div class="conversation-row board-picker">
+                <label for="board-select" data-i18n="board">Prancha</label>
+                <select id="board-select">
+                    <option value="all" data-i18n="allBoards">Todas as figuras</option>
+                    <option value="home" data-i18n="homeBoard">Casa</option>
+                    <option value="school" data-i18n="schoolBoard">Escola</option>
+                    <option value="clinic" data-i18n="clinicBoard">Consulta</option>
+                </select>
+            </div>
+            <div id="core-words" class="core-words"></div>
             <div id="breadcrumb-container" class="breadcrumb-container" style="display: none; margin-bottom: 12px;">
                 <span id="breadcrumb-path" style="font-weight: 700;">Página Inicial</span>
             </div>
@@ -226,7 +252,7 @@
                 <div class="brand-text">
                     <p class="brand-signature" data-i18n="brand_signature">Desenvolvido por <strong>Bruno Serra de Oliveira</strong></p>
                     <p class="brand-purpose" data-i18n="brand_purpose">Criado com carinho para ajudar as pessoas a se comunicarem.</p>
-                    <p class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 2.0.0 (v85) <strong>(BETA)</strong></p>
+                    <button type="button" id="version-mark" class="brand-version" style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.7; margin-top: 4px; font-weight: 600;"><span data-i18n="brand_version_label">Versão</span> 3.0.0</button>
                 </div>
             </div>
             <div style="display: flex; gap: 8px; margin-left: auto; align-items: center;">
@@ -247,29 +273,7 @@
                     <button id="btn-close-support" class="btn-close">&times;</button>
                 </div>
                 <div class="modal-body" style="text-align: center; gap: 20px; padding: 20px;">
-                    <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
-                        Este é um projeto gratuito criado para ajudar na comunicação. Se você gosta do projeto e quer ajudar a mantê-lo ativo, você pode contribuir através do Pix:
-                    </p>
-                    
-                    <!-- Pix Option -->
-                    <div style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 16px; border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 10px; align-items: center;">
-                        <span style="font-size: 1.5rem;">💸</span>
-                        <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700;">Contribuição Única (Pix)</h4>
-                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">Qualquer valor de contribuição nos ajuda muito</p>
-                        <div style="display: flex; width: 100%; gap: 8px;">
-                            <input type="text" id="pix-key-input" value="falecomigoapricativo@gmail.com" data-payload="00020126520014br.gov.bcb.pix0130falecomigoapricativo@gmail.com5204000053039865802BR5901N6001C62070503***6304E5AE" readonly style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); text-align: center; font-weight: 700; font-size: 0.85rem; background-color: var(--bg-card); color: var(--text-primary); outline: none;">
-                            <button id="btn-copy-pix" class="btn btn-secondary" style="padding: 10px 14px; font-size: 0.85rem; font-weight: 700;">Copiar</button>
-                        </div>
-                        <!-- QR Code Pix -->
-                        <div style="margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                            <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary);">Ou escaneie o QR Code abaixo:</span>
-                            <img src="pix_qr.png" alt="QR Code Pix" style="width: 160px; height: 160px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: white; padding: 8px; box-shadow: var(--shadow-sm);">
-                        </div>
-                    </div>
-
-                    <hr class="modal-divider" style="margin: 10px 0; border: none; border-top: 1px solid var(--border-color); width: 100%;">
-                    
-                    <!-- Feedback / Web3Forms -->
+                    <!-- Feedback -->
                     <div style="display: flex; flex-direction: column; gap: 10px; text-align: left; width: 100%;">
                         <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
                             <span>💬</span> Sugestões e Ideias
@@ -283,10 +287,7 @@
                                 <label for="feedback-name" style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Seu Nome (opcional):</label>
                                 <input type="text" id="feedback-name" name="name" placeholder="Ex: João Silva" style="width: 100%;">
                             </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <label for="feedback-email" style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Seu E-mail (opcional):</label>
-                                <input type="email" id="feedback-email" name="email" placeholder="Ex: joao@email.com" style="width: 100%;">
-                            </div>
+                            
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label for="feedback-message" style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Sua Mensagem / Sugestão:</label>
                                 <textarea id="feedback-message" name="message" required placeholder="Digite sua mensagem, sugestão ou elogio aqui..." style="width: 100%; min-height: 100px; resize: vertical;"></textarea>
@@ -405,6 +406,23 @@
                         <label data-i18n="label_total_accesses">Total de Acessos:</label>
                         <span id="access-counter-val" style="font-weight: 700; font-size: 1.1rem; color: var(--color-primary);">1</span>
                     </div>
+
+                    <fieldset class="reply-settings" id="modern-settings" hidden>
+                        <legend>Perfil e dispositivos</legend>
+                        <label>Avatar <select id="profile-avatar"><option>👤</option><option>🌻</option><option>⭐</option><option>🐱</option><option>🌳</option></select></label>
+                        <label><input type="checkbox" id="haptics"> Vibração ao tocar</label>
+                        <label><input type="checkbox" id="click-sound"> Som ao tocar</label>
+                        <div class="conversation-row"><button type="button" class="btn btn-secondary" id="export-profile">Exportar perfil JSON</button><button type="button" class="btn btn-secondary" id="import-profile">Importar perfil JSON</button></div>
+                        <input type="file" id="profile-file" accept=".json,application/json" hidden>
+                        <label>Código privado para usar o mesmo perfil em outro aparelho <input type="password" id="pair-code" autocomplete="off" spellcheck="false"></label>
+                        <div class="conversation-row"><button type="button" class="btn btn-secondary" id="pair-new">Gerar código</button><button type="button" class="btn btn-secondary" id="pair-restore">Restaurar pelo código</button><button type="button" class="btn btn-secondary" id="pair-reveal">Mostrar código</button></div>
+                    </fieldset>
+                    <fieldset class="reply-settings">
+                        <legend data-i18n="replyTitle">Respostas rápidas</legend>
+                        <p data-i18n="replyHelp">Escolha uma frase salva ou escreva sua resposta em cada campo.</p>
+                        <div id="reply-fields"></div>
+                        <datalist id="reply-options"></datalist>
+                    </fieldset>
 
                     <!-- TelepatiX & Scanning Settings Panel -->
                     <div class="form-group" style="background-color: var(--bg-app); border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius-sm); margin-top: 10px; flex-direction: column; display: flex; width: 100%;">
@@ -706,6 +724,20 @@
         </div>
     </div>
 
+    <div id="presentation" role="dialog" aria-modal="true" aria-labelledby="presentation-text" hidden>
+        <div class="presentation-page">
+            <div class="presentation-reading"><p id="presentation-text"></p></div>
+            <div class="conversation-row presentation-actions">
+                <button type="button" id="btn-rotate" class="btn btn-secondary" aria-pressed="false" data-i18n="rotate">Girar 180°</button>
+                <button type="button" id="btn-end-presentation" class="btn btn-primary" data-i18n="backToBoard">Voltar à prancha</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="diagnostics" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="diag-title">
+        <div class="modal-content"><div class="modal-header"><h2 id="diag-title">Diagnóstico</h2><button type="button" class="btn-close" id="diag-close" aria-label="Fechar">&times;</button></div>
+        <div class="modal-body"><pre id="diag-log"></pre><button type="button" class="btn btn-primary" id="force-sync">Forçar sincronização</button></div></div>
+    </div>
     <!-- FLOATING BOTTOM BAR -->
     <div id="floating-bottom-bar" class="floating-bottom-bar d-none">
         <div class="floating-sentence-preview" id="floating-sentence-preview"></div>
@@ -834,7 +866,7 @@
                 <p style="font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 20px;">Acompanhe o progresso de comunicação, com as figuras mais tocadas no aplicativo.</p>
                 
                 <div style="width: 100%; max-height: 350px; background-color: var(--bg-app); border-radius: var(--radius-md); padding: 16px; border: 1px solid var(--border-color);">
-                    <canvas id="usageChart" style="width: 100%; height: 300px;"></canvas>
+                    <div id="usageChart" role="list" aria-label="Figuras mais usadas"></div>
                 </div>
 
                 <div style="margin-top: 24px; text-align: center;">
@@ -866,15 +898,15 @@
     <div id="modal-whats-new" class="modal-overlay">
         <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 450px;">
             <div class="modal-header">
-                <h2 style="font-size: 1.25rem; font-weight: 700;">✨ Novidades da Versão (v90)</h2>
+                <h2 style="font-size: 1.25rem; font-weight: 700;">✨ Novidades da Versão 3.0</h2>
                 <button id="btn-close-whats-new" class="btn-close">&times;</button>
             </div>
             <div class="modal-body" style="gap: 12px; padding: 20px;">
                 <ul style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; padding-left: 20px; margin: 0;">
-                    <li><strong>Novos Ícones:</strong> O aplicativo agora possui ícones atualizados na instalação.</li>
-                    <li><strong>Melhorias Visuais:</strong> Pequenos ajustes na interface e experiência de uso.</li>
-                    <li><strong>Correções de Cache:</strong> Agora as atualizações serão baixadas mais rápido quando você estiver conectado à internet.</li>
-                    <li><strong>Detecção de Navegador:</strong> Adicionado um aviso importante para quem abre o app via Instagram.</li>
+                    <li>Monte frases longas, toque em uma palavra para trocá-la e desfaça uma limpeza acidental.</li>
+                    <li>Use três respostas rápidas sem interromper sua frase.</li>
+                    <li>Toque em Mostrar para apresentar a frase em letras grandes e girar a tela.</li>
+                    <li>Escolha Casa, Escola ou Consulta. Sim, Não e Ajuda ficam na mesma posição.</li>
                 </ul>
                 <button id="btn-whats-new-ok" type="button" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; margin-top: 10px;">Entendi!</button>
             </div>
@@ -888,6 +920,8 @@
     </button>
 
     <!-- App Logic -->
-    <script src="app.js?v=90"></script>
+    <script src="conversation.js?v=3.0"></script>
+    <script src="app.js?v=3.0"></script>
+    <script type="module" src="ui.js?v=3.0"></script>
 </body>
 </html>
