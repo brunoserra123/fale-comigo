@@ -4915,7 +4915,6 @@ if (document.readyState === 'loading') {
 // ==========================================
 // PAINEL DE ESTATISTICAS (DASHBOARD)
 // ==========================================
-var usageChartInstance = null;
 
 function renderizarGrafico() {
     var canvas = document.getElementById('usageChart');
@@ -4937,42 +4936,25 @@ function renderizarGrafico() {
     statsArray.sort(function(a, b) { return b.count - a.count; });
     var topStats = statsArray.slice(0, 7);
     
-    var labels = topStats.map(function(item) { return esc(item.text); });
-    var data = topStats.map(function(item) { return item.count; });
-    
-    if (usageChartInstance) {
-        usageChartInstance.destroy();
+    canvas.textContent = '';
+    if (!topStats.length) {
+        canvas.textContent = 'Ainda não há figuras no histórico de uso.';
+        return;
     }
-    
-    if (typeof Chart !== 'undefined') {
-        var ctx = canvas.getContext('2d');
-        usageChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Toques na Figura',
-                    data: data,
-                    backgroundColor: 'rgba(16, 185, 129, 0.6)',
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, ticks: { precision: 0 } }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
-    } else {
-        console.warn('Chart.js não carregado.');
-    }
+    topStats.forEach(function(item) {
+        var row = document.createElement('div');
+        row.setAttribute('role','listitem');
+        var label = document.createElement('span');
+        label.textContent = item.text + ' · ' + item.count;
+        var bar = document.createElement('progress');
+        bar.max = topStats[0].count || 1;
+        bar.value = item.count;
+        bar.setAttribute('aria-label',item.text);
+        bar.style.cssText = 'display:block;width:100%;height:12px;margin:3px 0 8px;accent-color:var(--color-primary)';
+        row.appendChild(label);
+        row.appendChild(bar);
+        canvas.appendChild(row);
+    });
 }
 
 // ==========================================
